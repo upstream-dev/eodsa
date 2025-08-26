@@ -1,0 +1,77 @@
+AVALON COMPETITION SYSTEM - QUICK REFERENCE
+
+=== WHO ARE YOU? ===
+
+🎭 JUDGE
+• You score dance performances
+• Use tablets/mobile devices
+• Need: JUDGE_MANUAL_WHATSAPP.txt
+
+👨‍💼 ADMIN  
+• You manage the competition system
+• Handle registrations and events
+• Need: ADMIN_MANUAL_WHATSAPP.txt
+
+💃 DANCER
+• You're registering to compete
+• Creating entries and paying fees
+• Need: DANCER_MANUAL_WHATSAPP.txt
+
+=== QUICK LOGIN INFO ===
+
+Admin Login:
+Website: [your website]/portal/admin
+Email: mains@elementscentral.com
+Password: 624355Mage55!
+
+Judge Login:
+Website: [your website]/judge/login
+(Get credentials from admin)
+
+Dancer Registration:
+Website: [your website]/register
+
+=== EMERGENCY CONTACTS ===
+• Technical issues: Contact system admin
+• Registration problems: Contact admin email
+• Competition day issues: Contact event organizers
+
+=== MEDAL LEVELS ===
+Based on total score percentage:
+• Bronze: 69% and below
+• Silver: 70-74%
+• Silver Plus: 75-79% 
+• Gold: 80-84%
+• Legend: 85-89%
+• Opus: 90-94%
+• Elite: 95%+
+
+=== MASTERY LEVELS ===
+• Water: Beginner
+• Fire: Intermediate  
+• Earth: Advanced
+• Air: Professional
+
+=== BASIC FEES ===
+• Registration: $50
+• Per performance: $25
+• EODSA annual: $25 (first time)
+• Late fee: $10
+
+=== PERFORMANCE TYPES ===
+• Solo: 1 dancer (3-5 min)
+• Duet: 2 dancers (4-6 min)
+• Trio: 3 dancers (5-7 min)
+• Group: 4+ dancers (6-8 min)
+
+=== SCORING SYSTEM ===
+Judges score 5 categories (0-20 points each):
+1. Technique
+2. Musicality  
+3. Performance
+4. Styling
+5. Overall Impression
+
+Total: 100 points possible
+
+Need more details? Get the specific manual for your role! 

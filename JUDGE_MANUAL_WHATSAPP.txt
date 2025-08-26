@@ -1,0 +1,60 @@
+AVALON COMPETITION SYSTEM - JUDGE GUIDE
+
+=== LOGIN ===
+1. Go to: [your website]/judge/login
+2. Enter your email and password
+3. Click "Login as Judge"
+
+=== YOUR DASHBOARD ===
+After login you'll see:
+• Total performances to judge
+• Number you've completed
+• Performances waiting for you
+• Search box to find specific item numbers
+
+=== HOW TO SCORE ===
+1. Click on any performance from your list
+2. You'll see dancer info and performance details
+3. Score 5 categories (0-20 points each):
+   - Technique
+   - Musicality  
+   - Performance
+   - Styling
+   - Overall Impression
+
+4. Add comments (optional but helpful)
+5. Click "Submit Score"
+6. Performance disappears from your list (already scored)
+
+=== FINDING PERFORMANCES ===
+• Use search box for item numbers
+• Filter: All / Scored / Completed
+• Performances auto-hide after you score them
+
+=== SCORING TIPS ===
+• Medal levels based on total percentage:
+  - Bronze: 69% and below
+  - Silver: 70-74%
+  - Silver Plus: 75-79% 
+  - Gold: 80-84%
+  - Legend: 85-89%
+  - Opus: 90-94%
+  - Elite: 95%+
+
+• You cannot edit scores once submitted
+• Focus on one performance at a time
+• Use comments to help dancers improve
+
+=== MOBILE/TABLET USE ===
+• Interface designed for tablets
+• Large buttons for easy touch
+• Bold text for clear reading
+• Works best in landscape mode
+
+=== PROBLEMS? ===
+• Refresh page if stuck
+• Check internet connection
+• Contact admin if technical issues
+• Don't force refresh during scoring
+
+Remember: Be fair, consistent, and constructive in your judging! 

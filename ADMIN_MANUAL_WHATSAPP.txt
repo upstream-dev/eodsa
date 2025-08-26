@@ -1,0 +1,121 @@
+AVALON COMPETITION SYSTEM - ADMIN GUIDE
+
+=== LOGIN ===
+Website: [your website]/portal/admin
+Email: mains@elementscentral.com
+Password: 624355Mage55!
+
+=== ADMIN DASHBOARD ===
+6 main tabs:
+1. Events - Create/manage competitions
+2. Judges - Manage judge accounts  
+3. Assignments - Assign judges to events
+4. Dancers - View/approve dancer registrations
+5. Studios - Manage studio applications
+6. Verification - Handle pending approvals
+
+=== CREATING EVENTS ===
+Events Tab → "Create Event"
+Required info:
+• Event name and date
+• Location details
+• Registration deadlines
+• Performance types (Solo/Duet/Trio/Group)
+• Age divisions
+• Mastery levels (Water/Fire/Earth/Air)
+
+=== MANAGING JUDGES ===
+Judges Tab:
+• Create new judge accounts
+• View judge information
+• Assign/remove judge access
+• Track judge assignments
+
+Assignments Tab:
+• Assign judges to specific events
+• View current assignments
+• Remove assignments if needed
+
+=== DANCER MANAGEMENT ===
+Dancers Tab shows:
+• All registered dancers
+• Registration status
+• Studio affiliations
+• Payment status
+• Competition entries
+
+Actions available:
+• Approve/reject registrations
+• View dancer details
+• Export dancer lists
+
+=== STUDIO MANAGEMENT ===
+Studios Tab:
+• Approve new studio applications
+• View studio information
+• Manage studio-dancer relationships
+• Track studio payments
+
+=== EVENT ENTRIES ===
+Events Tab → Select Event → "View Entries"
+• See all competition entries
+• Assign item numbers
+• Create performance schedules
+• Lock entries when ready
+
+=== RANKINGS & RESULTS ===
+Rankings Tab:
+• View live scoring results
+• Generate award lists
+• Export results to Excel
+• Print certificates/awards
+
+Filter options:
+• By event
+• By division
+• By performance type
+• By medal level
+
+=== SYSTEM MAINTENANCE ===
+Admin Dashboard → System Tools:
+• Clean database
+• Sync data
+• Check data consistency
+• Update event statuses
+
+=== VERIFICATION WORKFLOW ===
+Verification Tab shows:
+• Pending studio applications
+• Pending dancer registrations
+• Payment confirmations
+• Document uploads
+
+Process each:
+1. Review submitted information
+2. Check required documents
+3. Approve or request changes
+4. Send notification to user
+
+=== TROUBLESHOOTING ===
+Common issues:
+• Registration stuck: Check verification tab
+• Missing payments: Check fee calculations
+• Judge can't access: Check assignments
+• Data errors: Use consistency check tool
+
+=== QUICK ACTIONS ===
+Daily tasks:
+1. Check verification queue
+2. Approve pending registrations
+3. Assign item numbers
+4. Update event statuses
+5. Monitor judge assignments
+
+Competition day:
+1. Lock all entries
+2. Generate performance order
+3. Ensure judge assignments
+4. Monitor live scoring
+5. Generate results
+
+Remember: Always backup before major changes! 
