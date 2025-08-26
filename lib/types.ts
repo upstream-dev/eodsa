@@ -288,26 +288,26 @@ export const TIME_LIMITS = {
 
 // EODSA Fee Structure - Updated for Nationals 2024 (Water and Fire only)
 export const EODSA_FEES = {
-  // Registration fees per person
+  // Registration fees per person (TESTING VERSION)
   REGISTRATION: {
-    'Water (Competitive)': 250,    // R250 PP for Water (Competition)
-    'Fire (Advanced)': 250,        // R250 PP for Fire (Advanced)
-    'Nationals': 300               // R300 PP for Nationals entry
+    'Water (Competitive)': 5,      // TESTING: R5 PP for Water (Competition)
+    'Fire (Advanced)': 5,          // TESTING: R5 PP for Fire (Advanced)
+    'Nationals': 5                 // TESTING: R5 PP for Nationals entry
   },
   
-  // Solo packages - same for both Water and Fire
+  // Solo packages - TESTING VERSION (same for both Water and Fire)
   SOLO_PACKAGES: {
-    1: 300,   // 1 solo: R300
-    2: 520,   // 2 solos: R520
-    3: 700,   // 3 solos: R700
-    4: 880,   // 4 solos: R700 + R180
-    5: 1060   // 5 solos: R700 + (2 × R180)
+    1: 5,    // TESTING: 1 solo: R5
+    2: 10,   // TESTING: 2 solos: R10
+    3: 15,   // TESTING: 3 solos: R15
+    4: 20,   // TESTING: 4 solos: R20
+    5: 20    // TESTING: 5 solos: R20 (5th FREE)
   },
   
-  // Performance fees - same for both Water and Fire
+  // Performance fees - TESTING VERSION (same for both Water and Fire)
   PERFORMANCE: {
-    Solo: 300,              // R300 for 1 solo
-    SoloAdditional: 180,    // R180 for each additional solo after 3rd
+    Solo: 5,                // TESTING: R5 for 1 solo
+    SoloAdditional: 5,      // TESTING: R5 for each additional solo
     Duet: 200,              // R200 per dancer
     Trio: 200,              // R200 per dancer  
     SmallGroup: 180,        // R180 per dancer

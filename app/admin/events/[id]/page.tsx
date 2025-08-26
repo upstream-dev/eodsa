@@ -774,6 +774,55 @@ export default function EventParticipantsPage() {
     setShowPaymentModal(true);
   };
 
+  // Test payment function - initiates real R5 payment for testing
+  const handleTestPayment = async (entry: EventEntry) => {
+    try {
+      showAlert('Initiating test payment of R5...', 'info');
+      
+      const testPaymentData = {
+        entryId: entry.id,
+        eventId: eventId,
+        userId: 'test-admin',
+        userFirstName: 'Test',
+        userLastName: 'Admin',
+        userEmail: 'testadmin@eodsa.test',
+        amount: 5.00, // Fixed R5 for testing
+        itemName: `TEST PAYMENT - ${entry.itemName}`,
+        itemDescription: `Test payment for entry: ${entry.itemName}`,
+        isBatchPayment: false
+      };
+
+      const response = await fetch('/api/payments/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testPaymentData),
+      });
+
+      if (response.ok) {
+        // Response should be HTML for PayFast redirect
+        const paymentHtml = await response.text();
+        
+        // Create a new window/tab with the payment form
+        const paymentWindow = window.open('', '_blank');
+        if (paymentWindow) {
+          paymentWindow.document.write(paymentHtml);
+          paymentWindow.document.close();
+          showAlert('Test payment initiated! Complete the payment in the new window.', 'success');
+        } else {
+          throw new Error('Unable to open payment window. Please check your popup blocker.');
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to initiate test payment');
+      }
+    } catch (error: any) {
+      console.error('Test payment error:', error);
+      showAlert(`Failed to initiate test payment: ${error.message}`, 'error');
+    }
+  };
+
   const updatePaymentStatus = async (status: 'paid' | 'pending' | 'failed') => {
     if (!selectedEntry) return;
     
@@ -1374,6 +1423,13 @@ export default function EventParticipantsPage() {
                             className="w-full px-3 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200 transition-colors"
                           >
                             Manage Payment
+                          </button>
+                          
+                          <button
+                            onClick={() => handleTestPayment(entry)}
+                            className="w-full px-3 py-1 text-xs font-medium rounded-lg bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-200 transition-colors"
+                          >
+                            🧪 Test Payment (R5)
                           </button>
                         </div>
                       </td>

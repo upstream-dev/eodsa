@@ -156,16 +156,27 @@ export async function POST(request: NextRequest) {
       WHERE payment_id = ${webhookData.m_payment_id}
     `;
 
-    // Update entry payment status
+    // Update entry payment status and auto-approve if payment is completed
     const entryPaymentStatus = updatedStatus === 'completed' ? 'paid' : 
                               updatedStatus === 'failed' ? 'failed' : 
                               updatedStatus === 'cancelled' ? 'cancelled' : 'pending';
 
-    await sql`
-      UPDATE event_entries SET
-        payment_status = ${entryPaymentStatus}
-      WHERE payment_id = ${webhookData.m_payment_id}
-    `;
+    if (updatedStatus === 'completed') {
+      // AUTO-APPROVE: When payment is completed, automatically approve the entries
+      await sql`
+        UPDATE event_entries SET
+          payment_status = ${entryPaymentStatus},
+          approved = true,
+          approved_at = CURRENT_TIMESTAMP
+        WHERE payment_id = ${webhookData.m_payment_id}
+      `;
+    } else {
+      await sql`
+        UPDATE event_entries SET
+          payment_status = ${entryPaymentStatus}
+        WHERE payment_id = ${webhookData.m_payment_id}
+      `;
+    }
 
     // Log payment status update
     await sql`
@@ -185,6 +196,7 @@ export async function POST(request: NextRequest) {
     // Handle successful payment
     if (updatedStatus === 'completed') {
       console.log(`✅ Payment completed: ${webhookData.m_payment_id}`);
+      console.log(`🎯 Auto-approving entries for payment: ${webhookData.m_payment_id}`);
       
       // You can add additional logic here:
       // - Send confirmation email

@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
           calculatedFee: entry.calculatedFee,
           paymentStatus: 'paid', // Mark as paid since payment was successful
           paymentMethod: 'payfast',
-          approved: false,
+          approved: true, // AUTO-APPROVE: Entries are automatically approved after successful payment
           qualifiedForNationals: true,
           itemNumber: null,
           itemName: entry.itemName,

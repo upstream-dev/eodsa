@@ -2277,40 +2277,40 @@ export const db = {
         try {
           const registrationStatus = await this.getDancerRegistrationStatus(participantId);
           if (!registrationStatus.registrationFeePaid) {
-            registrationFee += 300; // R300 per dancer who hasn't paid
+            registrationFee += 5; // TESTING: Changed from 300 to 5 per dancer
           }
         } catch (error) {
           // If dancer not found or error, assume they need to pay registration
-          registrationFee += 300;
+          registrationFee += 5; // TESTING: Changed from 300 to 5
         }
       }
     } else {
       // For single participant (solo), assume they need to pay if not specified
-      registrationFee = 300;
+      registrationFee = 5; // TESTING: Changed from 300 to 5
     }
     
     // Calculate performance fees based on type
     if (performanceType === 'Solo') {
-      // Solo fee structure - exactly as specified
+      // Solo fee structure - TESTING VERSION (R5 instead of R400)
       switch (soloCount) {
         case 1:
-          performanceFee = 400;
+          performanceFee = 5; // TESTING: Changed from 400 to 5
           break;
         case 2:
-          performanceFee = 750;
+          performanceFee = 10; // TESTING: Changed from 750 to 10
           break;
         case 3:
-          performanceFee = 1000;
+          performanceFee = 15; // TESTING: Changed from 1000 to 15
           break;
         case 4:
-          performanceFee = 1200;
+          performanceFee = 20; // TESTING: Changed from 1200 to 20
           break;
         case 5:
-          performanceFee = 1200; // 5th solo is FREE
+          performanceFee = 20; // TESTING: 5th solo is FREE (same total)
           break;
         default:
-          // More than 5 solos: 1200 + (additional solos * 100)
-          performanceFee = 1200 + ((soloCount - 5) * 100);
+          // More than 5 solos: 20 + (additional solos * 5)
+          performanceFee = 20 + ((soloCount - 5) * 5); // TESTING: Reduced amounts
       }
     } else if (performanceType === 'Duet' || performanceType === 'Trio') {
       // Duos/trios - R280 per person
@@ -2328,7 +2328,7 @@ export const db = {
       registrationFee,
       performanceFee,
       totalFee: registrationFee + performanceFee,
-      participantsNeedingRegistration: registrationFee / 300 // Number of participants who need to pay registration
+      participantsNeedingRegistration: registrationFee / 5 // TESTING: Number of participants who need to pay registration (changed from 300 to 5)
     };
   },
 
@@ -4212,25 +4212,25 @@ export const unifiedDb = {
     participantCount: number = 1,
     participantIds: string[] = []
   ) {
-    const registrationFeePerDancer = 300; // R300 per dancer
+    const registrationFeePerDancer = 5; // TESTING: Changed from 300 to 5 per dancer
     let performanceFee = 0;
     let participantsNeedingRegistration = participantCount;
 
     // Calculate performance fee based on type and solo count
     if (performanceType === 'Solo') {
-      // Solo package pricing: 1 solo R400, 2 solos R750, 3 solos R1000, 4 solos R1200, 5th FREE, additional R100
+      // Solo package pricing: TESTING VERSION (R5 instead of R400)
       if (soloCount === 1) {
-        performanceFee = 400;
+        performanceFee = 5; // TESTING: Changed from 400 to 5
       } else if (soloCount === 2) {
-        performanceFee = 750;
+        performanceFee = 10; // TESTING: Changed from 750 to 10
       } else if (soloCount === 3) {
-        performanceFee = 1000;
+        performanceFee = 15; // TESTING: Changed from 1000 to 15
       } else if (soloCount === 4) {
-        performanceFee = 1200;
+        performanceFee = 20; // TESTING: Changed from 1200 to 20
       } else if (soloCount === 5) {
-        performanceFee = 1200; // 5th solo is FREE
+        performanceFee = 20; // TESTING: 5th solo is FREE (same total)
       } else if (soloCount > 5) {
-        performanceFee = 1200 + ((soloCount - 5) * 100); // Additional solos R100 each
+        performanceFee = 20 + ((soloCount - 5) * 5); // TESTING: Additional solos R5 each
       }
     } else if (performanceType === 'Duet' || performanceType === 'Trio') {
       performanceFee = 280 * participantCount; // R280 per person
