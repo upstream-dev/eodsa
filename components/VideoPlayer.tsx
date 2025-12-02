@@ -19,21 +19,27 @@ export default function VideoPlayer({
   // Extract video ID from URLs for embedding
   const getEmbedUrl = (url: string, type: string) => {
     try {
-      if (type === 'youtube') {
-        // Handle various YouTube URL formats
-        const videoId = extractYouTubeId(url);
-        return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
-      } else if (type === 'vimeo') {
-        // Handle Vimeo URLs
-        const videoId = extractVimeoId(url);
-        return videoId ? `https://player.vimeo.com/video/${videoId}` : null;
-      } else if (type === 'other' || url.includes('drive.google.com')) {
-        // Handle Google Drive URLs - convert /view to /preview for embedding
+      // Always prioritise Google Drive by URL pattern, regardless of stored type
+      if (url.includes('drive.google.com')) {
         const googleDriveUrl = convertGoogleDriveToPreview(url);
         if (googleDriveUrl) {
           return googleDriveUrl;
         }
       }
+
+      if (type === 'youtube') {
+        // Handle various YouTube URL formats
+        const videoId = extractYouTubeId(url);
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+      }
+
+      if (type === 'vimeo') {
+        // Handle Vimeo URLs
+        const videoId = extractVimeoId(url);
+        return videoId ? `https://player.vimeo.com/video/${videoId}` : null;
+      }
+
+      // Fallback for other future providers
       return null;
     } catch (error) {
       console.error('Error creating embed URL:', error);
@@ -44,30 +50,25 @@ export default function VideoPlayer({
   // Convert Google Drive URLs to preview format for embedding
   const convertGoogleDriveToPreview = (url: string): string | null => {
     try {
-      // Pattern 1: https://drive.google.com/file/d/FILE_ID/view
-      // Pattern 2: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-      const fileIdPattern = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+      // 1. Universal Pattern: Extract the file ID from /file/d/ or ?id=
+      // This single regex covers:
+      // - /file/d/FILE_ID/view... (most common)
+      // - /open?id=FILE_ID
+      // - /uc?id=FILE_ID
+      const fileIdPattern = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)([a-zA-Z0-9_-]+)/;
       const match = url.match(fileIdPattern);
       
       if (match && match[1]) {
         const fileId = match[1];
+        // Always return the standard embed format: /file/d/FILE_ID/preview
         return `https://drive.google.com/file/d/${fileId}/preview`;
       }
-      
-      // Pattern 3: https://drive.google.com/open?id=FILE_ID
-      const openPattern = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
-      const openMatch = url.match(openPattern);
-      
-      if (openMatch && openMatch[1]) {
-        const fileId = openMatch[1];
-        return `https://drive.google.com/file/d/${fileId}/preview`;
-      }
-      
-      // Pattern 4: Already in preview format
+
+      // 2. Fallback: If it's already a working preview link, return it.
       if (url.includes('/preview')) {
         return url;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error converting Google Drive URL:', error);
@@ -148,10 +149,10 @@ export default function VideoPlayer({
                   Video cannot be embedded directly
                 </p>
                 <p className="text-xs text-yellow-700 mb-3">
-                  {videoType === 'youtube' 
-                    ? 'YouTube video ID could not be extracted. Please check the URL format.' 
-                    : videoUrl.includes('drive.google.com')
-                    ? 'Google Drive file ID could not be extracted. Please check the URL format. Make sure the file is shared with "Anyone with the link" permission.'
+                  {videoUrl.includes('drive.google.com')
+                    ? 'Google Drive file ID could not be extracted. Please check the URL format. Make sure the file is shared with \"Anyone with the link\" permission.'
+                    : videoType === 'youtube'
+                    ? 'YouTube video ID could not be extracted. Please check the URL format.'
                     : 'This video type requires opening in a new tab.'}
                 </p>
                 <div className="bg-white rounded border border-yellow-300 p-2 mb-3">
