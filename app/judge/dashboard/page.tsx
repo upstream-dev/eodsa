@@ -878,6 +878,12 @@ export default function JudgeDashboard() {
                         <p className={`font-semibold text-${colorTheme.text}`}>{selectedPerformance.mastery}</p>
                       </div>
                     )}
+                    {selectedPerformance.itemStyle && (
+                      <div>
+                        <p className="text-gray-600">Dance Style</p>
+                        <p className="font-semibold text-gray-900">{selectedPerformance.itemStyle}</p>
+                      </div>
+                    )}
                     {selectedPerformance.ageCategory && (
                       <div>
                         <p className="text-gray-600">Age Category</p>

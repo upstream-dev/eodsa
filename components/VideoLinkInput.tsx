@@ -26,6 +26,11 @@ export default function VideoLinkInput({ entryId, currentLink = '', onLinkSubmit
     if (url.includes('vimeo.com/')) {
       return 'vimeo';
     }
+
+    // Google Drive or other direct links
+    if (url.includes('drive.google.com')) {
+      return 'other';
+    }
     
     return 'other';
   };
@@ -61,7 +66,7 @@ export default function VideoLinkInput({ entryId, currentLink = '', onLinkSubmit
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Video URL (YouTube or Vimeo)
+            Video URL (YouTube, Vimeo or Google Drive)
           </label>
           <input
             type="url"
@@ -70,7 +75,7 @@ export default function VideoLinkInput({ entryId, currentLink = '', onLinkSubmit
               setVideoUrl(e.target.value);
               setError('');
             }}
-            placeholder="https://www.youtube.com/watch?v=... or https://vimeo.com/..."
+            placeholder="YouTube, Vimeo or Google Drive link (e.g. https://www.youtube.com/watch?v=..., https://vimeo.com/..., or a Google Drive share link)"
             disabled={disabled || isSubmitting}
             className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
@@ -78,7 +83,7 @@ export default function VideoLinkInput({ entryId, currentLink = '', onLinkSubmit
             <p className="mt-2 text-sm text-red-400">{error}</p>
           )}
           <p className="mt-2 text-xs text-gray-400">
-            💡 Supported formats: YouTube (youtube.com/watch?v=..., youtu.be/...) or Vimeo (vimeo.com/...)
+            💡 Supported formats: YouTube (youtube.com/watch?v=..., youtu.be/...), Vimeo (vimeo.com/...), or Google Drive (drive.google.com file links)
           </p>
         </div>
         
