@@ -107,14 +107,11 @@ export async function POST(request: NextRequest) {
 
       computedTotal = validationResult.totalComputedFee;
 
-      // Log warning if mismatch detected, but proceed with computed total
-      // This ensures payments work even if frontend calculation is slightly off
-      // The backend's batch validation is the source of truth for fee calculation
+      // REFUSE PAYMENT if mismatch detected
       if (validationResult.mismatchDetected) {
-        console.warn('⚠️ FEE MISMATCH DETECTED - Using computed total instead of client-sent amount:', {
+        console.error('⚠️ PAYMENT REFUSED - Fee mismatch detected:', {
           clientSentTotal: amount,
           computedTotal: validationResult.totalComputedFee,
-          difference: Math.abs(amount - validationResult.totalComputedFee),
           mismatchReason: validationResult.mismatchReason,
           validations: validationResult.validations.map(v => ({
             entryIndex: v.entryIndex,
@@ -125,24 +122,26 @@ export async function POST(request: NextRequest) {
           }))
         });
 
-        // Log the mismatch for audit purposes
-        await sql`
-          INSERT INTO payment_logs (payment_id, event_type, event_data, ip_address, user_agent)
-          VALUES (
-            ${'VALIDATION_' + Date.now()}, 'fee_mismatch_warning',
-            ${JSON.stringify({
-              clientSentTotal: amount,
-              computedTotal: validationResult.totalComputedFee,
-              mismatchReason: validationResult.mismatchReason,
-              action: 'Using computed total'
-            })},
-            ${request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'},
-            ${request.headers.get('user-agent') || 'unknown'}
-          )
-        `;
+        return NextResponse.json({
+          success: false,
+          error: 'Payment amount mismatch detected',
+          details: {
+            clientSentTotal: amount,
+            computedTotal: validationResult.totalComputedFee,
+            mismatchReason: validationResult.mismatchReason,
+            validations: validationResult.validations.map(v => ({
+              entryIndex: v.entryIndex,
+              itemName: v.entry.itemName,
+              clientSentFee: v.clientSentFee,
+              computedFee: v.computedFee,
+              mismatchDetected: v.mismatchDetected,
+              mismatchReason: v.mismatchReason
+            }))
+          }
+        }, { status: 400 });
       }
 
-      // Always use computed total (source of truth) instead of client-sent amount
+      // Use computed total instead of client-sent amount
       computedTotal = validationResult.totalComputedFee;
     }
 

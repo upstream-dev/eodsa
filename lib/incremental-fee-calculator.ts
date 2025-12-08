@@ -13,49 +13,6 @@ import { getSql } from './database';
 import { calculateSoloEntryFee, calculateNonSoloFee, EventFeeConfig } from './pricing-utils';
 import type { Event } from './types';
 
-/**
- * Get the correct EODSA ID (starts with 'E', e.g., E387083)
- * If the provided ID is an internal ID, look it up from the database
- */
-async function getCorrectEodsaId(providedId: string | undefined | null, dancerId?: string): Promise<string | null> {
-  if (!providedId) return null;
-  
-  // If it already looks like an EODSA ID (starts with 'E' and is short), use it
-  if (providedId.startsWith('E') && providedId.length <= 10) {
-    return providedId;
-  }
-  
-  // Otherwise, it's likely an internal ID - look up the EODSA ID from database
-  const sql = getSql();
-  try {
-    // Try to find dancer by internal ID
-    const dancerResult = await sql`
-      SELECT eodsa_id FROM dancers WHERE id = ${providedId} LIMIT 1
-    ` as any[];
-    
-    if (dancerResult && dancerResult.length > 0 && dancerResult[0].eodsa_id) {
-      return dancerResult[0].eodsa_id;
-    }
-    
-    // Also try by dancerId if provided
-    if (dancerId && dancerId !== providedId) {
-      const dancerResult2 = await sql`
-        SELECT eodsa_id FROM dancers WHERE id = ${dancerId} LIMIT 1
-      ` as any[];
-      
-      if (dancerResult2 && dancerResult2.length > 0 && dancerResult2[0].eodsa_id) {
-        return dancerResult2[0].eodsa_id;
-      }
-    }
-    
-    // If not found, return null (caller should handle)
-    return null;
-  } catch (error) {
-    console.warn(`Could not look up EODSA ID for ${providedId}:`, error);
-    return null;
-  }
-}
-
 export interface IncrementalFeeResult {
   registrationFee: number;
   entryFee: number;
@@ -101,13 +58,6 @@ export async function computeIncrementalFee(
   const sql = getSql();
   const warnings: string[] = [];
 
-  // Get the correct EODSA ID (must start with 'E', e.g., E387083)
-  const correctEodsaId = await getCorrectEodsaId(eodsaId, dancerId) || eodsaId;
-  
-  if (!correctEodsaId.startsWith('E')) {
-    warnings.push(`Warning: EODSA ID "${correctEodsaId}" does not appear to be a valid EODSA ID (should start with 'E')`);
-  }
-
   // Step 1: Get event configuration
   const eventResult = await sql`
     SELECT 
@@ -135,69 +85,57 @@ export async function computeIncrementalFee(
   };
 
   // Step 2: Check if registration was already CHARGED for this dancer/event
-  // We check registration_charged_flag table OR existing entries
-  // IMPORTANT: Use correctEodsaId (starts with 'E') for all checks
+  // CRITICAL: Use ONLY eodsa_id - no fallbacks, no OR conditions, no dancer_id checks
+  // Registration is tied ONLY to EODSA ID
   let registrationCharged = false;
   
-  // Check registration_charged_flag table first - use correctEodsaId
-  const registrationChargedResult = await sql`
-    SELECT COUNT(*) as count
-    FROM registration_charged_flags
-    WHERE event_id = ${eventId}
-    AND eodsa_id = ${correctEodsaId}
-  ` as any[];
-
-  if (registrationChargedResult && registrationChargedResult[0]?.count > 0) {
-    registrationCharged = true;
-  } else {
-    // Fallback: Check if dancer has ANY entries for this event (paid or unpaid)
-    // Use correctEodsaId for the check
-    const existingEntriesResult = await sql`
+  if (eodsaId) {
+    // Check registration_charged_flags table using ONLY eodsa_id
+    const registrationChargedResult = await sql`
       SELECT COUNT(*) as count
-      FROM event_entries
+      FROM registration_charged_flags
       WHERE event_id = ${eventId}
-      AND eodsa_id = ${correctEodsaId}
-      LIMIT 1
+      AND eodsa_id = ${eodsaId}
     ` as any[];
 
-    registrationCharged = existingEntriesResult && existingEntriesResult[0]?.count > 0;
+    const flagCount = registrationChargedResult && registrationChargedResult[0] ? parseInt(registrationChargedResult[0].count) : 0;
+    registrationCharged = flagCount > 0;
+  } else {
+    // If no eodsaId provided, assume registration not charged (safer to charge it)
+    registrationCharged = false;
   }
 
   // Step 3: Count existing entries of the same type for this dancer/event
+  // CRITICAL: Use ONLY eodsa_id - no fallbacks, no OR conditions, no participant_ids checks
   let entryCount = 0;
 
-  if (performanceType === 'Solo') {
-    // For solo entries, count solo entries for this specific dancer
-    // Solo entries have exactly 1 participant, and we need to check if this dancer is that participant
-    const soloEntriesResult = await sql`
-      SELECT COUNT(*) as count
-      FROM event_entries
-      WHERE event_id = ${eventId}
-      AND performance_type = 'Solo'
-      AND (
-        contestant_id = ${dancerId} OR 
-        eodsa_id = ${eodsaId} OR
-        (participant_ids::text LIKE ${`%"${dancerId}"%`} OR participant_ids::text LIKE ${`%"${eodsaId}"%`})
-      )
-    ` as any[];
+  if (eodsaId) {
+    if (performanceType === 'Solo') {
+      // For solo entries, count solo entries using ONLY eodsa_id
+      const soloEntriesResult = await sql`
+        SELECT COUNT(*) as count
+        FROM event_entries
+        WHERE event_id = ${eventId}
+        AND performance_type = 'Solo'
+        AND eodsa_id = ${eodsaId}
+      ` as any[];
 
-    entryCount = soloEntriesResult && soloEntriesResult[0] ? parseInt(soloEntriesResult[0].count) : 0;
+      entryCount = soloEntriesResult && soloEntriesResult[0] ? parseInt(soloEntriesResult[0].count) : 0;
+    } else {
+      // For duet/trio/group, count entries using ONLY eodsa_id
+      const groupEntriesResult = await sql`
+        SELECT COUNT(*) as count
+        FROM event_entries
+        WHERE event_id = ${eventId}
+        AND performance_type = ${performanceType}
+        AND eodsa_id = ${eodsaId}
+      ` as any[];
+
+      entryCount = groupEntriesResult && groupEntriesResult[0] ? parseInt(groupEntriesResult[0].count) : 0;
+    }
   } else {
-    // For duet/trio/group, count entries where this dancer is a participant
-    // We need to check participant_ids array - dancer can be any participant
-    const groupEntriesResult = await sql`
-      SELECT COUNT(*) as count
-      FROM event_entries
-      WHERE event_id = ${eventId}
-      AND performance_type = ${performanceType}
-      AND (
-        contestant_id = ${dancerId} OR 
-        eodsa_id = ${eodsaId} OR
-        (participant_ids::text LIKE ${`%"${dancerId}"%`} OR participant_ids::text LIKE ${`%"${eodsaId}"%`})
-      )
-    ` as any[];
-
-    entryCount = groupEntriesResult && groupEntriesResult[0] ? parseInt(groupEntriesResult[0].count) : 0;
+    // If no eodsaId provided, assume no existing entries
+    entryCount = 0;
   }
 
   // Step 4: Calculate entry fee incrementally
@@ -291,19 +229,12 @@ export async function markRegistrationCharged(
 ): Promise<void> {
   const sql = getSql();
 
-  // Get the correct EODSA ID (must start with 'E')
-  const correctEodsaId = await getCorrectEodsaId(eodsaId, dancerId) || eodsaId;
-  
-  if (!correctEodsaId.startsWith('E')) {
-    console.warn(`⚠️ markRegistrationCharged: EODSA ID "${correctEodsaId}" does not appear to be valid (should start with 'E')`);
-  }
-
   const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
-  // Insert or update registration_charged_flag - use correctEodsaId
+  // Insert or update registration_charged_flag
   await sql`
     INSERT INTO registration_charged_flags (id, event_id, dancer_id, eodsa_id, charged_at)
-    VALUES (${id}, ${eventId}, ${dancerId}, ${correctEodsaId}, ${new Date().toISOString()})
+    VALUES (${id}, ${eventId}, ${dancerId}, ${eodsaId}, ${new Date().toISOString()})
     ON CONFLICT (event_id, eodsa_id) DO NOTHING
   `;
 }
@@ -318,17 +249,12 @@ export async function isRegistrationCharged(
 ): Promise<boolean> {
   const sql = getSql();
 
-  // Get the correct EODSA ID (must start with 'E')
-  const correctEodsaId = await getCorrectEodsaId(eodsaId, dancerId) || eodsaId;
-
-  // Use correctEodsaId for the check
   const result = await sql`
     SELECT COUNT(*) as count
     FROM registration_charged_flags
     WHERE event_id = ${eventId}
-    AND eodsa_id = ${correctEodsaId}
+    AND (dancer_id = ${dancerId} OR eodsa_id = ${eodsaId})
   ` as any[];
 
   return result && result[0]?.count > 0;
 }
-

@@ -9,49 +9,6 @@ import { computeIncrementalFee, markRegistrationCharged } from './incremental-fe
 import { createTransactionRecord } from './transaction-records';
 import { getSql } from './database';
 
-/**
- * Get the correct EODSA ID (starts with 'E', e.g., E387083)
- * If the provided ID is an internal ID, look it up from the database
- */
-async function getCorrectEodsaId(providedId: string | undefined | null, dancerId?: string): Promise<string | null> {
-  if (!providedId) return null;
-  
-  // If it already looks like an EODSA ID (starts with 'E' and is short), use it
-  if (providedId.startsWith('E') && providedId.length <= 10) {
-    return providedId;
-  }
-  
-  // Otherwise, it's likely an internal ID - look up the EODSA ID from database
-  const sql = getSql();
-  try {
-    // Try to find dancer by internal ID
-    const dancerResult = await sql`
-      SELECT eodsa_id FROM dancers WHERE id = ${providedId} LIMIT 1
-    ` as any[];
-    
-    if (dancerResult && dancerResult.length > 0 && dancerResult[0].eodsa_id) {
-      return dancerResult[0].eodsa_id;
-    }
-    
-    // Also try by dancerId if provided
-    if (dancerId && dancerId !== providedId) {
-      const dancerResult2 = await sql`
-        SELECT eodsa_id FROM dancers WHERE id = ${dancerId} LIMIT 1
-      ` as any[];
-      
-      if (dancerResult2 && dancerResult2.length > 0 && dancerResult2[0].eodsa_id) {
-        return dancerResult2[0].eodsa_id;
-      }
-    }
-    
-    // If not found, return null (caller should handle)
-    return null;
-  } catch (error) {
-    console.warn(`Could not look up EODSA ID for ${providedId}:`, error);
-    return null;
-  }
-}
-
 export interface EntryFeeValidation {
   entryIndex: number;
   entry: any;
@@ -105,22 +62,14 @@ export async function validateBatchEntryFees(
       let existingSoloCount = 0;
       let batchSoloCount = 0; // Store this to check if it's the first solo in batch
       let soloEodsaId: string | undefined;
-      
       if (entry.performanceType === 'Solo') {
-        // Get the correct EODSA ID (must start with 'E', e.g., E387083)
-        // entry.eodsaId might be an internal ID, so we need to look it up
-        const providedEodsaId = entry.eodsaId || (entry.participantIds && entry.participantIds[0]);
-        const correctEodsaId = await getCorrectEodsaId(providedEodsaId, entry.contestantId) || providedEodsaId;
-        
-        soloEodsaId = correctEodsaId;
-        
+        soloEodsaId = entry.eodsaId || (entry.participantIds && entry.participantIds[0]);
         if (soloEodsaId) {
-          // Get existing count from database using computeIncrementalFee
-          // Pass the correctEodsaId to ensure registration checks use the right ID
+          // Get existing count from database
           const initialFeeResult = await computeIncrementalFee({
             eventId,
-            dancerId: entry.contestantId || providedEodsaId,
-            eodsaId: correctEodsaId, // Use correct EODSA ID
+            dancerId: entry.contestantId || entry.eodsaId,
+            eodsaId: soloEodsaId,
             performanceType: 'Solo',
             participantIds: Array.isArray(entry.participantIds) ? entry.participantIds : [entry.participantIds],
             masteryLevel: entry.mastery
@@ -128,43 +77,20 @@ export async function validateBatchEntryFees(
           
           existingSoloCount = initialFeeResult.entryCount;
           
-          // Store the registration status from computeIncrementalFee for later use
-          // Use correctEodsaId as the key to ensure consistency
-          if (!registrationChargedTracker.has(correctEodsaId)) {
-            registrationChargedTracker.set(correctEodsaId, initialFeeResult.registrationWasAlreadyCharged);
-            console.log(`💾 Stored registration status for ${correctEodsaId}:`, {
-              providedEodsaId,
-              correctEodsaId,
-              registrationWasAlreadyCharged: initialFeeResult.registrationWasAlreadyCharged,
-              registrationFee: initialFeeResult.registrationFee,
-              totalFee: initialFeeResult.totalFee,
-              entryCount: initialFeeResult.entryCount
-            });
-          }
-          
           // Add count from entries already processed in this batch
-          // Use correctEodsaId as the key
-          batchSoloCount = soloCountTracker.get(correctEodsaId) || 0;
+          // Store this BEFORE incrementing to check if it's the first solo in batch
+          batchSoloCount = soloCountTracker.get(soloEodsaId) || 0;
           existingSoloCount += batchSoloCount;
           
           // Update tracker for next entry (do this AFTER we've used batchSoloCount)
-          soloCountTracker.set(correctEodsaId, batchSoloCount + 1);
+          soloCountTracker.set(soloEodsaId, batchSoloCount + 1);
         }
       }
 
       // Compute incremental fee for this entry
       // For solo entries, we need to manually calculate based on the tracked solo count
       let feeResult;
-      if (entry.performanceType === 'Solo') {
-        // Ensure soloEodsaId is set
-        if (!soloEodsaId) {
-          soloEodsaId = entry.eodsaId || (entry.participantIds && entry.participantIds[0]);
-        }
-        
-        if (!soloEodsaId) {
-          throw new Error(`Solo entry ${i + 1} (${entry.itemName}) missing eodsaId and participantIds`);
-        }
-        
+      if (entry.performanceType === 'Solo' && existingSoloCount !== undefined) {
         // Manually calculate solo fee using the tracked count
         const { getSql } = await import('./database');
         const sql = getSql();
@@ -196,31 +122,33 @@ export async function validateBatchEntryFees(
         };
 
         // Check registration charged status (only check once per dancer)
-        // Ensure we're using the correct EODSA ID (starts with 'E')
-        // soloEodsaId should already be the correct EODSA ID from above, but verify
-        const correctEodsaIdForCheck = soloEodsaId && soloEodsaId.startsWith('E') 
-          ? soloEodsaId 
-          : await getCorrectEodsaId(soloEodsaId, entry.contestantId) || soloEodsaId;
+        // CRITICAL: Use ONLY eodsa_id - no fallbacks, no OR conditions
+        // Ensure soloEodsaId is set (should be set above, but check again)
+        if (!soloEodsaId) {
+          soloEodsaId = entry.eodsaId || (entry.participantIds && entry.participantIds[0]);
+        }
         
-        // Use the registration status from computeIncrementalFee which was already called above
-        // Use correctEodsaIdForCheck as the key
-        let registrationCharged = registrationChargedTracker.get(correctEodsaIdForCheck);
+        let registrationCharged = registrationChargedTracker.get(soloEodsaId);
         
-        // If not in tracker yet, it should have been set above when we called computeIncrementalFee
         if (registrationCharged === undefined) {
-          // Fallback: query directly using correctEodsaIdForCheck
-          const sql = getSql();
-          const registrationChargedResult = await sql`
-            SELECT COUNT(*) as count
-            FROM registration_charged_flags
-            WHERE event_id = ${eventId}
-            AND eodsa_id = ${correctEodsaIdForCheck}
-          ` as any[];
+          // First time checking this dancer - query database using ONLY eodsa_id
+          if (soloEodsaId) {
+            const registrationChargedResult = await sql`
+              SELECT COUNT(*) as count
+              FROM registration_charged_flags
+              WHERE event_id = ${eventId}
+              AND eodsa_id = ${soloEodsaId}
+            ` as any[];
+
+            const flagCount = registrationChargedResult && registrationChargedResult[0] ? parseInt(registrationChargedResult[0].count) : 0;
+            registrationCharged = flagCount > 0;
+          } else {
+            // If no eodsaId provided, assume registration not charged (safer to charge it)
+            registrationCharged = false;
+          }
           
-          registrationCharged = registrationChargedResult && registrationChargedResult[0]?.count > 0;
-          registrationChargedTracker.set(correctEodsaIdForCheck, registrationCharged);
-          
-          console.warn(`⚠️ Registration status not found in tracker for ${correctEodsaIdForCheck}, queried directly: ${registrationCharged}`);
+          // Store in tracker
+          registrationChargedTracker.set(soloEodsaId, registrationCharged);
         }
 
         // Calculate solo fee using CUMULATIVE PACKAGE PRICING (same logic as calculateSmartEODSAFee)
@@ -284,9 +212,8 @@ export async function validateBatchEntryFees(
         });
         
         // Mark registration as charged in tracker after first solo
-        // Use correctEodsaIdForCheck as the key
         if (!registrationCharged && isFirstSoloInBatch) {
-          registrationChargedTracker.set(correctEodsaIdForCheck, true);
+          registrationChargedTracker.set(soloEodsaId, true);
         }
 
         feeResult = {
@@ -312,11 +239,10 @@ export async function validateBatchEntryFees(
       }
 
       const clientSentFee = entry.calculatedFee || 0;
-      const mismatchDetected = Math.abs(clientSentFee - feeResult.totalFee) > 0.01;
-      const mismatchReason = mismatchDetected 
-        ? `Entry ${i + 1}: Client sent ${clientSentFee}, computed ${feeResult.totalFee}, difference: ${Math.abs(clientSentFee - feeResult.totalFee)}`
-        : undefined;
-
+      
+      // NOTE: Do NOT check per-entry mismatch. The frontend sends entryFee without registrationFee.
+      // We only validate the total batch amount, not individual entry fees.
+      
       validations.push({
         entryIndex: i,
         entry,
@@ -329,9 +255,9 @@ export async function validateBatchEntryFees(
         entryCount: feeResult.entryCount,
         breakdown: feeResult.breakdown,
         warnings: feeResult.warnings,
-        isValid: !mismatchDetected,
-        mismatchDetected,
-        mismatchReason
+        isValid: true, // Always valid - we only check total mismatch
+        mismatchDetected: false, // Never mark individual entries as mismatched
+        mismatchReason: undefined
       });
 
       totalComputedFee += feeResult.totalFee;
@@ -372,25 +298,21 @@ export async function validateBatchEntryFees(
     validations: validations.map(v => ({
       index: v.entryIndex,
       itemName: v.entry.itemName,
-      performanceType: v.entry.performanceType,
       clientSent: v.clientSentFee,
       computed: v.computedFee,
-      entryFee: v.entryFee,
-      registrationFee: v.registrationFee,
-      registrationCharged: v.registrationCharged,
-      registrationWasAlreadyCharged: v.registrationWasAlreadyCharged,
-      mismatch: v.mismatchDetected,
-      breakdown: v.breakdown
+      mismatch: v.mismatchDetected
     }))
   });
 
+  // Only check total mismatch - ignore per-entry mismatches
+  // The frontend sends entryFee without registrationFee, so per-entry comparison is not valid
   return {
     totalComputedFee,
     totalClientSentFee: clientSentTotal,
     validations,
-    allValid: validations.every(v => v.isValid) && !totalMismatchDetected,
-    mismatchDetected: totalMismatchDetected || validations.some(v => v.mismatchDetected),
-    mismatchReason: totalMismatchReason || validations.find(v => v.mismatchDetected)?.mismatchReason
+    allValid: !totalMismatchDetected, // Only check total, not per-entry
+    mismatchDetected: totalMismatchDetected, // Only total mismatch matters
+    mismatchReason: totalMismatchReason // Only total mismatch reason
   };
 }
 
@@ -412,36 +334,31 @@ export async function createBatchTransactionRecords(
     const entry = entries[i];
     
     try {
-      // Get the correct EODSA ID (must start with 'E')
-      const providedEodsaId = entry.eodsaId || (entry.participantIds && entry.participantIds[0]);
-      const correctEodsaId = await getCorrectEodsaId(providedEodsaId, entry.contestantId) || providedEodsaId;
-      
-      // Compute fee to get registration charged status - use correctEodsaId
+      // Compute fee to get registration charged status
       const feeResult = await computeIncrementalFee({
         eventId,
-        dancerId: entry.contestantId || providedEodsaId,
-        eodsaId: correctEodsaId, // Use correct EODSA ID
+        dancerId: entry.contestantId || entry.eodsaId,
+        eodsaId: entry.eodsaId,
         performanceType: entry.performanceType as 'Solo' | 'Duet' | 'Trio' | 'Group',
         participantIds: Array.isArray(entry.participantIds) ? entry.participantIds : [entry.participantIds],
         masteryLevel: entry.mastery
       });
 
-      // Mark registration as charged if this entry charges registration - use correctEodsaId
+      // Mark registration as charged if this entry charges registration
       if (feeResult.registrationCharged) {
         await markRegistrationCharged(
           eventId,
-          entry.contestantId || providedEodsaId,
-          correctEodsaId // Use correct EODSA ID
+          entry.contestantId || entry.eodsaId,
+          entry.eodsaId
         );
       }
 
       // Create transaction record (entry_id will be set later when entry is created)
-      // Use correctEodsaId
       const transactionId = await createTransactionRecord({
         entryId: undefined, // Will be set when entry is created
         eventId,
-        dancerId: entry.contestantId || providedEodsaId,
-        eodsaId: correctEodsaId, // Use correct EODSA ID
+        dancerId: entry.contestantId || entry.eodsaId,
+        eodsaId: entry.eodsaId,
         expectedAmount: feeResult.totalFee,
         amountPaid: 0, // Will be updated when payment completes
         registrationPaidFlag: false, // Will be updated when payment completes
@@ -481,4 +398,3 @@ export async function updateTransactionWithEntryId(
     WHERE id = ${transactionId}
   `;
 }
-
