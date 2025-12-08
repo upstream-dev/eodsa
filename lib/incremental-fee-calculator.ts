@@ -13,6 +13,49 @@ import { getSql } from './database';
 import { calculateSoloEntryFee, calculateNonSoloFee, EventFeeConfig } from './pricing-utils';
 import type { Event } from './types';
 
+/**
+ * Get the correct EODSA ID (starts with 'E', e.g., E387083)
+ * If the provided ID is an internal ID, look it up from the database
+ */
+async function getCorrectEodsaId(providedId: string | undefined | null, dancerId?: string): Promise<string | null> {
+  if (!providedId) return null;
+  
+  // If it already looks like an EODSA ID (starts with 'E' and is short), use it
+  if (providedId.startsWith('E') && providedId.length <= 10) {
+    return providedId;
+  }
+  
+  // Otherwise, it's likely an internal ID - look up the EODSA ID from database
+  const sql = getSql();
+  try {
+    // Try to find dancer by internal ID
+    const dancerResult = await sql`
+      SELECT eodsa_id FROM dancers WHERE id = ${providedId} LIMIT 1
+    ` as any[];
+    
+    if (dancerResult && dancerResult.length > 0 && dancerResult[0].eodsa_id) {
+      return dancerResult[0].eodsa_id;
+    }
+    
+    // Also try by dancerId if provided
+    if (dancerId && dancerId !== providedId) {
+      const dancerResult2 = await sql`
+        SELECT eodsa_id FROM dancers WHERE id = ${dancerId} LIMIT 1
+      ` as any[];
+      
+      if (dancerResult2 && dancerResult2.length > 0 && dancerResult2[0].eodsa_id) {
+        return dancerResult2[0].eodsa_id;
+      }
+    }
+    
+    // If not found, return null (caller should handle)
+    return null;
+  } catch (error) {
+    console.warn(`Could not look up EODSA ID for ${providedId}:`, error);
+    return null;
+  }
+}
+
 export interface IncrementalFeeResult {
   registrationFee: number;
   entryFee: number;
@@ -58,6 +101,13 @@ export async function computeIncrementalFee(
   const sql = getSql();
   const warnings: string[] = [];
 
+  // Get the correct EODSA ID (must start with 'E', e.g., E387083)
+  const correctEodsaId = await getCorrectEodsaId(eodsaId, dancerId) || eodsaId;
+  
+  if (!correctEodsaId.startsWith('E')) {
+    warnings.push(`Warning: EODSA ID "${correctEodsaId}" does not appear to be a valid EODSA ID (should start with 'E')`);
+  }
+
   // Step 1: Get event configuration
   const eventResult = await sql`
     SELECT 
@@ -86,25 +136,27 @@ export async function computeIncrementalFee(
 
   // Step 2: Check if registration was already CHARGED for this dancer/event
   // We check registration_charged_flag table OR existing entries
+  // IMPORTANT: Use correctEodsaId (starts with 'E') for all checks
   let registrationCharged = false;
   
-  // Check registration_charged_flag table first
+  // Check registration_charged_flag table first - use correctEodsaId
   const registrationChargedResult = await sql`
     SELECT COUNT(*) as count
     FROM registration_charged_flags
     WHERE event_id = ${eventId}
-    AND (dancer_id = ${dancerId} OR eodsa_id = ${eodsaId})
+    AND eodsa_id = ${correctEodsaId}
   ` as any[];
 
   if (registrationChargedResult && registrationChargedResult[0]?.count > 0) {
     registrationCharged = true;
   } else {
     // Fallback: Check if dancer has ANY entries for this event (paid or unpaid)
+    // Use correctEodsaId for the check
     const existingEntriesResult = await sql`
       SELECT COUNT(*) as count
       FROM event_entries
       WHERE event_id = ${eventId}
-      AND (contestant_id = ${dancerId} OR eodsa_id = ${eodsaId})
+      AND eodsa_id = ${correctEodsaId}
       LIMIT 1
     ` as any[];
 
@@ -239,12 +291,19 @@ export async function markRegistrationCharged(
 ): Promise<void> {
   const sql = getSql();
 
+  // Get the correct EODSA ID (must start with 'E')
+  const correctEodsaId = await getCorrectEodsaId(eodsaId, dancerId) || eodsaId;
+  
+  if (!correctEodsaId.startsWith('E')) {
+    console.warn(`⚠️ markRegistrationCharged: EODSA ID "${correctEodsaId}" does not appear to be valid (should start with 'E')`);
+  }
+
   const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
-  // Insert or update registration_charged_flag
+  // Insert or update registration_charged_flag - use correctEodsaId
   await sql`
     INSERT INTO registration_charged_flags (id, event_id, dancer_id, eodsa_id, charged_at)
-    VALUES (${id}, ${eventId}, ${dancerId}, ${eodsaId}, ${new Date().toISOString()})
+    VALUES (${id}, ${eventId}, ${dancerId}, ${correctEodsaId}, ${new Date().toISOString()})
     ON CONFLICT (event_id, eodsa_id) DO NOTHING
   `;
 }
@@ -259,11 +318,15 @@ export async function isRegistrationCharged(
 ): Promise<boolean> {
   const sql = getSql();
 
+  // Get the correct EODSA ID (must start with 'E')
+  const correctEodsaId = await getCorrectEodsaId(eodsaId, dancerId) || eodsaId;
+
+  // Use correctEodsaId for the check
   const result = await sql`
     SELECT COUNT(*) as count
     FROM registration_charged_flags
     WHERE event_id = ${eventId}
-    AND (dancer_id = ${dancerId} OR eodsa_id = ${eodsaId})
+    AND eodsa_id = ${correctEodsaId}
   ` as any[];
 
   return result && result[0]?.count > 0;

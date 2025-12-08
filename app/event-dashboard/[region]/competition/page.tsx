@@ -1414,34 +1414,44 @@ export default function CompetitionEntryPage() {
     setIsSubmitting(true);
 
     try {
-      const totalFee = totalFeeCalculation.total;
+      // For PayFast batch payments, we send entries as-is and let backend batch validation handle fee computation
+      // The backend's validateBatchEntryFees tracks solo counts cumulatively within the batch,
+      // which individual validation cannot do accurately
+      const dancerId = isStudioMode ? studioInfo?.id : contestant?.id;
+      const eodsaId = isStudioMode ? studioInfo?.registrationNumber : contestant?.eodsaId;
       
-      // For multiple entries, we'll create a batch payment
-      // First, store entry data temporarily and get payment URL
-      const batchEntryData = entries.map(entry => ({
-        eventId: eventId,
-        contestantId: isStudioMode ? studioInfo?.id : contestant?.id,
-        eodsaId: isStudioMode ? studioInfo?.registrationNumber : contestant?.eodsaId,
-        participantIds: entry.participantIds,
-        calculatedFee: entry.fee,
-        itemName: entry.itemName,
-        choreographer: entry.choreographer,
-        mastery: entry.mastery,
-        itemStyle: entry.itemStyle,
-        estimatedDuration: parseFloat(entry.estimatedDuration.replace(':', '.')) || 2,
-        entryType: entry.entryType,
-        musicFileUrl: entry.musicFileUrl || null,
-        musicFileName: entry.musicFileName || null,
-        videoFileUrl: entry.videoFileUrl || null,
-        videoFileName: entry.videoFileName || null,
-        videoExternalUrl: entry.videoExternalUrl || null,
-        videoExternalType: entry.videoExternalType || null,
-        performanceType: entry.performanceType
-      }));
+      // Prepare batch entry data with correct EODSA IDs
+      // For solo entries, use the participant's EODSA ID; for group entries, use contestant's EODSA ID
+      const batchEntryData = entries.map(entry => {
+        const entryEodsaId = entry.performanceType === 'Solo' && entry.participantIds.length === 1
+          ? entry.participantIds[0] // Solo: use participant's EODSA ID
+          : eodsaId; // Group: use contestant's EODSA ID
+        
+        return {
+          eventId: eventId,
+          contestantId: dancerId,
+          eodsaId: entryEodsaId,
+          participantIds: entry.participantIds,
+          calculatedFee: entry.fee, // Send client-calculated fee; backend will validate and use computed fee
+          itemName: entry.itemName,
+          choreographer: entry.choreographer,
+          mastery: entry.mastery,
+          itemStyle: entry.itemStyle,
+          estimatedDuration: parseFloat(entry.estimatedDuration.replace(':', '.')) || 2,
+          entryType: entry.entryType,
+          musicFileUrl: entry.musicFileUrl || null,
+          musicFileName: entry.musicFileName || null,
+          videoFileUrl: entry.videoFileUrl || null,
+          videoFileName: entry.videoFileName || null,
+          videoExternalUrl: entry.videoExternalUrl || null,
+          videoExternalType: entry.videoExternalType || null,
+          performanceType: entry.performanceType
+        };
+      });
 
       // Store entry data in session storage for after payment
       sessionStorage.setItem('pendingEntries', JSON.stringify(batchEntryData));
-      sessionStorage.setItem('paymentAmount', totalFee.toString());
+      sessionStorage.setItem('paymentAmount', totalFeeCalculation.total.toString());
       sessionStorage.setItem('paymentEventId', eventId);
       sessionStorage.setItem('paymentEventName', event?.name || 'Competition Entry');
 
@@ -1461,11 +1471,11 @@ export default function CompetitionEntryPage() {
       const paymentData = {
         entryId: 'BATCH_' + Date.now(), // Temporary batch ID
         eventId: eventId,
-        userId: isStudioMode ? studioInfo?.id : contestant?.id,
+        userId: dancerId,
         userFirstName: firstName,
         userLastName: lastName,
         userEmail: userEmail,
-        amount: totalFee,
+        amount: totalFeeCalculation.total, // Send client-calculated total; backend will validate and use computed total if different
         itemName: `${entries.length} Competition Entries`,
         itemDescription: entries.map(e => `${e.performanceType}: ${e.itemName}`).join(', '),
         isBatchPayment: true, // Flag to indicate this is for batch entries
@@ -1474,7 +1484,7 @@ export default function CompetitionEntryPage() {
 
       console.log('🔄 Redirecting to payment for batch entries:', {
         entriesCount: entries.length,
-        totalAmount: totalFee,
+        clientCalculatedTotal: totalFeeCalculation.total,
         paymentData
       });
 

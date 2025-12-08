@@ -1,0 +1,11 @@
+require('dotenv').config({ path: '.env.local' });
+console.log('Current Configuration:');
+console.log('SMTP_HOST:', process.env.SMTP_HOST);
+console.log('SMTP_PORT:', process.env.SMTP_PORT);
+console.log('SMTP_USER:', process.env.SMTP_USER);
+console.log('SMTP_PASSWORD length:', process.env.SMTP_PASSWORD?.length);
+console.log('SMTP_PASSWORD (first 3, last 3):', process.env.SMTP_PASSWORD?.substring(0,3) + '...' + process.env.SMTP_PASSWORD?.substring(process.env.SMTP_PASSWORD.length - 3));
+console.log('\nPlease verify:');
+console.log('1. Username should be: no_reply@elementscentral.com');
+console.log('2. Password should be: гRNUqKхYUХDtq8RHDCaQ');
+console.log('3. Make sure there are no extra spaces or characters');

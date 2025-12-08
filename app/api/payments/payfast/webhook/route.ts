@@ -146,6 +146,35 @@ export async function POST(request: NextRequest) {
       )
     `;
 
+    // Validate amount received from PayFast matches expected amount
+    const payfastAmountGross = parseFloat(webhookData.amount_gross || '0');
+    const expectedAmount = parseFloat(payment.amount || '0');
+    const amountDifference = Math.abs(payfastAmountGross - expectedAmount);
+    
+    if (amountDifference > 0.01) {
+      console.error(`⚠️ PAYFAST AMOUNT MISMATCH for payment ${webhookData.m_payment_id}:`, {
+        expectedAmount,
+        payfastAmountGross,
+        difference: amountDifference,
+        paymentStatus: webhookData.payment_status
+      });
+      
+      // Log the mismatch but still process the payment (PayFast has already processed it)
+      await sql`
+        INSERT INTO payment_logs (payment_id, event_type, event_data, ip_address, user_agent)
+        VALUES (
+          ${webhookData.m_payment_id}, 'amount_mismatch',
+          ${JSON.stringify({
+            expectedAmount,
+            payfastAmountGross,
+            difference: amountDifference,
+            warning: 'PayFast amount does not match expected amount'
+          })},
+          ${clientIP}, ${request.headers.get('user-agent') || 'unknown'}
+        )
+      `;
+    }
+
     // Update payment record with PayFast data
     const updatedStatus = webhookData.payment_status === 'COMPLETE' ? 'completed' : 
                          webhookData.payment_status === 'FAILED' ? 'failed' : 
@@ -156,7 +185,7 @@ export async function POST(request: NextRequest) {
         status = ${updatedStatus},
         payment_status = ${webhookData.payment_status},
         pf_payment_id = ${webhookData.pf_payment_id},
-        amount_gross = ${parseFloat(webhookData.amount_gross || '0')},
+        amount_gross = ${payfastAmountGross},
         amount_fee = ${parseFloat(webhookData.amount_fee || '0')},
         amount_net = ${parseFloat(webhookData.amount_net || '0')},
         signature = ${webhookData.signature},
