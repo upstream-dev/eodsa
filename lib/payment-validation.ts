@@ -128,27 +128,31 @@ export async function validateBatchEntryFees(
           soloEodsaId = entry.eodsaId || (entry.participantIds && entry.participantIds[0]);
         }
         
-        let registrationCharged = registrationChargedTracker.get(soloEodsaId);
-        
-        if (registrationCharged === undefined) {
-          // First time checking this dancer - query database using ONLY eodsa_id
-          if (soloEodsaId) {
+        // Only check registration if we have a valid EODSA ID
+        let registrationCharged = false;
+        const eodsaIdForCheck = soloEodsaId; // Use const to help TypeScript narrow the type
+        if (eodsaIdForCheck) {
+          const cached = registrationChargedTracker.get(eodsaIdForCheck);
+          if (cached !== undefined) {
+            registrationCharged = cached;
+          } else {
+            // First time checking this dancer - query database using ONLY eodsa_id
             const registrationChargedResult = await sql`
               SELECT COUNT(*) as count
               FROM registration_charged_flags
               WHERE event_id = ${eventId}
-              AND eodsa_id = ${soloEodsaId}
+              AND eodsa_id = ${eodsaIdForCheck}
             ` as any[];
 
             const flagCount = registrationChargedResult && registrationChargedResult[0] ? parseInt(registrationChargedResult[0].count) : 0;
             registrationCharged = flagCount > 0;
-          } else {
-            // If no eodsaId provided, assume registration not charged (safer to charge it)
-            registrationCharged = false;
+            
+            // Store in tracker
+            registrationChargedTracker.set(eodsaIdForCheck, registrationCharged);
           }
-          
-          // Store in tracker
-          registrationChargedTracker.set(soloEodsaId, registrationCharged);
+        } else {
+          // If no eodsaId provided, assume registration not charged (safer to charge it)
+          registrationCharged = false;
         }
 
         // Calculate solo fee using CUMULATIVE PACKAGE PRICING (same logic as calculateSmartEODSAFee)
@@ -193,7 +197,7 @@ export async function validateBatchEntryFees(
         // Registration fee: only charge if not already charged AND this is the first solo for this dancer in this batch
         // Use batchSoloCount (value BEFORE incrementing) to check if it's the first solo in batch
         const isFirstSoloInBatch = batchSoloCount === 0;
-        const registrationFee = (!registrationCharged && isFirstSoloInBatch) ? eventConfig.registrationFeePerDancer : 0;
+        const registrationFee = (!registrationCharged && isFirstSoloInBatch && soloEodsaId) ? eventConfig.registrationFeePerDancer : 0;
         const totalFee = entryFee + registrationFee;
         
         // Debug logging for registration fee calculation
@@ -212,7 +216,7 @@ export async function validateBatchEntryFees(
         });
         
         // Mark registration as charged in tracker after first solo
-        if (!registrationCharged && isFirstSoloInBatch) {
+        if (!registrationCharged && isFirstSoloInBatch && soloEodsaId) {
           registrationChargedTracker.set(soloEodsaId, true);
         }
 
