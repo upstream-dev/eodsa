@@ -5930,6 +5930,7 @@ interface DancersTabContentProps {
 }
 
 function DancersTabContent({ dancers, dancerSearchTerm, setDancerSearchTerm, dancerStatusFilter, setDancerStatusFilter, handleApproveDancer, handleRejectDancer, handleViewFinances, handleRegistrationFeeUpdate, handleEditDancer, theme, themeClasses }: DancersTabContentProps) {
+  const { isEnabled: isPhase2Enabled } = usePhase2Feature();
   const filteredDancers = dancers
     .filter(d => {
       const matchesSearch = !dancerSearchTerm || 
@@ -6281,6 +6282,7 @@ interface StudiosTabContentProps {
 }
 
 function StudiosTabContent({ studios, studioSearchTerm, setStudioSearchTerm, studioStatusFilter, setStudioStatusFilter, handleViewStudio, handleApproveStudio, handleRejectStudio, theme, themeClasses }: StudiosTabContentProps) {
+  const { isEnabled: isPhase2Enabled } = usePhase2Feature();
   const filteredStudios = studios
     .filter(s => {
       const matchesSearch = !studioSearchTerm || 

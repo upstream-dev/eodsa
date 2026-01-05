@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ForgotPasswordLink from '@/app/components/ForgotPasswordLink';
 import { usePhase2Feature } from '@/hooks/usePhase2Feature';
 import FeatureUnavailable from '@/components/FeatureUnavailable';
 
 export default function RegistrationPortalPage() {
-  const { isEnabled: isPhase2Enabled, isLoading } = usePhase2Feature();
+  const { isEnabled: isPhase2Enabled, isLoading: isLoadingFlag } = usePhase2Feature();
   
-  if (!isLoading && !isPhase2Enabled) {
+  if (!isLoadingFlag && !isPhase2Enabled) {
     return <FeatureUnavailable featureName="Registration Desk" />;
   }
   const router = useRouter();
