@@ -9,6 +9,7 @@ import { useAlert } from '@/components/ui/custom-alert';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import MusicUpload from '@/components/MusicUpload';
+import { usePhase2Feature } from '@/hooks/usePhase2Feature';
 
 interface Event {
   id: string;
@@ -170,6 +171,7 @@ interface JudgeAssignmentsTabContentProps {
 function AdminDashboard() {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
+  const { isEnabled: isPhase2Enabled } = usePhase2Feature();
   const [events, setEvents] = useState<Event[]>([]);
   const [dancers, setDancers] = useState<Dancer[]>([]);
   const [studios, setStudios] = useState<Studio[]>([]);
@@ -2111,7 +2113,7 @@ function AdminDashboard() {
               { id: 'assignments', label: 'Assignments', icon: '⚖️', color: 'amber' },
               { id: 'dancers', label: 'Dancers', icon: '💃', color: 'rose' },
               { id: 'studios', label: 'Studios', icon: '🏢', color: 'orange' },
-              { id: 'music-tracking', label: 'Media Upload Tracking', icon: '🎼', color: 'cyan' }
+              ...(isPhase2Enabled ? [{ id: 'music-tracking', label: 'Media Upload Tracking', icon: '🎼', color: 'cyan' }] : [])
             ].map((tab) => (
                 tab.link ? (
                   <Link
@@ -2414,9 +2416,20 @@ function AdminDashboard() {
                               Clear Videos (Filtered)
                             </button>
                             <button
-                              onClick={exportProgramCsv}
-                              className="ml-2 px-3 py-1.5 bg-gray-800 text-white rounded-md text-xs font-semibold hover:bg-black"
-                              title="Export current program view to CSV"
+                              onClick={() => {
+                                if (!isPhase2Enabled) {
+                                  alert('This feature is temporarily unavailable.');
+                                  return;
+                                }
+                                exportProgramCsv();
+                              }}
+                              disabled={!isPhase2Enabled}
+                              className={`ml-2 px-3 py-1.5 rounded-md text-xs font-semibold ${
+                                isPhase2Enabled
+                                  ? 'bg-gray-800 text-white hover:bg-black'
+                                  : 'bg-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'
+                              }`}
+                              title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : 'Export current program view to CSV'}
                             >
                               Export Program CSV
                             </button>
@@ -5454,6 +5467,8 @@ interface EventsTabContentProps {
 }
 
 function EventsTabContent({ events, setShowCreateEventModal, handleEditEvent, handleDeleteEvent, theme, themeClasses }: EventsTabContentProps) {
+  const { isEnabled: isPhase2Enabled } = usePhase2Feature();
+  
   return (
     <div className="space-y-6 sm:space-y-8 animate-fadeIn">
       <div className={`${themeClasses.cardBg} backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border ${themeClasses.cardBorder}`}>
@@ -5470,8 +5485,20 @@ function EventsTabContent({ events, setShowCreateEventModal, handleEditEvent, ha
             </div>
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setShowCreateEventModal(true)}
-                className="inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg sm:rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg text-sm sm:text-base font-medium"
+                onClick={() => {
+                  if (!isPhase2Enabled) {
+                    alert('This feature is temporarily unavailable.');
+                    return;
+                  }
+                  setShowCreateEventModal(true);
+                }}
+                disabled={!isPhase2Enabled}
+                className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
+                  isPhase2Enabled
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 transform hover:scale-105 shadow-lg'
+                    : 'bg-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'
+                }`}
+                title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
               >
                 <span>➕</span>
                 <span className="hidden sm:inline">Create Event</span>
@@ -5489,8 +5516,20 @@ function EventsTabContent({ events, setShowCreateEventModal, handleEditEvent, ha
             <h3 className="text-base sm:text-lg font-medium mb-2">No events yet</h3>
             <p className="text-sm mb-4">Create your first event to get started!</p>
             <button
-              onClick={() => setShowCreateEventModal(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+              onClick={() => {
+                if (!isPhase2Enabled) {
+                  alert('This feature is temporarily unavailable.');
+                  return;
+                }
+                setShowCreateEventModal(true);
+              }}
+              disabled={!isPhase2Enabled}
+              className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                isPhase2Enabled
+                  ? 'bg-indigo-500 text-white hover:bg-indigo-600'
+                  : 'bg-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'
+              }`}
+              title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
             >
               <span>➕</span>
               <span>Create First Event</span>
@@ -6018,7 +6057,13 @@ function DancersTabContent({ dancers, dancerSearchTerm, setDancerSearchTerm, dan
                     alert('Failed to export. Please try again.');
                   }
                 }}
-                className={`px-4 py-2 ${theme === 'dark' ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2`}
+                disabled={!isPhase2Enabled}
+                className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 ${
+                  isPhase2Enabled
+                    ? `${theme === 'dark' ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'} text-white`
+                    : 'bg-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'
+                }`}
+                title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
               >
                 <span>📊</span>
                 <span>Export Excel</span>
@@ -6336,7 +6381,13 @@ function StudiosTabContent({ studios, studioSearchTerm, setStudioSearchTerm, stu
                     alert('Failed to export. Please try again.');
                   }
                 }}
-                className={`px-4 py-2 ${theme === 'dark' ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2`}
+                disabled={!isPhase2Enabled}
+                className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 ${
+                  isPhase2Enabled
+                    ? `${theme === 'dark' ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'} text-white`
+                    : 'bg-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'
+                }`}
+                title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
               >
                 <span>📊</span>
                 <span>Export Excel</span>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/database';
 import bcrypt from 'bcryptjs';
 import type { User } from '@/lib/types';
+import { isPhase2Enabled, getFeatureUnavailableMessage } from '@/lib/feature-flags';
 
 // Superadmin emails - only these can create/delete/promote admins
 const SUPERADMIN_EMAILS = [
@@ -161,6 +162,14 @@ export async function GET(request: Request) {
 
 // POST /api/users - Create new user
 export async function POST(request: Request) {
+  // Check Phase 2 feature flag - block Create User
+  if (!isPhase2Enabled()) {
+    return NextResponse.json(
+      { success: false, error: getFeatureUnavailableMessage() },
+      { status: 403 }
+    );
+  }
+
   try {
     const currentUser = await getCurrentUser(request);
     if (!currentUser) {

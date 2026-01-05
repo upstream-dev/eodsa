@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useToast } from '@/components/ui/simple-toast';
+import { usePhase2Feature } from '@/hooks/usePhase2Feature';
+import FeatureUnavailable from '@/components/FeatureUnavailable';
 
 type RecipientGroup =
   | 'dancers'
@@ -29,7 +31,12 @@ function AdminNotificationsPageContent() {
   const router = useRouter();
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
+  const { isEnabled: isPhase2Enabled, isLoading: isLoadingFlag } = usePhase2Feature();
   const { success, error, info } = useToast();
+  
+  if (!isLoadingFlag && !isPhase2Enabled) {
+    return <FeatureUnavailable featureName="Admin Notifications" />;
+  }
 
   const [user, setUser] = useState<any>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);

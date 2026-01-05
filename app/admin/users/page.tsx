@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/simple-toast';
 import { useAlert } from '@/components/ui/custom-alert';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { usePhase2Feature } from '@/hooks/usePhase2Feature';
 import type { User } from '@/lib/types';
 
 export default function UsersPage() {
@@ -20,6 +21,7 @@ export default function UsersPage() {
 function UsersPageContent() {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
+  const { isEnabled: isPhase2Enabled } = usePhase2Feature();
   const router = useRouter();
   const { success, error, warning } = useToast();
   const { showAlert, showConfirm } = useAlert();
@@ -381,8 +383,20 @@ function UsersPageContent() {
             </select>
           </div>
           <button
-            onClick={handleCreateUser}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+            onClick={() => {
+              if (!isPhase2Enabled) {
+                alert('This feature is temporarily unavailable.');
+                return;
+              }
+              handleCreateUser();
+            }}
+            disabled={!isPhase2Enabled}
+            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+              isPhase2Enabled
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'
+            }`}
+            title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
           >
             + Create User
           </button>

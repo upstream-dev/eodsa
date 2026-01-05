@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/database';
 import emailService from '@/lib/email';
+import { isPhase2Enabled, getFeatureUnavailableMessage } from '@/lib/feature-flags';
 
 // Ensure Node.js runtime so we can use the existing transporter in lib/email
 export const runtime = 'nodejs';
@@ -22,6 +23,14 @@ interface NotificationPayload {
 }
 
 export async function POST(request: NextRequest) {
+  // Check Phase 2 feature flag - block Admin Notifications
+  if (!isPhase2Enabled()) {
+    return NextResponse.json(
+      { success: false, error: getFeatureUnavailableMessage() },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = (await request.json()) as NotificationPayload;
     const {

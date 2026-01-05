@@ -1415,7 +1415,16 @@ function EventParticipantsPage() {
                 
                 {/* Excel Export Button */}
                 <button
-                  onClick={exportToExcel}
+                  onClick={async () => {
+                    // Check Phase 2 feature flag
+                    const flagRes = await fetch('/api/feature-flags/phase2');
+                    const flagData = await flagRes.json();
+                    if (!flagData.enabled) {
+                      alert('This feature is temporarily unavailable.');
+                      return;
+                    }
+                    exportToExcel();
+                  }}
                   disabled={isExporting || entries.length === 0}
                   className={`inline-flex items-center space-x-2 ${themeClasses.buttonBase} ${themeClasses.buttonSuccess} ${isExporting || entries.length === 0 ? themeClasses.buttonDisabled : ''}`}
                 >

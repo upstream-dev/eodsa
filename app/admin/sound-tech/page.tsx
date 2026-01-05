@@ -8,6 +8,8 @@ import { useToast } from '@/components/ui/simple-toast';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import RealtimeUpdates from '@/components/RealtimeUpdates';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { usePhase2Feature } from '@/hooks/usePhase2Feature';
+import FeatureUnavailable from '@/components/FeatureUnavailable';
 
 interface EventEntry {
   id: string;
@@ -53,11 +55,16 @@ interface Event {
 function SoundTechPage() {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
+  const { isEnabled: isPhase2Enabled, isLoading: isLoadingFlag } = usePhase2Feature();
   const router = useRouter();
   const { success, error } = useToast();
   const [entries, setEntries] = useState<EventEntry[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  if (!isLoadingFlag && !isPhase2Enabled) {
+    return <FeatureUnavailable featureName="Sound Tech" />;
+  }
   const [selectedEvent, setSelectedEvent] = useState<string>('all');
   const [entryTypeFilter, setEntryTypeFilter] = useState<string>('live');
   const [searchTerm, setSearchTerm] = useState('');

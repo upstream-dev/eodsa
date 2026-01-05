@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, unifiedDb, getSql } from '@/lib/database';
+import { isPhase2Enabled, getFeatureUnavailableMessage } from '@/lib/feature-flags';
 
 export async function GET(request: NextRequest) {
+  // Check Phase 2 feature flag - block Media Upload Tracking
+  if (!isPhase2Enabled()) {
+    return NextResponse.json(
+      { success: false, error: getFeatureUnavailableMessage() },
+      { status: 403 }
+    );
+  }
+
   try {
     console.log('🎼 Admin Music Tracking: Fetching approved entries...');
 

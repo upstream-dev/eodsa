@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePhase2Feature } from '@/hooks/usePhase2Feature';
+import FeatureUnavailable from '@/components/FeatureUnavailable';
 
 interface EventEntry {
   id: string;
@@ -21,6 +23,7 @@ interface EventEntry {
 }
 
 export default function EventTypeManagerPage() {
+  const { isEnabled: isPhase2Enabled, isLoading: isLoadingFlag } = usePhase2Feature();
   const [entries, setEntries] = useState<EventEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<EventEntry[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -33,8 +36,15 @@ export default function EventTypeManagerPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    if (!isLoadingFlag && !isPhase2Enabled) {
+      return;
+    }
     loadData();
-  }, []);
+  }, [isLoadingFlag, isPhase2Enabled]);
+  
+  if (!isLoadingFlag && !isPhase2Enabled) {
+    return <FeatureUnavailable featureName="Event Type Manager" />;
+  }
 
   useEffect(() => {
     applyFilters();

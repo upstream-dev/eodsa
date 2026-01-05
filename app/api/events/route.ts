@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db as database, initializeDatabase } from '@/lib/database';
+import { isPhase2Enabled, getFeatureUnavailableMessage } from '@/lib/feature-flags';
 
 // Initialize database on first request
 let dbInitialized = false;
@@ -34,6 +35,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // Check Phase 2 feature flag - block Create Event
+  if (!isPhase2Enabled()) {
+    return NextResponse.json(
+      { success: false, error: getFeatureUnavailableMessage() },
+      { status: 403 }
+    );
+  }
+
   try {
     // Ensure database is initialized with latest schema
     await ensureDbInitialized();

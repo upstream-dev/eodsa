@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { getMedalFromPercentage } from '@/lib/types';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { usePhase2Feature } from '@/hooks/usePhase2Feature';
+import FeatureUnavailable from '@/components/FeatureUnavailable';
 
 interface RankingData {
   performanceId: string;
@@ -44,6 +46,7 @@ interface EventWithScores {
 function AdminRankingsPage() {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
+  const { isEnabled: isPhase2Enabled, isLoading: isLoadingFlag } = usePhase2Feature();
   const [rankings, setRankings] = useState<RankingData[]>([]);
   const [filteredRankings, setFilteredRankings] = useState<RankingData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -121,6 +124,7 @@ function AdminRankingsPage() {
 
   const loadRankings = async (forceLoad = false) => {
     if (!isAuthenticated && !forceLoad) return;
+    if (!isPhase2Enabled) return; // Don't load if Phase 2 is disabled
     
     setIsRefreshing(true);
     setError('');
@@ -141,6 +145,10 @@ function AdminRankingsPage() {
         const data = await response.json();
         console.log('Rankings data received:', data);
         setRankings(data);
+      } else if (response.status === 403) {
+        // Feature disabled
+        setError('This feature is temporarily unavailable.');
+        setRankings([]);
       } else {
         console.error('Failed to load rankings, status:', response.status);
         setError('Failed to load rankings');
@@ -461,7 +469,12 @@ function AdminRankingsPage() {
     };
   };
 
-  if (isLoading) {
+  // Check Phase 2 feature flag
+  if (!isLoadingFlag && !isPhase2Enabled) {
+    return <FeatureUnavailable featureName="Rankings" />;
+  }
+
+  if (isLoading || isLoadingFlag) {
     return (
       <div className={`min-h-screen ${themeClasses.loadingBg} flex items-center justify-center`}>
         <div className="text-center">
@@ -506,8 +519,16 @@ function AdminRankingsPage() {
             </div>
             <div className="flex items-center space-x-4">
               <button
-                onClick={exportToCSV}
-                className={`${themeClasses.buttonBase} ${themeClasses.buttonSuccess} flex items-center space-x-2`}
+                onClick={() => {
+                  if (!isPhase2Enabled) {
+                    alert('This feature is temporarily unavailable.');
+                    return;
+                  }
+                  exportToCSV();
+                }}
+                disabled={!isPhase2Enabled}
+                className={`${themeClasses.buttonBase} ${!isPhase2Enabled ? 'opacity-50 cursor-not-allowed' : themeClasses.buttonSuccess} flex items-center space-x-2`}
+                title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
               >
                 <span>📊</span>
                 <span>Export CSV</span>
@@ -818,8 +839,20 @@ function AdminRankingsPage() {
               <label className="block text-sm font-semibold text-gray-300 mb-3">Actions</label>
               <div className="flex flex-col space-y-2">
                 <button
-                  onClick={exportToCSV}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 font-semibold shadow-md flex items-center justify-center space-x-2"
+                  onClick={() => {
+                    if (!isPhase2Enabled) {
+                      alert('This feature is temporarily unavailable.');
+                      return;
+                    }
+                    exportToCSV();
+                  }}
+                  disabled={!isPhase2Enabled}
+                  className={`w-full px-4 py-3 rounded-xl transition-all duration-200 font-semibold shadow-md flex items-center justify-center space-x-2 ${
+                    isPhase2Enabled
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+                      : 'bg-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'
+                  }`}
+                  title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
                 >
                   <span>📊</span>
                   <span>Export to CSV</span>
