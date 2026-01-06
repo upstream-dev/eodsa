@@ -226,84 +226,116 @@ export async function POST(request: NextRequest) {
     console.log(`   - Medallion: ${medallion}`);
     console.log(`   - Event Date: ${eventDate}`);
 
-    // Check if certificate already exists
+    // Always delete existing certificate before regenerating
+    // This ensures we don't have duplicates and allows regeneration even if certificate was created before
     const existingCert = await sqlClient`
       SELECT id FROM certificates WHERE performance_id = ${performanceId} LIMIT 1
     ` as any[];
 
-    // Delete existing certificate if forceRegenerate is true
-    if (forceRegenerate && existingCert.length > 0) {
+    if (existingCert.length > 0) {
       await sqlClient`
         DELETE FROM certificates WHERE performance_id = ${performanceId}
       `;
-      console.log(`🗑️ Deleted existing certificate for performance ${performanceId} (force regenerate)`);
+      console.log(`🗑️ Deleted existing certificate for performance ${performanceId} before regenerating`);
     }
 
     // Generate certificate via API
+    // Use relative URL for internal calls to avoid network issues
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const generateUrl = `${baseUrl}/api/certificates/generate`;
     
-    const certResponse = await fetch(`${baseUrl}/api/certificates/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        dancerId: dancerId,
-        dancerName: displayName,
-        eodsaId: perf.eodsa_id || undefined,
-        performanceId: performanceId,
-        eventEntryId: perf.event_entry_id,
-        eventId: perf.event_id,
-        performanceType: perf.performance_type,
-        studioName: perf.studio_name || undefined,
-        percentage: averagePercentage,
-        style: style,
-        title: title,
-        medallion: medallion,
-        eventDate: eventDate,
-        createdBy: 'system-regenerate'
-      })
-    });
+    console.log(`🔄 Calling certificate generation endpoint: ${generateUrl}`);
+    console.log(`   Performance ID: ${performanceId}`);
+    console.log(`   Dancer: ${displayName}`);
+    console.log(`   Title: ${title}`);
+    
+    try {
+      const certResponse = await fetch(generateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dancerId: dancerId,
+          dancerName: displayName,
+          eodsaId: perf.eodsa_id || undefined,
+          performanceId: performanceId,
+          eventEntryId: perf.event_entry_id,
+          eventId: perf.event_id,
+          performanceType: perf.performance_type,
+          studioName: perf.studio_name || undefined,
+          percentage: averagePercentage,
+          style: style,
+          title: title,
+          medallion: medallion,
+          eventDate: eventDate,
+          createdBy: 'system-regenerate'
+        })
+      });
 
-    if (!certResponse.ok) {
-      let errorText = '';
-      let errorData = null;
-      try {
-        errorText = await certResponse.text();
+      if (!certResponse.ok) {
+        let errorText = '';
+        let errorData = null;
         try {
-          errorData = JSON.parse(errorText);
+          errorText = await certResponse.text();
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            // Not JSON, use as text
+          }
         } catch {
-          // Not JSON, use as text
+          errorText = 'Unknown error reading response';
         }
-      } catch {
-        errorText = 'Unknown error';
+
+        console.error(`❌ Certificate generation failed:`, {
+          status: certResponse.status,
+          statusText: certResponse.statusText,
+          errorData: errorData || errorText,
+          url: generateUrl
+        });
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Failed to generate certificate',
+            details: errorData || errorText,
+            status: certResponse.status,
+            debug: {
+              performanceId,
+              dancerId,
+              dancerName: displayName,
+              style,
+              title,
+              percentage: averagePercentage,
+              medallion,
+              eventDate,
+              baseUrl,
+              generateUrl
+            }
+          },
+          { status: 500 }
+        );
       }
 
-      console.error(`❌ Certificate generation failed:`, errorData || errorText);
-      
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Failed to generate certificate',
-          details: errorData || errorText,
-          debug: {
-            performanceId,
-            dancerId,
-            dancerName: displayName,
-            style,
-            title,
-            percentage: averagePercentage,
-            medallion,
-            eventDate
-          }
-        },
-        { status: 500 }
-      );
-    }
+      const certData = await certResponse.json();
 
-    const certData = await certResponse.json();
+      if (!certData.success || !certData.certificateId) {
+        console.error('❌ Certificate generation returned unsuccessful response:', certData);
+        return NextResponse.json(
+          {
+            success: false,
+            error: certData.error || 'Certificate generation returned unsuccessful response',
+            details: certData,
+            debug: {
+              performanceId,
+              dancerId,
+              dancerName: displayName
+            }
+          },
+          { status: 500 }
+        );
+      }
 
-    // Send email notifications if certificate was successfully generated
-    if (certData.certificateId) {
-      const certificateUrl = `${baseUrl}/certificates/${performanceId}`;
+      // Send email notifications if certificate was successfully generated
+      const certificatePageUrl = `${baseUrl}/certificates/${performanceId}`;
       
       // Trigger email notifications (fire and forget)
       fetch(`${baseUrl}/api/certificates/notify`, {
@@ -312,7 +344,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           performanceId: performanceId,
           eventEntryId: perf.event_entry_id,
-          certificateUrl: certificateUrl,
+          certificateUrl: certificatePageUrl,
           dancerName: displayName,
           performanceTitle: perf.title || '',
           percentage: averagePercentage,
@@ -321,17 +353,43 @@ export async function POST(request: NextRequest) {
       }).catch((emailError) => {
         console.error('Error triggering certificate email notifications:', emailError);
       });
-    }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Certificate regenerated successfully',
-      certificateId: certData.certificateId,
-      performanceId: performanceId,
-      dancerName: displayName,
-      percentage: averagePercentage,
-      medallion: medallion
-    });
+      return NextResponse.json({
+        success: true,
+        message: 'Certificate regenerated successfully',
+        certificateId: certData.certificateId,
+        performanceId: performanceId,
+        dancerName: displayName,
+        percentage: averagePercentage,
+        medallion: medallion
+      });
+    } catch (fetchError) {
+      console.error('❌ Exception during certificate generation fetch:', fetchError);
+      const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown error';
+      const errorStack = fetchError instanceof Error ? fetchError.stack : undefined;
+      
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to regenerate certificate',
+          details: errorMessage,
+          debug: {
+            performanceId,
+            dancerId,
+            dancerName: displayName,
+            style,
+            title,
+            percentage: averagePercentage,
+            medallion,
+            eventDate,
+            baseUrl,
+            generateUrl,
+            errorStack
+          }
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     console.error('Error regenerating certificate:', error);

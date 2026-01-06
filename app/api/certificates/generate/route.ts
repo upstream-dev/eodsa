@@ -275,6 +275,41 @@ export async function POST(request: NextRequest) {
       quality: 95
     });
 
+    // Check if certificate already exists for this performance
+    // If it does and we're regenerating, delete it first
+    // Otherwise, return existing certificate to avoid duplicates
+    if (performanceId) {
+      const existingCert = await sqlClient`
+        SELECT id FROM certificates WHERE performance_id = ${performanceId} LIMIT 1
+      ` as any[];
+
+      if (existingCert.length > 0) {
+        // If createdBy indicates regeneration, delete and recreate
+        if (createdBy === 'system-regenerate' || createdBy?.includes('regenerate')) {
+          await sqlClient`
+            DELETE FROM certificates WHERE performance_id = ${performanceId}
+          `;
+          console.log(`🗑️ Deleted existing certificate for performance ${performanceId} before regenerating`);
+        } else {
+          // Return existing certificate instead of creating duplicate
+          const existing = await sqlClient`
+            SELECT * FROM certificates WHERE performance_id = ${performanceId} LIMIT 1
+          ` as any[];
+          
+          if (existing.length > 0) {
+            console.log(`ℹ️ Certificate already exists for performance ${performanceId}, returning existing certificate`);
+            return NextResponse.json({
+              success: true,
+              certificateId: existing[0].id,
+              certificateUrl: existing[0].certificate_url,
+              message: 'Certificate already exists for this performance',
+              existing: true
+            });
+          }
+        }
+      }
+    }
+
     // Generate unique certificate ID
     const certificateId = `cert_${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
     const createdAt = new Date().toISOString();
@@ -301,8 +336,24 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error generating certificate:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Log more details for debugging
+    console.error('Certificate generation error details:', {
+      errorMessage,
+      errorStack,
+      performanceId: performanceId || 'N/A',
+      dancerId: dancerId || 'N/A',
+      title: title || 'N/A'
+    });
+    
     return NextResponse.json(
-      { error: 'Failed to generate certificate' },
+      { 
+        error: 'Failed to generate certificate',
+        details: errorMessage,
+        performanceId: performanceId || undefined
+      },
       { status: 500 }
     );
   }
