@@ -226,153 +226,64 @@ export async function POST(request: NextRequest) {
     console.log(`   - Medallion: ${medallion}`);
     console.log(`   - Event Date: ${eventDate}`);
 
-    // Always delete existing certificate before regenerating
-    // This ensures we don't have duplicates and allows regeneration even if certificate was created before
+    // Check if certificate already exists
     const existingCert = await sqlClient`
       SELECT id FROM certificates WHERE performance_id = ${performanceId} LIMIT 1
     ` as any[];
 
-    if (existingCert.length > 0) {
+    // Delete existing certificate if forceRegenerate is true
+    if (forceRegenerate && existingCert.length > 0) {
       await sqlClient`
         DELETE FROM certificates WHERE performance_id = ${performanceId}
       `;
-      console.log(`🗑️ Deleted existing certificate for performance ${performanceId} before regenerating`);
+      console.log(`🗑️ Deleted existing certificate for performance ${performanceId} (force regenerate)`);
     }
 
     // Generate certificate via API
-    // Use relative URL for internal calls to avoid network issues
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const generateUrl = `${baseUrl}/api/certificates/generate`;
     
-    console.log(`🔄 Calling certificate generation endpoint: ${generateUrl}`);
-    console.log(`   Performance ID: ${performanceId}`);
-    console.log(`   Dancer: ${displayName}`);
-    console.log(`   Title: ${title}`);
-    
-    try {
-      const certResponse = await fetch(generateUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dancerId: dancerId,
-          dancerName: displayName,
-          eodsaId: perf.eodsa_id || undefined,
-          performanceId: performanceId,
-          eventEntryId: perf.event_entry_id,
-          eventId: perf.event_id,
-          performanceType: perf.performance_type,
-          studioName: perf.studio_name || undefined,
-          percentage: averagePercentage,
-          style: style,
-          title: title,
-          medallion: medallion,
-          eventDate: eventDate,
-          createdBy: 'system-regenerate'
-        })
-      });
-
-      if (!certResponse.ok) {
-        let errorText = '';
-        let errorData = null;
-        try {
-          errorText = await certResponse.text();
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            // Not JSON, use as text
-          }
-        } catch {
-          errorText = 'Unknown error reading response';
-        }
-
-        console.error(`❌ Certificate generation failed:`, {
-          status: certResponse.status,
-          statusText: certResponse.statusText,
-          errorData: errorData || errorText,
-          url: generateUrl
-        });
-        
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Failed to generate certificate',
-            details: errorData || errorText,
-            status: certResponse.status,
-            debug: {
-              performanceId,
-              dancerId,
-              dancerName: displayName,
-              style,
-              title,
-              percentage: averagePercentage,
-              medallion,
-              eventDate,
-              baseUrl,
-              generateUrl
-            }
-          },
-          { status: 500 }
-        );
-      }
-
-      const certData = await certResponse.json();
-
-      if (!certData.success || !certData.certificateId) {
-        console.error('❌ Certificate generation returned unsuccessful response:', certData);
-        return NextResponse.json(
-          {
-            success: false,
-            error: certData.error || 'Certificate generation returned unsuccessful response',
-            details: certData,
-            debug: {
-              performanceId,
-              dancerId,
-              dancerName: displayName
-            }
-          },
-          { status: 500 }
-        );
-      }
-
-      // Send email notifications if certificate was successfully generated
-      const certificatePageUrl = `${baseUrl}/certificates/${performanceId}`;
-      
-      // Trigger email notifications (fire and forget)
-      fetch(`${baseUrl}/api/certificates/notify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          performanceId: performanceId,
-          eventEntryId: perf.event_entry_id,
-          certificateUrl: certificatePageUrl,
-          dancerName: displayName,
-          performanceTitle: perf.title || '',
-          percentage: averagePercentage,
-          medallion: medallion
-        })
-      }).catch((emailError) => {
-        console.error('Error triggering certificate email notifications:', emailError);
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Certificate regenerated successfully',
-        certificateId: certData.certificateId,
-        performanceId: performanceId,
+    const certResponse = await fetch(`${baseUrl}/api/certificates/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dancerId: dancerId,
         dancerName: displayName,
+        eodsaId: perf.eodsa_id || undefined,
+        performanceId: performanceId,
+        eventEntryId: perf.event_entry_id,
+        eventId: perf.event_id,
+        performanceType: perf.performance_type,
+        studioName: perf.studio_name || undefined,
         percentage: averagePercentage,
-        medallion: medallion
-      });
-    } catch (fetchError) {
-      console.error('❌ Exception during certificate generation fetch:', fetchError);
-      const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown error';
-      const errorStack = fetchError instanceof Error ? fetchError.stack : undefined;
+        style: style,
+        title: title,
+        medallion: medallion,
+        eventDate: eventDate,
+        createdBy: 'system-regenerate'
+      })
+    });
+
+    if (!certResponse.ok) {
+      let errorText = '';
+      let errorData = null;
+      try {
+        errorText = await certResponse.text();
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          // Not JSON, use as text
+        }
+      } catch {
+        errorText = 'Unknown error';
+      }
+
+      console.error(`❌ Certificate generation failed:`, errorData || errorText);
       
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Failed to regenerate certificate',
-          details: errorMessage,
+        { 
+          success: false, 
+          error: 'Failed to generate certificate',
+          details: errorData || errorText,
           debug: {
             performanceId,
             dancerId,
@@ -381,15 +292,46 @@ export async function POST(request: NextRequest) {
             title,
             percentage: averagePercentage,
             medallion,
-            eventDate,
-            baseUrl,
-            generateUrl,
-            errorStack
+            eventDate
           }
         },
         { status: 500 }
       );
     }
+
+    const certData = await certResponse.json();
+
+    // Send email notifications if certificate was successfully generated
+    if (certData.certificateId) {
+      const certificateUrl = `${baseUrl}/certificates/${performanceId}`;
+      
+      // Trigger email notifications (fire and forget)
+      fetch(`${baseUrl}/api/certificates/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          performanceId: performanceId,
+          eventEntryId: perf.event_entry_id,
+          certificateUrl: certificateUrl,
+          dancerName: displayName,
+          performanceTitle: perf.title || '',
+          percentage: averagePercentage,
+          medallion: medallion
+        })
+      }).catch((emailError) => {
+        console.error('Error triggering certificate email notifications:', emailError);
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Certificate regenerated successfully',
+      certificateId: certData.certificateId,
+      performanceId: performanceId,
+      dancerName: displayName,
+      percentage: averagePercentage,
+      medallion: medallion
+    });
 
   } catch (error) {
     console.error('Error regenerating certificate:', error);

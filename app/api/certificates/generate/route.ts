@@ -28,19 +28,14 @@ interface CertificateData {
 }
 
 export async function POST(request: NextRequest) {
-  // Declare variables outside try block for error handling
-  let performanceId: string | undefined;
-  let dancerId: string | undefined;
-  let title: string | undefined;
-  
   try {
     const body: CertificateData = await request.json();
     const {
-      dancerId: bodyDancerId,
+      dancerId,
       dancerName,
       eodsaId,
       email,
-      performanceId: bodyPerformanceId,
+      performanceId,
       eventEntryId,
       eventId,
       performanceType,
@@ -52,26 +47,18 @@ export async function POST(request: NextRequest) {
       eventDate,
       createdBy
     } = body;
-    
-    // Assign to outer scope variables for error handling
-    performanceId = bodyPerformanceId;
-    dancerId = bodyDancerId;
-    
-    // Use the renamed variables from destructuring
-    const finalDancerId = bodyDancerId;
-    const finalPerformanceId = bodyPerformanceId;
 
     // Validate required fields
-    if (!finalDancerId || !dancerName || !percentage || !style || !originalTitle || !medallion || !eventDate) {
+    if (!dancerId || !dancerName || !percentage || !style || !originalTitle || !medallion || !eventDate) {
       return NextResponse.json(
         { error: 'Missing required certificate data' },
         { status: 400 }
       );
     }
-    
+
     // Truncate title if too long (max 26 characters to fit on certificate)
     const MAX_TITLE_LENGTH = 26;
-    title = originalTitle;
+    let title = originalTitle;
     if (title.length > MAX_TITLE_LENGTH) {
       title = title.substring(0, MAX_TITLE_LENGTH - 3) + '...';
     }
@@ -79,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Check if this dancer has custom position settings
     const sqlClient = getSql();
     const positionsResult = await sqlClient`
-      SELECT * FROM certificate_positions WHERE dancer_id = ${finalDancerId}
+      SELECT * FROM certificate_positions WHERE dancer_id = ${dancerId}
     ` as any[];
 
     // Use custom positions if available, otherwise use defaults
@@ -116,14 +103,14 @@ export async function POST(request: NextRequest) {
     let templatePublicId = 'Template_syz7di'; // Default template
     console.log('🔍 Certificate Generation - Checking for custom template...');
     console.log('   eventId from request:', eventId);
-    console.log('   performanceId from request:', finalPerformanceId);
+    console.log('   performanceId from request:', performanceId);
     
     // If eventId not provided, try to get it from performanceId
     let finalEventId = eventId;
-    if (!finalEventId && finalPerformanceId) {
+    if (!finalEventId && performanceId) {
       try {
         const { db } = await import('@/lib/database');
-        const performance = await db.getPerformanceById(finalPerformanceId);
+        const performance = await db.getPerformanceById(performanceId);
         if (performance?.eventId) {
           finalEventId = performance.eventId;
           console.log('   ℹ️ Got eventId from performance:', finalEventId);
@@ -203,7 +190,7 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('   ℹ️ No eventId provided, using default template');
       console.log('   eventId was:', eventId);
-      console.log('   performanceId was:', finalPerformanceId);
+      console.log('   performanceId was:', performanceId);
     }
     
     console.log('   📋 Final template public_id:', templatePublicId);
@@ -288,41 +275,6 @@ export async function POST(request: NextRequest) {
       quality: 95
     });
 
-    // Check if certificate already exists for this performance
-    // If it does and we're regenerating, delete it first
-    // Otherwise, return existing certificate to avoid duplicates
-    if (finalPerformanceId) {
-      const existingCert = await sqlClient`
-        SELECT id FROM certificates WHERE performance_id = ${finalPerformanceId} LIMIT 1
-      ` as any[];
-
-      if (existingCert.length > 0) {
-        // If createdBy indicates regeneration, delete and recreate
-        if (createdBy === 'system-regenerate' || createdBy?.includes('regenerate')) {
-          await sqlClient`
-            DELETE FROM certificates WHERE performance_id = ${finalPerformanceId}
-          `;
-          console.log(`🗑️ Deleted existing certificate for performance ${finalPerformanceId} before regenerating`);
-        } else {
-          // Return existing certificate instead of creating duplicate
-          const existing = await sqlClient`
-            SELECT * FROM certificates WHERE performance_id = ${finalPerformanceId} LIMIT 1
-          ` as any[];
-          
-          if (existing.length > 0) {
-            console.log(`ℹ️ Certificate already exists for performance ${finalPerformanceId}, returning existing certificate`);
-            return NextResponse.json({
-              success: true,
-              certificateId: existing[0].id,
-              certificateUrl: existing[0].certificate_url,
-              message: 'Certificate already exists for this performance',
-              existing: true
-            });
-          }
-        }
-      }
-    }
-
     // Generate unique certificate ID
     const certificateId = `cert_${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
     const createdAt = new Date().toISOString();
@@ -334,8 +286,8 @@ export async function POST(request: NextRequest) {
         performance_id, event_entry_id, percentage, style, title,
         medallion, event_date, certificate_url, created_at, created_by
       ) VALUES (
-        ${certificateId}, ${finalDancerId}, ${dancerName}, ${eodsaId || null}, ${email || null},
-        ${finalPerformanceId || null}, ${eventEntryId || null}, ${percentage}, ${style}, ${title},
+        ${certificateId}, ${dancerId}, ${dancerName}, ${eodsaId || null}, ${email || null},
+        ${performanceId || null}, ${eventEntryId || null}, ${percentage}, ${style}, ${title},
         ${medallion}, ${eventDate}, ${certificateUrl}, ${createdAt}, ${createdBy || null}
       )
     `;
@@ -349,24 +301,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error generating certificate:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    // Log more details for debugging
-    console.error('Certificate generation error details:', {
-      errorMessage,
-      errorStack,
-      performanceId: performanceId || 'N/A',
-      dancerId: dancerId || 'N/A',
-      title: title || 'N/A'
-    });
-    
     return NextResponse.json(
-      { 
-        error: 'Failed to generate certificate',
-        details: errorMessage,
-        performanceId: performanceId || undefined
-      },
+      { error: 'Failed to generate certificate' },
       { status: 500 }
     );
   }

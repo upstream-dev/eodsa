@@ -35,6 +35,8 @@ interface Certificate {
   sentAt?: string;
   downloaded: boolean;
   createdAt: string;
+  eventId?: string;
+  eventName?: string;
 }
 
 // Music Upload Section Component
@@ -1318,16 +1320,35 @@ function CertificatesSection({ dancerSession, selectedEventId, events, onEventCh
 
   useEffect(() => {
     loadCertificates();
-  }, [dancerSession.id]);
+  }, [dancerSession.eodsaId]);
 
   const loadCertificates = async () => {
     try {
-      const response = await fetch(`/api/certificates/generate?dancerId=${dancerSession.id}`);
+      // Use eodsaId to filter certificates (more reliable than dancerId)
+      const response = await fetch(`/api/certificates/list?eodsaId=${dancerSession.eodsaId}`);
       if (response.ok) {
         const data = await response.json();
-        setCertificates(data);
+        // Map the API response to match the Certificate interface
+        const mappedCertificates: Certificate[] = data.map((cert: any) => ({
+          id: cert.id,
+          dancerName: cert.dancer_name,
+          percentage: cert.percentage,
+          style: cert.style,
+          title: cert.title,
+          medallion: cert.medallion,
+          eventDate: cert.event_date,
+          certificateUrl: cert.certificate_url,
+          sentAt: cert.sent_at,
+          downloaded: cert.downloaded || false,
+          createdAt: cert.created_at,
+          // Include eventId for filtering
+          eventId: cert.event_id,
+          eventName: cert.event_name
+        }));
+        setCertificates(mappedCertificates);
       } else {
-        setError('Failed to load certificates');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        setError(errorData.error || 'Failed to load certificates');
       }
     } catch (err) {
       console.error('Error loading certificates:', err);
@@ -1370,14 +1391,14 @@ function CertificatesSection({ dancerSession, selectedEventId, events, onEventCh
     );
   }
 
-  // Filter certificates by event (certificates might have eventId or eventDate)
-  // For now, we'll filter by event date if eventId is not available
+  // Filter certificates by event
+  // Note: Multiple certificates can have the same performance name/title, so we filter by eventId
   const filteredCertificates = selectedEventId === 'all' 
     ? certificates 
     : certificates.filter(cert => {
-        // Try to match by eventId if available, otherwise skip filtering
-        // Certificates API might not include eventId, so we'll show all if eventId is not in the data
-        return (cert as any).eventId === selectedEventId || !(cert as any).eventId;
+        // Match by eventId - this ensures all certificates for the selected event are shown
+        // even if they have the same performance name/title
+        return cert.eventId === selectedEventId;
       });
 
   return (
@@ -1443,6 +1464,11 @@ function CertificatesSection({ dancerSession, selectedEventId, events, onEventCh
               <div className="p-4">
                 <h4 className="font-semibold text-white mb-2">{cert.title}</h4>
                 <div className="space-y-1 text-sm">
+                  {cert.eventName && (
+                    <p className="text-gray-400">
+                      <span className="text-gray-500">Event:</span> {cert.eventName}
+                    </p>
+                  )}
                   <p className="text-gray-400">
                     <span className="text-gray-500">Style:</span> {cert.style}
                   </p>

@@ -86,7 +86,6 @@ function AdminCertificatesPageContent() {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [events, setEvents] = useState<Array<{id: string; name: string}>>([]);
   const [filteredCertificates, setFilteredCertificates] = useState<Certificate[]>([]);
-  const [isBatchGenerating, setIsBatchGenerating] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -765,7 +764,7 @@ function AdminCertificatesPageContent() {
             {/* Event Filter */}
             <div className={`${themeClasses.cardBg} ${themeClasses.cardRadius} ${themeClasses.cardShadow} ${themeClasses.cardPadding} mb-6 border ${themeClasses.cardBorder}`}>
               <h3 className={`${themeClasses.heading3} mb-3`}>Filters</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={`block ${themeClasses.label} mb-2`}>Event</label>
                   <select
@@ -782,52 +781,6 @@ function AdminCertificatesPageContent() {
                   </select>
                 </div>
               </div>
-              {selectedEventId !== 'all' && (
-                <div className="pt-4 border-t border-gray-700/30">
-                  <button
-                    onClick={async () => {
-                      if (!confirm(`Generate certificates for all published performances in "${events.find(e => e.id === selectedEventId)?.name || 'selected event'}" that don't have certificates yet?`)) {
-                        return;
-                      }
-                      setIsBatchGenerating(true);
-                      setError('');
-                      setSuccess('');
-                      try {
-                        const selectedEvent = events.find(e => e.id === selectedEventId);
-                        const response = await fetch('/api/certificates/batch-generate', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            eventId: selectedEventId,
-                            eventName: selectedEvent?.name
-                          })
-                        });
-                        const data = await response.json();
-                        if (response.ok && data.success) {
-                          setSuccess(`✓ Generated ${data.generated} certificate(s) for ${selectedEvent?.name}${data.failed > 0 ? ` (${data.failed} failed)` : ''}`);
-                          // Reload certificates
-                          setTimeout(() => {
-                            loadData();
-                          }, 2000);
-                        } else {
-                          setError(data.error || 'Failed to batch generate certificates');
-                        }
-                      } catch (err: any) {
-                        setError('Error batch generating certificates: ' + (err.message || 'Unknown error'));
-                      } finally {
-                        setIsBatchGenerating(false);
-                      }
-                    }}
-                    disabled={isBatchGenerating}
-                    className={`px-6 py-3 ${isBatchGenerating ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'} text-white ${themeClasses.cardRadius} transition-colors font-semibold`}
-                  >
-                    {isBatchGenerating ? '⏳ Generating...' : '🚀 Generate All Missing Certificates for This Event'}
-                  </button>
-                  <p className={`${themeClasses.textSecondary} text-sm mt-2`}>
-                    This will generate certificates for all published performances in the selected event that don't have certificates yet.
-                  </p>
-                </div>
-              )}
             </div>
             
             {isLoading ? (
