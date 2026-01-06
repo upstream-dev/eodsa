@@ -28,14 +28,19 @@ interface CertificateData {
 }
 
 export async function POST(request: NextRequest) {
+  // Declare variables outside try block for error handling
+  let performanceId: string | undefined;
+  let dancerId: string | undefined;
+  let title: string | undefined;
+  
   try {
     const body: CertificateData = await request.json();
     const {
-      dancerId,
+      dancerId: bodyDancerId,
       dancerName,
       eodsaId,
       email,
-      performanceId,
+      performanceId: bodyPerformanceId,
       eventEntryId,
       eventId,
       performanceType,
@@ -47,18 +52,26 @@ export async function POST(request: NextRequest) {
       eventDate,
       createdBy
     } = body;
+    
+    // Assign to outer scope variables for error handling
+    performanceId = bodyPerformanceId;
+    dancerId = bodyDancerId;
+    
+    // Use the renamed variables from destructuring
+    const finalDancerId = bodyDancerId;
+    const finalPerformanceId = bodyPerformanceId;
 
     // Validate required fields
-    if (!dancerId || !dancerName || !percentage || !style || !originalTitle || !medallion || !eventDate) {
+    if (!finalDancerId || !dancerName || !percentage || !style || !originalTitle || !medallion || !eventDate) {
       return NextResponse.json(
         { error: 'Missing required certificate data' },
         { status: 400 }
       );
     }
-
+    
     // Truncate title if too long (max 26 characters to fit on certificate)
     const MAX_TITLE_LENGTH = 26;
-    let title = originalTitle;
+    title = originalTitle;
     if (title.length > MAX_TITLE_LENGTH) {
       title = title.substring(0, MAX_TITLE_LENGTH - 3) + '...';
     }
@@ -66,7 +79,7 @@ export async function POST(request: NextRequest) {
     // Check if this dancer has custom position settings
     const sqlClient = getSql();
     const positionsResult = await sqlClient`
-      SELECT * FROM certificate_positions WHERE dancer_id = ${dancerId}
+      SELECT * FROM certificate_positions WHERE dancer_id = ${finalDancerId}
     ` as any[];
 
     // Use custom positions if available, otherwise use defaults
@@ -103,14 +116,14 @@ export async function POST(request: NextRequest) {
     let templatePublicId = 'Template_syz7di'; // Default template
     console.log('🔍 Certificate Generation - Checking for custom template...');
     console.log('   eventId from request:', eventId);
-    console.log('   performanceId from request:', performanceId);
+    console.log('   performanceId from request:', finalPerformanceId);
     
     // If eventId not provided, try to get it from performanceId
     let finalEventId = eventId;
-    if (!finalEventId && performanceId) {
+    if (!finalEventId && finalPerformanceId) {
       try {
         const { db } = await import('@/lib/database');
-        const performance = await db.getPerformanceById(performanceId);
+        const performance = await db.getPerformanceById(finalPerformanceId);
         if (performance?.eventId) {
           finalEventId = performance.eventId;
           console.log('   ℹ️ Got eventId from performance:', finalEventId);
@@ -190,7 +203,7 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('   ℹ️ No eventId provided, using default template');
       console.log('   eventId was:', eventId);
-      console.log('   performanceId was:', performanceId);
+      console.log('   performanceId was:', finalPerformanceId);
     }
     
     console.log('   📋 Final template public_id:', templatePublicId);
@@ -278,26 +291,26 @@ export async function POST(request: NextRequest) {
     // Check if certificate already exists for this performance
     // If it does and we're regenerating, delete it first
     // Otherwise, return existing certificate to avoid duplicates
-    if (performanceId) {
+    if (finalPerformanceId) {
       const existingCert = await sqlClient`
-        SELECT id FROM certificates WHERE performance_id = ${performanceId} LIMIT 1
+        SELECT id FROM certificates WHERE performance_id = ${finalPerformanceId} LIMIT 1
       ` as any[];
 
       if (existingCert.length > 0) {
         // If createdBy indicates regeneration, delete and recreate
         if (createdBy === 'system-regenerate' || createdBy?.includes('regenerate')) {
           await sqlClient`
-            DELETE FROM certificates WHERE performance_id = ${performanceId}
+            DELETE FROM certificates WHERE performance_id = ${finalPerformanceId}
           `;
-          console.log(`🗑️ Deleted existing certificate for performance ${performanceId} before regenerating`);
+          console.log(`🗑️ Deleted existing certificate for performance ${finalPerformanceId} before regenerating`);
         } else {
           // Return existing certificate instead of creating duplicate
           const existing = await sqlClient`
-            SELECT * FROM certificates WHERE performance_id = ${performanceId} LIMIT 1
+            SELECT * FROM certificates WHERE performance_id = ${finalPerformanceId} LIMIT 1
           ` as any[];
           
           if (existing.length > 0) {
-            console.log(`ℹ️ Certificate already exists for performance ${performanceId}, returning existing certificate`);
+            console.log(`ℹ️ Certificate already exists for performance ${finalPerformanceId}, returning existing certificate`);
             return NextResponse.json({
               success: true,
               certificateId: existing[0].id,
@@ -321,8 +334,8 @@ export async function POST(request: NextRequest) {
         performance_id, event_entry_id, percentage, style, title,
         medallion, event_date, certificate_url, created_at, created_by
       ) VALUES (
-        ${certificateId}, ${dancerId}, ${dancerName}, ${eodsaId || null}, ${email || null},
-        ${performanceId || null}, ${eventEntryId || null}, ${percentage}, ${style}, ${title},
+        ${certificateId}, ${finalDancerId}, ${dancerName}, ${eodsaId || null}, ${email || null},
+        ${finalPerformanceId || null}, ${eventEntryId || null}, ${percentage}, ${style}, ${title},
         ${medallion}, ${eventDate}, ${certificateUrl}, ${createdAt}, ${createdBy || null}
       )
     `;
