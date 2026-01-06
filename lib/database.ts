@@ -2416,7 +2416,7 @@ export const db = {
     }));
   },
 
-  async publishPerformanceScores(performanceId: string, publishedBy: string) {
+  async publishPerformanceScores(performanceId: string, publishedBy: string, baseUrl?: string) {
     const sqlClient = getSql();
     const timestamp = new Date().toISOString();
 
@@ -2502,11 +2502,12 @@ export const db = {
             // Trigger certificate generation via API route (fire and forget)
             // Use a server-side fetch to avoid bundling issues
             if (typeof fetch !== 'undefined') {
-              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-              const certificateUrl = `${baseUrl}/certificates/${performanceId}`;
+              // Use provided baseUrl or fallback to environment variables
+              const certBaseUrl = baseUrl || process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+              const certificateUrl = `${certBaseUrl}/certificates/${performanceId}`;
               
               // Call certificate generation API (don't await - fire and forget)
-              fetch(`${baseUrl}/api/certificates/generate`, {
+              fetch(`${certBaseUrl}/api/certificates/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2533,7 +2534,7 @@ export const db = {
                   // Trigger email notifications via API route (fire and forget)
                   if (certData.certificateId) {
                     console.log(`📧 Triggering email notifications for performance ${performanceId}...`);
-                    fetch(`${baseUrl}/api/certificates/notify`, {
+                    fetch(`${certBaseUrl}/api/certificates/notify`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
