@@ -240,7 +240,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate certificate via API
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // Derive base URL from request URL to ensure it works in all environments
+    let baseUrl: string;
+    try {
+      const requestUrl = new URL(request.url);
+      baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+    } catch (urlError) {
+      // Fallback to environment variables if URL parsing fails
+      console.warn('⚠️ Could not parse request URL, using environment variables:', urlError);
+      baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    }
+    
+    console.log(`🔄 Regenerating certificate - Base URL: ${baseUrl}`);
     
     const certResponse = await fetch(`${baseUrl}/api/certificates/generate`, {
       method: 'POST',
