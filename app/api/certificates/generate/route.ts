@@ -49,12 +49,24 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!dancerId || !dancerName || !percentage || !style || !originalTitle || !medallion || !eventDate) {
+    if (!dancerId || !dancerName || percentage === undefined || percentage === null || !style || !originalTitle || !medallion || !eventDate) {
       return NextResponse.json(
-        { error: 'Missing required certificate data' },
+        { error: 'Missing required certificate data', details: { dancerId: !!dancerId, dancerName: !!dancerName, percentage, style: !!style, title: !!originalTitle, medallion: !!medallion, eventDate: !!eventDate } },
         { status: 400 }
       );
     }
+    
+    // Ensure percentage is a valid number
+    const percentageValue = Number(percentage);
+    if (isNaN(percentageValue) || percentageValue < 0 || percentageValue > 100) {
+      console.error(`❌ Invalid percentage value: ${percentage}`);
+      return NextResponse.json(
+        { error: `Invalid percentage value: ${percentage}. Must be between 0 and 100.` },
+        { status: 400 }
+      );
+    }
+    
+    console.log(`📊 Certificate generation - Percentage: ${percentageValue}`);
 
     // Truncate title if too long (max 26 characters to fit on certificate)
     const MAX_TITLE_LENGTH = 26;
@@ -225,7 +237,7 @@ export async function POST(request: NextRequest) {
             font_family: 'Montserrat',
             font_size: percentageFontSize,
             font_weight: 'bold',
-            text: `${percentage}%`
+            text: percentageValue.toString()
           },
           color: 'white',
           gravity: 'north_west',

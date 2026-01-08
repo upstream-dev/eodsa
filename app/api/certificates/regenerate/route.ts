@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const sqlClient = getSql();
 
     // Get performance details
-    // Try to get studio_name from multiple sources: contestants table, or from participant names if it's a group
+    // Try to get studio_name from multiple sources: contestants table, studios table, or from participant names if it's a group
     const perfResult = await sqlClient`
       SELECT 
         p.*,
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
         ee.performance_type,
         ee.contestant_id,
         ee.id as event_entry_id,
+        ee.participant_ids,
         c.studio_name,
         c.name as contestant_name,
         c.type as contestant_type,
@@ -157,7 +158,36 @@ export async function POST(request: NextRequest) {
     const isGroupPerformance = perf.performance_type && ['Duet', 'Trio', 'Group'].includes(perf.performance_type);
     
     // Get studio name from multiple sources (prioritize studio_name_from_studios, then studio_name from contestants)
-    const studioName = perf.studio_name_from_studios || perf.studio_name;
+    let studioName = perf.studio_name_from_studios || perf.studio_name;
+    
+    // If studio name is still not found and it's a group, try to get it from participants' studio associations
+    if (isGroupPerformance && (!studioName || studioName.trim() === '') && perf.participant_ids) {
+      try {
+        const participantIds = Array.isArray(perf.participant_ids) 
+          ? perf.participant_ids 
+          : (typeof perf.participant_ids === 'string' ? JSON.parse(perf.participant_ids) : []);
+        
+        if (participantIds.length > 0) {
+          // Try to get studio name from first participant's studio association
+          const studioResult = await sqlClient`
+            SELECT DISTINCT s.name as studio_name
+            FROM dancers d
+            LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+            LEFT JOIN studios s ON sa.studio_id = s.id
+            WHERE (d.id = ANY(${participantIds}) OR d.eodsa_id = ANY(${participantIds}))
+              AND s.name IS NOT NULL
+            LIMIT 1
+          ` as any[];
+          
+          if (studioResult.length > 0 && studioResult[0].studio_name) {
+            studioName = studioResult[0].studio_name;
+            console.log(`📝 Found studio name from participants: ${studioName}`);
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not fetch studio name from participants:', error);
+      }
+    }
     
     let displayName: string;
     if (isGroupPerformance && studioName && studioName.trim() !== '') {
