@@ -261,9 +261,12 @@ export async function POST(request: NextRequest) {
     console.log(`🔄 Regenerating certificate for performance ${performanceId}:`);
     console.log(`   - Dancer ID: ${dancerId}`);
     console.log(`   - Display Name: ${displayName}`);
+    console.log(`   - Studio Name: ${studioName || 'N/A'}`);
+    console.log(`   - Is Group: ${isGroupPerformance}`);
+    console.log(`   - Performance Type: ${perf.performance_type}`);
     console.log(`   - Style: ${style}`);
     console.log(`   - Title: ${title}`);
-    console.log(`   - Percentage: ${averagePercentage}`);
+    console.log(`   - Percentage: ${averagePercentage} (type: ${typeof averagePercentage})`);
     console.log(`   - Medallion: ${medallion}`);
     console.log(`   - Event Date: ${eventDate}`);
 
@@ -299,13 +302,13 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         dancerId: dancerId,
-        dancerName: displayName,
+        dancerName: isGroupPerformance && studioName ? studioName : displayName, // Pass studio name as dancerName for groups if available
         eodsaId: perf.eodsa_id || undefined,
         performanceId: performanceId,
         eventEntryId: perf.event_entry_id,
         eventId: perf.event_id,
         performanceType: perf.performance_type,
-        studioName: (perf.studio_name_from_studios || perf.studio_name) || undefined,
+        studioName: studioName || undefined, // Always pass studioName explicitly
         percentage: averagePercentage,
         style: style,
         title: title,

@@ -57,16 +57,25 @@ export async function POST(request: NextRequest) {
     }
     
     // Ensure percentage is a valid number
-    const percentageValue = Number(percentage);
-    if (isNaN(percentageValue) || percentageValue < 0 || percentageValue > 100) {
-      console.error(`❌ Invalid percentage value: ${percentage}`);
-      return NextResponse.json(
-        { error: `Invalid percentage value: ${percentage}. Must be between 0 and 100.` },
-        { status: 400 }
-      );
+    let percentageValue = Number(percentage);
+    if (isNaN(percentageValue) || percentageValue < 0) {
+      console.error(`❌ Invalid percentage value: ${percentage}, defaulting to 0`);
+      percentageValue = 0;
+    }
+    if (percentageValue > 100) {
+      console.warn(`⚠️ Percentage value exceeds 100: ${percentageValue}, capping at 100`);
+      percentageValue = 100;
     }
     
-    console.log(`📊 Certificate generation - Percentage: ${percentageValue}`);
+    // Ensure percentage is a whole number (round it)
+    percentageValue = Math.round(percentageValue);
+    
+    console.log(`📊 Certificate generation - Percentage: ${percentageValue} (original: ${percentage}, type: ${typeof percentage})`);
+    
+    // Validate that percentage is not 0 or undefined before proceeding
+    if (percentageValue === 0 && percentage !== 0) {
+      console.error(`❌ Percentage is 0 but original was not 0. Original: ${percentage}`);
+    }
 
     // Truncate title if too long (max 26 characters to fit on certificate)
     const MAX_TITLE_LENGTH = 26;
@@ -108,17 +117,30 @@ export async function POST(request: NextRequest) {
     // This prevents unreadable certificates with long lists of participant names
     const isGroupPerformance = performanceType && ['Duet', 'Trio', 'Group'].includes(performanceType);
     
-    // Determine display name: prioritize studio name for groups, otherwise use dancer name
+    // Determine display name: ALWAYS use studio name for groups if available, otherwise use dancer name
     let displayName: string;
-    if (isGroupPerformance && studioName && studioName.trim() !== '') {
-      displayName = studioName.toUpperCase();
-      console.log(`📝 Using studio name for group performance: ${displayName}`);
+    if (isGroupPerformance) {
+      // For groups, prioritize studioName, but if not provided, check if dancerName is already a studio name
+      // (this handles cases where regenerate endpoint already calculated it)
+      if (studioName && studioName.trim() !== '') {
+        displayName = studioName.toUpperCase();
+        console.log(`📝 Group performance - Using studio name: ${displayName}`);
+      } else if (dancerName && !dancerName.includes(',') && dancerName.trim() !== '') {
+        // If dancerName doesn't contain commas (not a list of names), use it as studio name
+        displayName = dancerName.toUpperCase();
+        console.log(`📝 Group performance - Using dancerName as studio (no studioName provided): ${displayName}`);
+      } else {
+        // Fallback: use dancerName even if it's a list (better than nothing)
+        displayName = dancerName.toUpperCase();
+        console.warn(`⚠️ Group performance - No studio name found, using dancerName: ${displayName}`);
+      }
     } else {
+      // For solo performances, use dancer name
       displayName = dancerName.toUpperCase();
-      console.log(`📝 Using dancer name: ${displayName}`);
+      console.log(`📝 Solo performance - Using dancer name: ${displayName}`);
     }
     
-    console.log(`📝 Certificate display name: ${displayName}, isGroup: ${isGroupPerformance}, studioName: ${studioName || 'N/A'}`);
+    console.log(`📝 Certificate display name: ${displayName}, isGroup: ${isGroupPerformance}, studioName: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
 
     // Get event to check for custom certificate template
     let templatePublicId = 'Template_syz7di'; // Default template
@@ -237,7 +259,7 @@ export async function POST(request: NextRequest) {
             font_family: 'Montserrat',
             font_size: percentageFontSize,
             font_weight: 'bold',
-            text: percentageValue.toString()
+            text: String(percentageValue) // Ensure it's a string, not empty
           },
           color: 'white',
           gravity: 'north_west',
