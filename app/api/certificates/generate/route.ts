@@ -95,9 +95,18 @@ export async function POST(request: NextRequest) {
     // For groups, duos, and trios (non-solo performances), use studio name instead of dancer names
     // This prevents unreadable certificates with long lists of participant names
     const isGroupPerformance = performanceType && ['Duet', 'Trio', 'Group'].includes(performanceType);
-    const displayName = isGroupPerformance && studioName 
-      ? studioName.toUpperCase() 
-      : dancerName.toUpperCase();
+    
+    // Determine display name: prioritize studio name for groups, otherwise use dancer name
+    let displayName: string;
+    if (isGroupPerformance && studioName && studioName.trim() !== '') {
+      displayName = studioName.toUpperCase();
+      console.log(`📝 Using studio name for group performance: ${displayName}`);
+    } else {
+      displayName = dancerName.toUpperCase();
+      console.log(`📝 Using dancer name: ${displayName}`);
+    }
+    
+    console.log(`📝 Certificate display name: ${displayName}, isGroup: ${isGroupPerformance}, studioName: ${studioName || 'N/A'}`);
 
     // Get event to check for custom certificate template
     let templatePublicId = 'Template_syz7di'; // Default template
@@ -216,7 +225,7 @@ export async function POST(request: NextRequest) {
             font_family: 'Montserrat',
             font_size: percentageFontSize,
             font_weight: 'bold',
-            text: percentage.toString()
+            text: `${percentage}%`
           },
           color: 'white',
           gravity: 'north_west',

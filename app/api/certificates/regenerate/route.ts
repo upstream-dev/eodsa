@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     const sqlClient = getSql();
 
     // Get performance details
+    // Try to get studio_name from multiple sources: contestants table, or from participant names if it's a group
     const perfResult = await sqlClient`
       SELECT 
         p.*,
@@ -35,11 +36,14 @@ export async function POST(request: NextRequest) {
         ee.id as event_entry_id,
         c.studio_name,
         c.name as contestant_name,
-        c.type as contestant_type
+        c.type as contestant_type,
+        -- Also try to get studio name from studios table if contestant has studio association
+        s.name as studio_name_from_studios
       FROM performances p
       JOIN events e ON e.id = p.event_id
       LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
       LEFT JOIN contestants c ON c.id = ee.contestant_id
+      LEFT JOIN studios s ON (s.email = c.email OR s.name = c.studio_name)
       WHERE p.id = ${performanceId}
     ` as any[];
 
@@ -149,14 +153,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine display name
+    // For group performances, always use studio name if available
     const isGroupPerformance = perf.performance_type && ['Duet', 'Trio', 'Group'].includes(perf.performance_type);
-    let displayName = isGroupPerformance && perf.studio_name 
-      ? perf.studio_name 
-      : participantNames.join(', ');
-
-    // Fallback if display name is empty
-    if (!displayName || displayName.trim() === '') {
-      displayName = perf.contestant_name || perf.studio_name || 'Participant';
+    
+    // Get studio name from multiple sources (prioritize studio_name_from_studios, then studio_name from contestants)
+    const studioName = perf.studio_name_from_studios || perf.studio_name;
+    
+    let displayName: string;
+    if (isGroupPerformance && studioName && studioName.trim() !== '') {
+      displayName = studioName;
+      console.log(`📝 Group performance - Using studio name: ${displayName}`);
+    } else if (participantNames.length > 0) {
+      displayName = participantNames.join(', ');
+      console.log(`📝 Solo performance - Using participant names: ${displayName}`);
+    } else {
+      displayName = perf.contestant_name || studioName || 'Participant';
       console.warn(`⚠️ No participant names found, using fallback: ${displayName}`);
     }
 
@@ -264,7 +275,7 @@ export async function POST(request: NextRequest) {
         eventEntryId: perf.event_entry_id,
         eventId: perf.event_id,
         performanceType: perf.performance_type,
-        studioName: perf.studio_name || undefined,
+        studioName: (perf.studio_name_from_studios || perf.studio_name) || undefined,
         percentage: averagePercentage,
         style: style,
         title: title,
