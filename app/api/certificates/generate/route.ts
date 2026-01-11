@@ -173,6 +173,30 @@ export async function POST(request: NextRequest) {
     console.log(`📝 Name to store in database (certificates.dancer_name): ${nameToStoreInDatabase}`);
     console.log(`📝 isGroup: ${isGroupPerformance}, performanceType (from request): ${performanceType || 'null'}, inferredPerformanceType: ${inferredPerformanceType || 'null'}`);
     console.log(`📝 studioName from event_entries: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
+    
+    // Dynamic font sizing based on name length to prevent overflow
+    // Only adjust if using default (not custom position)
+    let nameFontSize = baseNameFontSize;
+    if (!hasCustom) {
+      const nameLength = displayName.length;
+      if (nameLength <= 15) {
+        // Short names (solos, short studio names): use full size
+        nameFontSize = 65;
+      } else if (nameLength <= 20) {
+        // Medium names: scale down slightly
+        nameFontSize = 55;
+      } else if (nameLength <= 25) {
+        // Long names: scale down more
+        nameFontSize = 45;
+      } else if (nameLength <= 30) {
+        // Very long names: scale down further
+        nameFontSize = 38;
+      } else {
+        // Extremely long names: minimum readable size
+        nameFontSize = 32;
+      }
+      console.log(`📏 Dynamic font sizing: name length ${nameLength} → font size ${nameFontSize}px`);
+    }
 
     // Get event to check for custom certificate template
     let templatePublicId = 'Template_syz7di'; // Default template
