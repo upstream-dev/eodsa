@@ -117,22 +117,23 @@ export async function POST(request: NextRequest) {
     // This prevents unreadable certificates with long lists of participant names
     const isGroupPerformance = performanceType && ['Duet', 'Trio', 'Group'].includes(performanceType);
     
-    // Determine display name: ALWAYS use studio name for groups if available, otherwise use dancer name
+    // Determine display name: ALWAYS use studio name for groups/duos/trios, never dancer names
     let displayName: string;
     if (isGroupPerformance) {
-      // For groups, prioritize studioName, but if not provided, check if dancerName is already a studio name
-      // (this handles cases where regenerate endpoint already calculated it)
+      // For groups/duos/trios, ALWAYS use studioName, NEVER dancer names
       if (studioName && studioName.trim() !== '') {
         displayName = studioName.toUpperCase();
         console.log(`📝 Group performance - Using studio name: ${displayName}`);
       } else if (dancerName && !dancerName.includes(',') && dancerName.trim() !== '') {
         // If dancerName doesn't contain commas (not a list of names), use it as studio name
+        // This handles cases where regenerate endpoint already calculated studio name
         displayName = dancerName.toUpperCase();
-        console.log(`📝 Group performance - Using dancerName as studio (no studioName provided): ${displayName}`);
+        console.log(`📝 Group performance - Using dancerName as studio (no studioName provided, but dancerName is single name): ${displayName}`);
       } else {
-        // Fallback: use dancerName even if it's a list (better than nothing)
-        displayName = dancerName.toUpperCase();
-        console.warn(`⚠️ Group performance - No studio name found, using dancerName: ${displayName}`);
+        // Last resort: use a generic name instead of dancer names
+        displayName = 'STUDIO NAME';
+        console.error(`❌ Group performance - Studio name not found and dancerName contains commas (dancer names). Using fallback.`);
+        console.error(`❌ dancerName: ${dancerName}, studioName: ${studioName || 'N/A'}`);
       }
     } else {
       // For solo performances, use dancer name

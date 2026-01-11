@@ -190,15 +190,26 @@ export async function POST(request: NextRequest) {
     }
     
     let displayName: string;
-    if (isGroupPerformance && studioName && studioName.trim() !== '') {
-      displayName = studioName;
-      console.log(`📝 Group performance - Using studio name: ${displayName}`);
-    } else if (participantNames.length > 0) {
-      displayName = participantNames.join(', ');
-      console.log(`📝 Solo performance - Using participant names: ${displayName}`);
+    if (isGroupPerformance) {
+      // For groups/duos/trios, ALWAYS use studio name, never participant names
+      if (studioName && studioName.trim() !== '') {
+        displayName = studioName;
+        console.log(`📝 Group performance - Using studio name: ${displayName}`);
+      } else {
+        // If studio name not found, use contestant name as fallback (but NOT participant names)
+        displayName = perf.contestant_name || 'Studio Name';
+        console.warn(`⚠️ Group performance - Studio name not found, using fallback: ${displayName}`);
+        console.warn(`⚠️ Available data - studioName: ${studioName || 'N/A'}, contestant_name: ${perf.contestant_name || 'N/A'}`);
+      }
     } else {
-      displayName = perf.contestant_name || studioName || 'Participant';
-      console.warn(`⚠️ No participant names found, using fallback: ${displayName}`);
+      // For solo performances, use participant names
+      if (participantNames.length > 0) {
+        displayName = participantNames.join(', ');
+        console.log(`📝 Solo performance - Using participant names: ${displayName}`);
+      } else {
+        displayName = perf.contestant_name || studioName || 'Participant';
+        console.warn(`⚠️ No participant names found, using fallback: ${displayName}`);
+      }
     }
 
     // Get contestant_id from event_entry if not in performance
