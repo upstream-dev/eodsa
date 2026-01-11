@@ -134,6 +134,8 @@ export const initializeDatabase = async () => {
     // Add rankings API required columns
     await sqlClient`ALTER TABLE event_entries ADD COLUMN IF NOT EXISTS performance_type TEXT`;
     await sqlClient`ALTER TABLE event_entries ADD COLUMN IF NOT EXISTS age_category TEXT`;
+    // Add studio_name column for certificate generation (Duet/Trio/Group use studio name, Solo uses dancer name)
+    await sqlClient`ALTER TABLE event_entries ADD COLUMN IF NOT EXISTS studio_name TEXT`;
     await sqlClient`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_end_date TEXT`;
     await sqlClient`ALTER TABLE performances ADD COLUMN IF NOT EXISTS item_number INTEGER`;
     await sqlClient`ALTER TABLE performances ADD COLUMN IF NOT EXISTS performance_order INTEGER`;

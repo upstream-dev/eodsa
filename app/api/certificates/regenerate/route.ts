@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     const sqlClient = getSql();
 
     // Get performance details
-    // Try to get studio_name from multiple sources: contestants table, studios table, or from participant names if it's a group
+    // CRITICAL: For Duet/Trio/Group, studio_name comes from event_entries.studio_name
+    // For Solo, use dancer/participant name
     const perfResult = await sqlClient`
       SELECT 
         p.*,
@@ -35,16 +36,13 @@ export async function POST(request: NextRequest) {
         ee.contestant_id,
         ee.id as event_entry_id,
         ee.participant_ids,
-        c.studio_name,
+        ee.studio_name,
         c.name as contestant_name,
-        c.type as contestant_type,
-        -- Also try to get studio name from studios table if contestant has studio association
-        s.name as studio_name_from_studios
+        c.type as contestant_type
       FROM performances p
       JOIN events e ON e.id = p.event_id
       LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
       LEFT JOIN contestants c ON c.id = ee.contestant_id
-      LEFT JOIN studios s ON (s.email = c.email OR s.name = c.studio_name)
       WHERE p.id = ${performanceId}
     ` as any[];
 
@@ -154,80 +152,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine display name
-    // For group performances, always use studio name if available
+    // CRITICAL: For Duet/Trio/Group, use event_entries.studio_name (NEVER participant names)
+    // For Solo, use participant/dancer names
     const isGroupPerformance = perf.performance_type && ['Duet', 'Trio', 'Group'].includes(perf.performance_type);
     
-    // Get studio name from multiple sources (prioritize studio_name_from_studios, then studio_name from contestants)
-    let studioName = perf.studio_name_from_studios || perf.studio_name;
+    // Get studio name from event_entries.studio_name (the single source of truth)
+    const studioName = perf.studio_name || null;
     
-    // If studio name is still not found and it's a group, try to get it from participants' studio associations
-    if (isGroupPerformance && (!studioName || studioName.trim() === '') && perf.participant_ids) {
-      try {
-        // Handle JSONB participant_ids - parse if it's a string
-        let participantIds: string[] = [];
-        if (Array.isArray(perf.participant_ids)) {
-          participantIds = perf.participant_ids;
-        } else if (typeof perf.participant_ids === 'string') {
-          try {
-            participantIds = JSON.parse(perf.participant_ids);
-          } catch {
-            // If not valid JSON, try splitting by comma
-            participantIds = perf.participant_ids.includes(',') 
-              ? perf.participant_ids.split(',').map((id: string) => id.trim())
-              : [perf.participant_ids];
-          }
-        }
-        
-        console.log(`🔍 Trying to get studio name from participants: ${JSON.stringify(participantIds)}`);
-        
-        if (participantIds.length > 0) {
-          // Try to get studio name from participants' studio associations
-          // Handle both dancer IDs and EODSA IDs
-          const studioResult = await sqlClient`
-            SELECT DISTINCT s.name as studio_name
-            FROM dancers d
-            LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
-            LEFT JOIN studios s ON sa.studio_id = s.id
-            WHERE (d.id = ANY(${participantIds}) OR d.eodsa_id = ANY(${participantIds}))
-              AND s.name IS NOT NULL
-              AND s.name != ''
-            LIMIT 1
-          ` as any[];
-          
-          console.log(`🔍 Studio query result: ${JSON.stringify(studioResult)}`);
-          
-          if (studioResult.length > 0 && studioResult[0].studio_name) {
-            studioName = studioResult[0].studio_name;
-            console.log(`✅ Found studio name from participants: ${studioName}`);
-          } else {
-            console.warn(`⚠️ No studio found for participants: ${JSON.stringify(participantIds)}`);
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error fetching studio name from participants:', error);
-        console.error('❌ Error details:', error instanceof Error ? error.message : String(error));
-      }
-    }
-    
-    // FIX: If studio name is still not found and it's a group, check if contestant represents a studio
-    if (isGroupPerformance && (!studioName || studioName.trim() === '') && perf.contestant_type === 'studio' && perf.contestant_name) {
-      // Only use contestant_name if the contestant type is 'studio'
-      studioName = perf.contestant_name;
-      console.log(`📝 Group performance - Using contestant name as studio (contestant type is studio): ${studioName}`);
-    }
-    
-    // HARD-ENFORCE: For groups/duos/trios, displayName MUST be studioName, NEVER participant names
+    // HARD-ENFORCE: For groups/duos/trios, displayName MUST be studioName from event_entries, NEVER participant names
     let displayName: string;
     if (isGroupPerformance) {
-      // ABSOLUTE PRIORITY: Studio name for groups/duos/trios
+      // ABSOLUTE PRIORITY: Studio name from event_entries.studio_name for groups/duos/trios
       if (studioName && studioName.trim() !== '') {
         displayName = studioName;
-        console.log(`📝 Group performance - Using studio name: ${displayName}`);
+        console.log(`📝 Group performance - Using studio name from event_entries: ${displayName}`);
       } else {
         // Last resort fallback - but NEVER use participant names
-        displayName = perf.contestant_name || 'Studio Name';
-        console.error(`❌ Group performance - Studio name not found! Using fallback: ${displayName}`);
-        console.error(`❌ Available data - studioName: ${studioName || 'N/A'}, contestant_name: ${perf.contestant_name || 'N/A'}, contestant_type: ${perf.contestant_type || 'N/A'}`);
+        displayName = 'Studio Name';
+        console.error(`❌ Group performance - event_entries.studio_name is missing! Using fallback.`);
+        console.error(`❌ Performance ID: ${performanceId}, Event Entry ID: ${perf.event_entry_id}`);
+        console.error(`❌ This should be fixed by populating event_entries.studio_name for this entry.`);
       }
     } else {
       // For solo performances ONLY, use participant names
@@ -235,7 +179,7 @@ export async function POST(request: NextRequest) {
         displayName = participantNames.join(', ');
         console.log(`📝 Solo performance - Using participant names: ${displayName}`);
       } else {
-        displayName = perf.contestant_name || studioName || 'Participant';
+        displayName = perf.contestant_name || 'Participant';
         console.warn(`⚠️ No participant names found, using fallback: ${displayName}`);
       }
     }
@@ -336,35 +280,29 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔄 Regenerating certificate - Base URL: ${baseUrl}`);
     
-    // HARD-ENFORCE: For groups/duos/trios, dancerName MUST be studioName, not displayName
-    // This ensures the generate endpoint receives the studio name even if displayName fallback was used
-    const finalDancerName = isGroupPerformance 
-      ? (studioName && studioName.trim() !== '' ? studioName : displayName)
-      : displayName;
-    
-    // HARD-ENFORCE: For groups/duos/trios, ensure studioName is passed (use displayName if studioName is empty)
-    const finalStudioName = isGroupPerformance 
-      ? (studioName && studioName.trim() !== '' ? studioName : displayName)
-      : (studioName || undefined);
+    // HARD-ENFORCE: For groups/duos/trios, dancerName MUST be studioName from event_entries
+    // For solo, dancerName is the participant name
+    const finalDancerName = displayName; // displayName is already correct (studio name for groups, dancer name for solo)
+    const finalStudioName = isGroupPerformance ? studioName : undefined;
     
     console.log(`📝 Final names for certificate generation:`);
     console.log(`   - isGroupPerformance: ${isGroupPerformance}`);
-    console.log(`   - finalDancerName: ${finalDancerName}`);
-    console.log(`   - finalStudioName: ${finalStudioName}`);
-    console.log(`   - displayName: ${displayName}`);
+    console.log(`   - finalDancerName: ${finalDancerName} (from event_entries.studio_name for groups, participant names for solo)`);
+    console.log(`   - finalStudioName: ${finalStudioName || 'N/A'}`);
+    console.log(`   - event_entries.studio_name: ${studioName || 'NULL'}`);
     
     const certResponse = await fetch(`${baseUrl}/api/certificates/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         dancerId: dancerId,
-        dancerName: finalDancerName, // HARD-ENFORCED: For groups, this MUST be studioName
+        dancerName: finalDancerName, // Studio name for groups, dancer name for solo
         eodsaId: perf.eodsa_id || undefined,
         performanceId: performanceId,
         eventEntryId: perf.event_entry_id,
         eventId: perf.event_id,
         performanceType: perf.performance_type,
-        studioName: finalStudioName, // HARD-ENFORCED: For groups, this MUST be studioName
+        studioName: finalStudioName, // Studio name from event_entries for groups
         percentage: averagePercentage,
         style: style,
         title: title,

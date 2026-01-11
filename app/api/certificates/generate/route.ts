@@ -119,29 +119,24 @@ export async function POST(request: NextRequest) {
     
     // CRITICAL: Determine what should be stored in certificates.dancer_name
     // SOLO → dancer_name = dancer/participant name
-    // DUO/TRIO/GROUP → dancer_name = studio name (NEVER participant names)
+    // DUO/TRIO/GROUP → dancer_name = studio name from event_entries.studio_name (NEVER participant names)
     let displayName: string;
     let nameToStoreInDatabase: string; // This is what goes into certificates.dancer_name
     
     if (isGroupPerformance) {
-      // For groups/duos/trios, ALWAYS use studioName, NEVER dancer names
+      // For groups/duos/trios, ALWAYS use studioName from event_entries, NEVER dancer names
       if (studioName && studioName.trim() !== '') {
         displayName = studioName.toUpperCase();
-        nameToStoreInDatabase = studioName; // Store studio name, not participant names
-        console.log(`📝 Group performance - Using studio name: ${displayName}`);
-      } else if (dancerName && !dancerName.includes(',') && dancerName.trim() !== '') {
-        // If dancerName doesn't contain commas (not a list of names), use it as studio name
-        // This handles cases where regenerate endpoint already calculated studio name
-        displayName = dancerName.toUpperCase();
-        nameToStoreInDatabase = dancerName; // Store as-is (already studio name)
-        console.log(`📝 Group performance - Using dancerName as studio (no studioName provided, but dancerName is single name): ${displayName}`);
+        nameToStoreInDatabase = studioName; // Store studio name from event_entries, not participant names
+        console.log(`📝 Group performance - Using studio name from event_entries: ${displayName}`);
       } else {
         // Last resort: use a generic name instead of dancer names
         displayName = 'STUDIO NAME';
         nameToStoreInDatabase = 'Studio Name'; // Store generic, NOT participant names
-        console.error(`❌ Group performance - Studio name not found and dancerName contains commas (dancer names). Using fallback.`);
-        console.error(`❌ dancerName: ${dancerName}, studioName: ${studioName || 'N/A'}`);
+        console.error(`❌ Group performance - event_entries.studio_name is missing! Using fallback.`);
+        console.error(`❌ studioName: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
         console.error(`❌ NOT storing participant names in database for group performance!`);
+        console.error(`❌ This entry needs event_entries.studio_name to be populated.`);
       }
     } else {
       // For solo performances, use dancer name
@@ -152,7 +147,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`📝 Certificate display name: ${displayName}`);
     console.log(`📝 Name to store in database (certificates.dancer_name): ${nameToStoreInDatabase}`);
-    console.log(`📝 isGroup: ${isGroupPerformance}, studioName: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
+    console.log(`📝 isGroup: ${isGroupPerformance}, studioName from event_entries: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
 
     // Get event to check for custom certificate template
     let templatePublicId = 'Template_syz7di'; // Default template
