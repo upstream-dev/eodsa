@@ -177,22 +177,63 @@ export async function POST(request: NextRequest) {
         }
         
         if (participantIds.length > 0) {
-          // Use SAME query pattern as dancers page: studio_applications -> studios
-          const studioResult = await sqlClient`
-            SELECT DISTINCT s.name as studio_name
-            FROM dancers d
-            LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
-            LEFT JOIN studios s ON sa.studio_id = s.id
-            WHERE (d.id = ANY(${participantIds}) OR d.eodsa_id = ANY(${participantIds}))
-              AND s.name IS NOT NULL
-              AND s.name != ''
-            LIMIT 1
-          ` as any[];
+          console.log(`🔍 Looking up studio for participant IDs: ${JSON.stringify(participantIds)}`);
+          console.log(`🔍 Participant IDs type: ${typeof participantIds[0]}, length: ${participantIds.length}`);
           
-          if (studioResult.length > 0 && studioResult[0].studio_name) {
-            studioName = studioResult[0].studio_name;
-            console.log(`✅ Found studio name from participants (same pattern as dancers page): ${studioName}`);
+          // Use SAME query pattern as dancers page: studio_applications -> studios
+          // Handle both dancer IDs and EODSA IDs - try each participant individually if needed
+          let foundStudio = false;
+          
+          for (const participantId of participantIds) {
+            if (foundStudio) break;
+            
+            console.log(`🔍 Trying participant ID: ${participantId} (type: ${typeof participantId})`);
+            
+            // Try by dancer ID first
+            const studioResultById = await sqlClient`
+              SELECT DISTINCT s.name as studio_name
+              FROM dancers d
+              LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+              LEFT JOIN studios s ON sa.studio_id = s.id
+              WHERE d.id = ${participantId}
+                AND s.name IS NOT NULL
+                AND s.name != ''
+              LIMIT 1
+            ` as any[];
+            
+            if (studioResultById.length > 0 && studioResultById[0].studio_name) {
+              studioName = studioResultById[0].studio_name;
+              foundStudio = true;
+              console.log(`✅ Found studio name by dancer ID: ${studioName}`);
+              break;
+            }
+            
+            // Try by EODSA ID
+            const studioResultByEodsa = await sqlClient`
+              SELECT DISTINCT s.name as studio_name
+              FROM dancers d
+              LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+              LEFT JOIN studios s ON sa.studio_id = s.id
+              WHERE d.eodsa_id = ${participantId}
+                AND s.name IS NOT NULL
+                AND s.name != ''
+              LIMIT 1
+            ` as any[];
+            
+            if (studioResultByEodsa.length > 0 && studioResultByEodsa[0].studio_name) {
+              studioName = studioResultByEodsa[0].studio_name;
+              foundStudio = true;
+              console.log(`✅ Found studio name by EODSA ID: ${studioName}`);
+              break;
+            }
           }
+          
+          if (!foundStudio) {
+            console.warn(`⚠️ No studio found for any participant. Tried ${participantIds.length} participants.`);
+            console.warn(`⚠️ Participant IDs were: ${JSON.stringify(participantIds)}`);
+          }
+        } else {
+          console.warn(`⚠️ No participant IDs found for group performance`);
         }
       } catch (error) {
         console.error('❌ Error fetching studio name from participants:', error);

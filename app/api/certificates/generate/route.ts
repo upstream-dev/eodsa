@@ -124,19 +124,26 @@ export async function POST(request: NextRequest) {
     let nameToStoreInDatabase: string; // This is what goes into certificates.dancer_name
     
     if (isGroupPerformance) {
-      // For groups/duos/trios, ALWAYS use studioName from event_entries, NEVER dancer names
+      // For groups/duos/trios, ALWAYS use studioName, NEVER dancer names
+      // Priority: 1) studioName parameter, 2) dancerName if it's a single name (not comma-separated), 3) fallback
       if (studioName && studioName.trim() !== '') {
         displayName = studioName.toUpperCase();
-        nameToStoreInDatabase = studioName; // Store studio name from event_entries, not participant names
-        console.log(`📝 Group performance - Using studio name from event_entries: ${displayName}`);
+        nameToStoreInDatabase = studioName; // Store studio name, not participant names
+        console.log(`📝 Group performance - Using studioName parameter: ${displayName}`);
+      } else if (dancerName && !dancerName.includes(',') && dancerName.trim() !== '' && dancerName !== 'Studio Name') {
+        // If dancerName is a single name (not a list), use it as studio name
+        // But exclude the literal "Studio Name" fallback
+        displayName = dancerName.toUpperCase();
+        nameToStoreInDatabase = dancerName;
+        console.log(`📝 Group performance - Using dancerName as studio (single name, not comma-separated): ${displayName}`);
       } else {
         // Last resort: use a generic name instead of dancer names
         displayName = 'STUDIO NAME';
         nameToStoreInDatabase = 'Studio Name'; // Store generic, NOT participant names
-        console.error(`❌ Group performance - event_entries.studio_name is missing! Using fallback.`);
+        console.error(`❌ Group performance - Studio name not found! Using fallback.`);
         console.error(`❌ studioName: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
+        console.error(`❌ performanceType: ${performanceType}, isGroupPerformance: ${isGroupPerformance}`);
         console.error(`❌ NOT storing participant names in database for group performance!`);
-        console.error(`❌ This entry needs event_entries.studio_name to be populated.`);
       }
     } else {
       // For solo performances, use dancer name
