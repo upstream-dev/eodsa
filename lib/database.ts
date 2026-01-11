@@ -2500,10 +2500,104 @@ export const db = {
             }
 
             // Determine display name (studio name for groups, participant names for solos)
-            const isGroupPerformance = perf.performance_type && ['Duet', 'Trio', 'Group'].includes(perf.performance_type);
-            const displayName = isGroupPerformance && perf.studio_name 
-              ? perf.studio_name 
-              : participantNames.join(', ');
+            // Use same logic as regenerate endpoint
+            
+            // Infer performance type from participant count if performance_type is null
+            let inferredPerformanceType: string | null = perf.performance_type || null;
+            if (!inferredPerformanceType && participantNames.length > 0) {
+              if (participantNames.length === 1) {
+                inferredPerformanceType = 'Solo';
+              } else if (participantNames.length === 2) {
+                inferredPerformanceType = 'Duet';
+              } else if (participantNames.length === 3) {
+                inferredPerformanceType = 'Trio';
+              } else if (participantNames.length >= 4) {
+                inferredPerformanceType = 'Group';
+              }
+            }
+            
+            const isGroupPerformance = inferredPerformanceType && ['Duet', 'Trio', 'Group'].includes(inferredPerformanceType);
+            
+            // Get studio name using the SAME pattern as regenerate endpoint: event_entries.studio_name or lookup from participants
+            let studioName: string | null = perf.event_entry_studio_name || null;
+            
+            // If studio_name not in event_entries, get it from participants (same way dancers page does it)
+            if (isGroupPerformance && (!studioName || studioName.trim() === '') && perf.participant_ids) {
+              try {
+                // Handle JSONB participant_ids - parse if it's a string
+                let participantIds: string[] = [];
+                if (Array.isArray(perf.participant_ids)) {
+                  participantIds = perf.participant_ids;
+                } else if (typeof perf.participant_ids === 'string') {
+                  try {
+                    participantIds = JSON.parse(perf.participant_ids);
+                  } catch {
+                    participantIds = perf.participant_ids.includes(',') 
+                      ? perf.participant_ids.split(',').map((id: string) => id.trim())
+                      : [perf.participant_ids];
+                  }
+                }
+                
+                if (participantIds.length > 0) {
+                  // Try each participant individually (same as regenerate endpoint)
+                  for (const participantId of participantIds) {
+                    if (studioName) break;
+                    
+                    // Try by dancer ID first
+                    const studioResultById = await sqlClient`
+                      SELECT DISTINCT s.name as studio_name
+                      FROM dancers d
+                      LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+                      LEFT JOIN studios s ON sa.studio_id = s.id
+                      WHERE d.id = ${participantId}
+                        AND s.name IS NOT NULL
+                        AND s.name != ''
+                      LIMIT 1
+                    ` as any[];
+                    
+                    if (studioResultById.length > 0 && studioResultById[0].studio_name) {
+                      studioName = studioResultById[0].studio_name;
+                      break;
+                    }
+                    
+                    // Try by EODSA ID
+                    const studioResultByEodsa = await sqlClient`
+                      SELECT DISTINCT s.name as studio_name
+                      FROM dancers d
+                      LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+                      LEFT JOIN studios s ON sa.studio_id = s.id
+                      WHERE d.eodsa_id = ${participantId}
+                        AND s.name IS NOT NULL
+                        AND s.name != ''
+                      LIMIT 1
+                    ` as any[];
+                    
+                    if (studioResultByEodsa.length > 0 && studioResultByEodsa[0].studio_name) {
+                      studioName = studioResultByEodsa[0].studio_name;
+                      break;
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('Error fetching studio name from participants:', error);
+              }
+            }
+            
+            // Determine display name
+            let displayName: string;
+            if (isGroupPerformance) {
+              // For groups/duos/trios, use studio name
+              if (studioName && studioName.trim() !== '') {
+                displayName = studioName;
+              } else {
+                // Fallback - but NEVER use participant names
+                displayName = 'Studio Name';
+                console.error(`❌ Group performance - Studio name not found for performance ${performanceId}`);
+              }
+            } else {
+              // For solo performances, use participant names
+              displayName = participantNames.join(', ');
+            }
 
             // Trigger certificate generation via API route (fire and forget)
             // Use a server-side fetch to avoid bundling issues
