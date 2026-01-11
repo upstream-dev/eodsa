@@ -115,7 +115,23 @@ export async function POST(request: NextRequest) {
 
     // For groups, duos, and trios (non-solo performances), use studio name instead of dancer names
     // This prevents unreadable certificates with long lists of participant names
-    const isGroupPerformance = performanceType && ['Duet', 'Trio', 'Group'].includes(performanceType);
+    
+    // Infer performance type if missing - check if dancerName contains commas (multiple participants)
+    let inferredPerformanceType: string | null = performanceType || null;
+    if (!inferredPerformanceType && dancerName && dancerName.includes(',')) {
+      // If dancerName contains commas, it's likely a group performance with multiple names
+      const nameCount = dancerName.split(',').length;
+      if (nameCount === 2) {
+        inferredPerformanceType = 'Duet';
+      } else if (nameCount === 3) {
+        inferredPerformanceType = 'Trio';
+      } else if (nameCount >= 4) {
+        inferredPerformanceType = 'Group';
+      }
+      console.log(`📝 Inferred performance type from dancerName (${nameCount} names): ${inferredPerformanceType}`);
+    }
+    
+    const isGroupPerformance = inferredPerformanceType && ['Duet', 'Trio', 'Group'].includes(inferredPerformanceType);
     
     // CRITICAL: Determine what should be stored in certificates.dancer_name
     // SOLO → dancer_name = dancer/participant name
