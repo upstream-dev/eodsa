@@ -2,12 +2,9 @@
 
 import Link from 'next/link';
 import { usePhase2Feature } from '@/hooks/usePhase2Feature';
-import { useState } from 'react';
 
 export default function BackendDashboard() {
   const { isEnabled: isPhase2Enabled, isLoading } = usePhase2Feature();
-  const [batchFixLoading, setBatchFixLoading] = useState(false);
-  const [batchFixReport, setBatchFixReport] = useState<any>(null);
   
   // Portal links that should be disabled when Phase 2 is disabled
   const phase2Portals = [
@@ -102,111 +99,6 @@ export default function BackendDashboard() {
               {phase2Portals.map((portal) => (
                 <PortalLink key={portal.href} {...portal} />
               ))}
-            </div>
-          </div>
-
-          {/* Certificate Batch Fix Tool */}
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-gray-500/30 p-6 mb-8 shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-4 text-center">Certificate Tools</h3>
-            <div className="space-y-4">
-              <div className="bg-gray-700/50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-white mb-2">Batch Fix Group Certificates</h4>
-                <p className="text-gray-300 text-sm mb-4">
-                  Regenerates all certificates for Duet, Trio, and Group performances to ensure they use studio names and dynamic font scaling.
-                </p>
-                <button
-                  onClick={async () => {
-                    if (batchFixLoading) return;
-                    setBatchFixLoading(true);
-                    setBatchFixReport(null);
-                    
-                    try {
-                      const response = await fetch('/api/certificates/batch-fix-groups', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                      });
-                      
-                      const data = await response.json();
-                      setBatchFixReport(data);
-                    } catch (error) {
-                      setBatchFixReport({
-                        success: false,
-                        error: error instanceof Error ? error.message : 'Unknown error'
-                      });
-                    } finally {
-                      setBatchFixLoading(false);
-                    }
-                  }}
-                  disabled={batchFixLoading}
-                  className={`w-full px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                    batchFixLoading
-                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
-                  }`}
-                >
-                  {batchFixLoading ? 'Processing...' : '🔄 Batch Fix Group Certificates'}
-                </button>
-              </div>
-
-              {/* Report Display */}
-              {batchFixReport && (
-                <div className={`rounded-lg p-4 border-2 ${
-                  batchFixReport.success
-                    ? 'bg-green-900/20 border-green-500/30'
-                    : 'bg-red-900/20 border-red-500/30'
-                }`}>
-                  <h4 className={`text-lg font-semibold mb-2 ${
-                    batchFixReport.success ? 'text-green-300' : 'text-red-300'
-                  }`}>
-                    {batchFixReport.success ? '✅ Batch Fix Report' : '❌ Batch Fix Failed'}
-                  </h4>
-                  
-                  {batchFixReport.success && batchFixReport.results && (
-                    <div className="space-y-2 text-sm">
-                      <div className="text-gray-300">
-                        <span className="font-semibold">Total Certificates:</span> {batchFixReport.results.total}
-                      </div>
-                      <div className="text-gray-300">
-                        <span className="font-semibold">Processed:</span> {batchFixReport.results.processed}
-                      </div>
-                      <div className="text-green-300">
-                        <span className="font-semibold">Succeeded:</span> {batchFixReport.results.succeeded}
-                      </div>
-                      <div className="text-red-300">
-                        <span className="font-semibold">Failed:</span> {batchFixReport.results.failed}
-                      </div>
-                      
-                      {batchFixReport.results.errors && batchFixReport.results.errors.length > 0 && (
-                        <div className="mt-4">
-                          <h5 className="font-semibold text-red-300 mb-2">Errors ({batchFixReport.results.errors.length}):</h5>
-                          <div className="max-h-40 overflow-y-auto space-y-1">
-                            {batchFixReport.results.errors.slice(0, 10).map((err: any, idx: number) => (
-                              <div key={idx} className="text-xs text-red-200 bg-red-900/30 p-2 rounded">
-                                <div><span className="font-semibold">Performance ID:</span> {err.performanceId}</div>
-                                <div><span className="font-semibold">Error:</span> {err.error.substring(0, 100)}...</div>
-                              </div>
-                            ))}
-                            {batchFixReport.results.errors.length > 10 && (
-                              <div className="text-xs text-gray-400 italic">
-                                ... and {batchFixReport.results.errors.length - 10} more errors
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {!batchFixReport.success && (
-                    <div className="text-red-200 text-sm">
-                      <p><span className="font-semibold">Error:</span> {batchFixReport.error || 'Unknown error'}</p>
-                      {batchFixReport.details && (
-                        <p className="mt-2 text-xs text-gray-400">{batchFixReport.details}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
