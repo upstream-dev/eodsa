@@ -170,7 +170,8 @@ export async function POST(request: NextRequest) {
     
     console.log(`📝 Certificate display name: ${displayName}`);
     console.log(`📝 Name to store in database (certificates.dancer_name): ${nameToStoreInDatabase}`);
-    console.log(`📝 isGroup: ${isGroupPerformance}, studioName from event_entries: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
+    console.log(`📝 isGroup: ${isGroupPerformance}, performanceType (from request): ${performanceType || 'null'}, inferredPerformanceType: ${inferredPerformanceType || 'null'}`);
+    console.log(`📝 studioName from event_entries: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
 
     // Get event to check for custom certificate template
     let templatePublicId = 'Template_syz7di'; // Default template
