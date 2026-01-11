@@ -209,20 +209,28 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // FIX: If studio name is still not found and it's a group, check if contestant represents a studio
+    if (isGroupPerformance && (!studioName || studioName.trim() === '') && perf.contestant_type === 'studio' && perf.contestant_name) {
+      // Only use contestant_name if the contestant type is 'studio'
+      studioName = perf.contestant_name;
+      console.log(`📝 Group performance - Using contestant name as studio (contestant type is studio): ${studioName}`);
+    }
+    
+    // HARD-ENFORCE: For groups/duos/trios, displayName MUST be studioName, NEVER participant names
     let displayName: string;
     if (isGroupPerformance) {
-      // For groups/duos/trios, ALWAYS use studio name, never participant names
+      // ABSOLUTE PRIORITY: Studio name for groups/duos/trios
       if (studioName && studioName.trim() !== '') {
         displayName = studioName;
         console.log(`📝 Group performance - Using studio name: ${displayName}`);
       } else {
-        // If studio name not found, use contestant name as fallback (but NOT participant names)
+        // Last resort fallback - but NEVER use participant names
         displayName = perf.contestant_name || 'Studio Name';
-        console.warn(`⚠️ Group performance - Studio name not found, using fallback: ${displayName}`);
-        console.warn(`⚠️ Available data - studioName: ${studioName || 'N/A'}, contestant_name: ${perf.contestant_name || 'N/A'}`);
+        console.error(`❌ Group performance - Studio name not found! Using fallback: ${displayName}`);
+        console.error(`❌ Available data - studioName: ${studioName || 'N/A'}, contestant_name: ${perf.contestant_name || 'N/A'}, contestant_type: ${perf.contestant_type || 'N/A'}`);
       }
     } else {
-      // For solo performances, use participant names
+      // For solo performances ONLY, use participant names
       if (participantNames.length > 0) {
         displayName = participantNames.join(', ');
         console.log(`📝 Solo performance - Using participant names: ${displayName}`);
@@ -328,18 +336,35 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔄 Regenerating certificate - Base URL: ${baseUrl}`);
     
+    // HARD-ENFORCE: For groups/duos/trios, dancerName MUST be studioName, not displayName
+    // This ensures the generate endpoint receives the studio name even if displayName fallback was used
+    const finalDancerName = isGroupPerformance 
+      ? (studioName && studioName.trim() !== '' ? studioName : displayName)
+      : displayName;
+    
+    // HARD-ENFORCE: For groups/duos/trios, ensure studioName is passed (use displayName if studioName is empty)
+    const finalStudioName = isGroupPerformance 
+      ? (studioName && studioName.trim() !== '' ? studioName : displayName)
+      : (studioName || undefined);
+    
+    console.log(`📝 Final names for certificate generation:`);
+    console.log(`   - isGroupPerformance: ${isGroupPerformance}`);
+    console.log(`   - finalDancerName: ${finalDancerName}`);
+    console.log(`   - finalStudioName: ${finalStudioName}`);
+    console.log(`   - displayName: ${displayName}`);
+    
     const certResponse = await fetch(`${baseUrl}/api/certificates/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         dancerId: dancerId,
-        dancerName: isGroupPerformance && studioName ? studioName : displayName, // Pass studio name as dancerName for groups if available
+        dancerName: finalDancerName, // HARD-ENFORCED: For groups, this MUST be studioName
         eodsaId: perf.eodsa_id || undefined,
         performanceId: performanceId,
         eventEntryId: perf.event_entry_id,
         eventId: perf.event_id,
         performanceType: perf.performance_type,
-        studioName: studioName || undefined, // Always pass studioName explicitly
+        studioName: finalStudioName, // HARD-ENFORCED: For groups, this MUST be studioName
         percentage: averagePercentage,
         style: style,
         title: title,
