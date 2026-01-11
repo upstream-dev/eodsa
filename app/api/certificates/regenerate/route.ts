@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const sqlClient = getSql();
 
     // Get performance details
-    // CRITICAL: For Duet/Trio/Group, studio_name comes from event_entries.studio_name
+    // CRITICAL: For Duet/Trio/Group, get studio_name from participants via studio_applications (same as dancers page)
     // For Solo, use dancer/participant name
     const perfResult = await sqlClient`
       SELECT 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         ee.contestant_id,
         ee.id as event_entry_id,
         ee.participant_ids,
-        ee.studio_name,
+        ee.studio_name as event_entry_studio_name,
         c.name as contestant_name,
         c.type as contestant_type
       FROM performances p
@@ -152,26 +152,66 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine display name
-    // CRITICAL: For Duet/Trio/Group, use event_entries.studio_name (NEVER participant names)
+    // CRITICAL: For Duet/Trio/Group, get studio_name from participants via studio_applications (SAME AS DANCERS PAGE)
     // For Solo, use participant/dancer names
     const isGroupPerformance = perf.performance_type && ['Duet', 'Trio', 'Group'].includes(perf.performance_type);
     
-    // Get studio name from event_entries.studio_name (the single source of truth)
-    const studioName = perf.studio_name || null;
+    // Get studio name using the SAME pattern as dancers page: studio_applications -> studios join
+    let studioName: string | null = perf.event_entry_studio_name || null;
     
-    // HARD-ENFORCE: For groups/duos/trios, displayName MUST be studioName from event_entries, NEVER participant names
+    // If studio_name not in event_entries, get it from participants (same way dancers page does it)
+    if (isGroupPerformance && (!studioName || studioName.trim() === '') && perf.participant_ids) {
+      try {
+        // Handle JSONB participant_ids - parse if it's a string
+        let participantIds: string[] = [];
+        if (Array.isArray(perf.participant_ids)) {
+          participantIds = perf.participant_ids;
+        } else if (typeof perf.participant_ids === 'string') {
+          try {
+            participantIds = JSON.parse(perf.participant_ids);
+          } catch {
+            participantIds = perf.participant_ids.includes(',') 
+              ? perf.participant_ids.split(',').map((id: string) => id.trim())
+              : [perf.participant_ids];
+          }
+        }
+        
+        if (participantIds.length > 0) {
+          // Use SAME query pattern as dancers page: studio_applications -> studios
+          const studioResult = await sqlClient`
+            SELECT DISTINCT s.name as studio_name
+            FROM dancers d
+            LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+            LEFT JOIN studios s ON sa.studio_id = s.id
+            WHERE (d.id = ANY(${participantIds}) OR d.eodsa_id = ANY(${participantIds}))
+              AND s.name IS NOT NULL
+              AND s.name != ''
+            LIMIT 1
+          ` as any[];
+          
+          if (studioResult.length > 0 && studioResult[0].studio_name) {
+            studioName = studioResult[0].studio_name;
+            console.log(`✅ Found studio name from participants (same pattern as dancers page): ${studioName}`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error fetching studio name from participants:', error);
+      }
+    }
+    
+    // HARD-ENFORCE: For groups/duos/trios, displayName MUST be studioName, NEVER participant names
     let displayName: string;
     if (isGroupPerformance) {
-      // ABSOLUTE PRIORITY: Studio name from event_entries.studio_name for groups/duos/trios
+      // ABSOLUTE PRIORITY: Studio name for groups/duos/trios
       if (studioName && studioName.trim() !== '') {
         displayName = studioName;
-        console.log(`📝 Group performance - Using studio name from event_entries: ${displayName}`);
+        console.log(`📝 Group performance - Using studio name: ${displayName}`);
       } else {
         // Last resort fallback - but NEVER use participant names
         displayName = 'Studio Name';
-        console.error(`❌ Group performance - event_entries.studio_name is missing! Using fallback.`);
+        console.error(`❌ Group performance - Studio name not found! Using fallback.`);
         console.error(`❌ Performance ID: ${performanceId}, Event Entry ID: ${perf.event_entry_id}`);
-        console.error(`❌ This should be fixed by populating event_entries.studio_name for this entry.`);
+        console.error(`❌ Tried: event_entries.studio_name and participants via studio_applications`);
       }
     } else {
       // For solo performances ONLY, use participant names
