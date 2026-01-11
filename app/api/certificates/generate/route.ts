@@ -95,7 +95,8 @@ export async function POST(request: NextRequest) {
     const pos = hasCustom ? positionsResult[0] : null;
 
     const nameTop = pos?.name_top || 48.5;
-    const nameFontSize = pos?.name_font_size || 65;
+    // Default font size - will be adjusted dynamically based on name length if not custom
+    const baseNameFontSize = pos?.name_font_size || 65;
     const percentageTop = pos?.percentage_top || 65.5;
     const percentageLeft = pos?.percentage_left || 15.5;
     const percentageFontSize = pos?.percentage_font_size || 76;
