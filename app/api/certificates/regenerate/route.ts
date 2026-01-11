@@ -154,7 +154,51 @@ export async function POST(request: NextRequest) {
     // Determine display name
     // CRITICAL: For Duet/Trio/Group, get studio_name from participants via studio_applications (SAME AS DANCERS PAGE)
     // For Solo, use participant/dancer names
-    const isGroupPerformance = perf.performance_type && ['Duet', 'Trio', 'Group'].includes(perf.performance_type);
+    
+    // Infer performance type from participant count if performance_type is null
+    let inferredPerformanceType: string | null = perf.performance_type || null;
+    if (!inferredPerformanceType && participantNames.length > 0) {
+      // Infer from participant count
+      if (participantNames.length === 1) {
+        inferredPerformanceType = 'Solo';
+      } else if (participantNames.length === 2) {
+        inferredPerformanceType = 'Duet';
+      } else if (participantNames.length === 3) {
+        inferredPerformanceType = 'Trio';
+      } else if (participantNames.length >= 4) {
+        inferredPerformanceType = 'Group';
+      }
+      console.log(`📝 Inferred performance type from participant count (${participantNames.length}): ${inferredPerformanceType}`);
+    } else if (!inferredPerformanceType && perf.participant_ids) {
+      // Try to infer from participant_ids if participantNames not available
+      let participantIds: string[] = [];
+      if (Array.isArray(perf.participant_ids)) {
+        participantIds = perf.participant_ids;
+      } else if (typeof perf.participant_ids === 'string') {
+        try {
+          participantIds = JSON.parse(perf.participant_ids);
+        } catch {
+          participantIds = perf.participant_ids.includes(',') 
+            ? perf.participant_ids.split(',').map((id: string) => id.trim())
+            : [perf.participant_ids];
+        }
+      }
+      
+      if (participantIds.length > 0) {
+        if (participantIds.length === 1) {
+          inferredPerformanceType = 'Solo';
+        } else if (participantIds.length === 2) {
+          inferredPerformanceType = 'Duet';
+        } else if (participantIds.length === 3) {
+          inferredPerformanceType = 'Trio';
+        } else if (participantIds.length >= 4) {
+          inferredPerformanceType = 'Group';
+        }
+        console.log(`📝 Inferred performance type from participant_ids count (${participantIds.length}): ${inferredPerformanceType}`);
+      }
+    }
+    
+    const isGroupPerformance = inferredPerformanceType && ['Duet', 'Trio', 'Group'].includes(inferredPerformanceType);
     
     // Get studio name using the SAME pattern as dancers page: studio_applications -> studios join
     let studioName: string | null = perf.event_entry_studio_name || null;
@@ -327,7 +371,9 @@ export async function POST(request: NextRequest) {
     console.log(`   - Display Name: ${displayName}`);
     console.log(`   - Studio Name: ${studioName || 'N/A'}`);
     console.log(`   - Is Group: ${isGroupPerformance}`);
-    console.log(`   - Performance Type: ${perf.performance_type}`);
+    console.log(`   - Performance Type (from DB): ${perf.performance_type || 'null'}`);
+    console.log(`   - Inferred Performance Type: ${inferredPerformanceType || 'null'}`);
+    console.log(`   - Participant Count: ${participantNames.length}`);
     console.log(`   - Style: ${style}`);
     console.log(`   - Title: ${title}`);
     console.log(`   - Percentage: ${averagePercentage} (type: ${typeof averagePercentage})`);
@@ -382,7 +428,7 @@ export async function POST(request: NextRequest) {
         performanceId: performanceId,
         eventEntryId: perf.event_entry_id,
         eventId: perf.event_id,
-        performanceType: perf.performance_type,
+        performanceType: inferredPerformanceType || perf.performance_type,
         studioName: finalStudioName, // Studio name from event_entries for groups
         percentage: averagePercentage,
         style: style,
