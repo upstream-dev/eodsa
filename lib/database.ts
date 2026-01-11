@@ -2439,6 +2439,7 @@ export const db = {
       // This will be handled by the API route
       try {
         // Get performance details for certificate generation
+        // CRITICAL: Use same query pattern as regenerate endpoint - get studio_name from event_entries
         const perfResult = await sqlClient`
           SELECT 
             p.*,
@@ -2446,7 +2447,10 @@ export const db = {
             e.name as event_name,
             ee.performance_type,
             ee.contestant_id,
-            c.studio_name,
+            ee.id as event_entry_id,
+            ee.participant_ids,
+            ee.studio_name as event_entry_studio_name,
+            c.name as contestant_name,
             c.type as contestant_type
           FROM performances p
           JOIN events e ON e.id = p.event_id
@@ -2519,8 +2523,8 @@ export const db = {
                   performanceId: performanceId,
                   eventEntryId: perf.event_entry_id,
                   eventId: perf.event_id,
-                  performanceType: perf.performance_type,
-                  studioName: perf.studio_name || undefined,
+                  performanceType: inferredPerformanceType || perf.performance_type,
+                  studioName: studioName || undefined,
                   percentage: averagePercentage,
                   style: perf.item_style || '',
                   title: perf.title || '',
