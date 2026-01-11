@@ -117,31 +117,42 @@ export async function POST(request: NextRequest) {
     // This prevents unreadable certificates with long lists of participant names
     const isGroupPerformance = performanceType && ['Duet', 'Trio', 'Group'].includes(performanceType);
     
-    // Determine display name: ALWAYS use studio name for groups/duos/trios, never dancer names
+    // CRITICAL: Determine what should be stored in certificates.dancer_name
+    // SOLO → dancer_name = dancer/participant name
+    // DUO/TRIO/GROUP → dancer_name = studio name (NEVER participant names)
     let displayName: string;
+    let nameToStoreInDatabase: string; // This is what goes into certificates.dancer_name
+    
     if (isGroupPerformance) {
       // For groups/duos/trios, ALWAYS use studioName, NEVER dancer names
       if (studioName && studioName.trim() !== '') {
         displayName = studioName.toUpperCase();
+        nameToStoreInDatabase = studioName; // Store studio name, not participant names
         console.log(`📝 Group performance - Using studio name: ${displayName}`);
       } else if (dancerName && !dancerName.includes(',') && dancerName.trim() !== '') {
         // If dancerName doesn't contain commas (not a list of names), use it as studio name
         // This handles cases where regenerate endpoint already calculated studio name
         displayName = dancerName.toUpperCase();
+        nameToStoreInDatabase = dancerName; // Store as-is (already studio name)
         console.log(`📝 Group performance - Using dancerName as studio (no studioName provided, but dancerName is single name): ${displayName}`);
       } else {
         // Last resort: use a generic name instead of dancer names
         displayName = 'STUDIO NAME';
+        nameToStoreInDatabase = 'Studio Name'; // Store generic, NOT participant names
         console.error(`❌ Group performance - Studio name not found and dancerName contains commas (dancer names). Using fallback.`);
         console.error(`❌ dancerName: ${dancerName}, studioName: ${studioName || 'N/A'}`);
+        console.error(`❌ NOT storing participant names in database for group performance!`);
       }
     } else {
       // For solo performances, use dancer name
       displayName = dancerName.toUpperCase();
+      nameToStoreInDatabase = dancerName; // Store dancer name for solo
       console.log(`📝 Solo performance - Using dancer name: ${displayName}`);
     }
     
-    console.log(`📝 Certificate display name: ${displayName}, isGroup: ${isGroupPerformance}, studioName: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
+    console.log(`📝 Certificate display name: ${displayName}`);
+    console.log(`📝 Name to store in database (certificates.dancer_name): ${nameToStoreInDatabase}`);
+    console.log(`📝 isGroup: ${isGroupPerformance}, studioName: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
 
     // Get event to check for custom certificate template
     let templatePublicId = 'Template_syz7di'; // Default template
@@ -323,18 +334,23 @@ export async function POST(request: NextRequest) {
     const certificateId = `cert_${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
     const createdAt = new Date().toISOString();
 
-    // Save certificate to database (sqlClient already declared above)
+    // CRITICAL FIX: Save the correct name to certificates.dancer_name
+    // For groups: store studio name (NOT participant names)
+    // For solo: store dancer name
+    // This ensures regeneration uses the correct value
     await sqlClient`
       INSERT INTO certificates (
         id, dancer_id, dancer_name, eodsa_id, email,
         performance_id, event_entry_id, percentage, style, title,
         medallion, event_date, certificate_url, created_at, created_by
       ) VALUES (
-        ${certificateId}, ${dancerId}, ${dancerName}, ${eodsaId || null}, ${email || null},
+        ${certificateId}, ${dancerId}, ${nameToStoreInDatabase}, ${eodsaId || null}, ${email || null},
         ${performanceId || null}, ${eventEntryId || null}, ${percentage}, ${style}, ${title},
         ${medallion}, ${eventDate}, ${certificateUrl}, ${createdAt}, ${createdBy || null}
       )
     `;
+    
+    console.log(`💾 Saved certificate to database with dancer_name: ${nameToStoreInDatabase} (performance_type: ${performanceType || 'N/A'})`);
 
     return NextResponse.json({
       success: true,
