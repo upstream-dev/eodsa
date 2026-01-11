@@ -163,12 +163,26 @@ export async function POST(request: NextRequest) {
     // If studio name is still not found and it's a group, try to get it from participants' studio associations
     if (isGroupPerformance && (!studioName || studioName.trim() === '') && perf.participant_ids) {
       try {
-        const participantIds = Array.isArray(perf.participant_ids) 
-          ? perf.participant_ids 
-          : (typeof perf.participant_ids === 'string' ? JSON.parse(perf.participant_ids) : []);
+        // Handle JSONB participant_ids - parse if it's a string
+        let participantIds: string[] = [];
+        if (Array.isArray(perf.participant_ids)) {
+          participantIds = perf.participant_ids;
+        } else if (typeof perf.participant_ids === 'string') {
+          try {
+            participantIds = JSON.parse(perf.participant_ids);
+          } catch {
+            // If not valid JSON, try splitting by comma
+            participantIds = perf.participant_ids.includes(',') 
+              ? perf.participant_ids.split(',').map((id: string) => id.trim())
+              : [perf.participant_ids];
+          }
+        }
+        
+        console.log(`🔍 Trying to get studio name from participants: ${JSON.stringify(participantIds)}`);
         
         if (participantIds.length > 0) {
-          // Try to get studio name from first participant's studio association
+          // Try to get studio name from participants' studio associations
+          // Handle both dancer IDs and EODSA IDs
           const studioResult = await sqlClient`
             SELECT DISTINCT s.name as studio_name
             FROM dancers d
@@ -176,16 +190,22 @@ export async function POST(request: NextRequest) {
             LEFT JOIN studios s ON sa.studio_id = s.id
             WHERE (d.id = ANY(${participantIds}) OR d.eodsa_id = ANY(${participantIds}))
               AND s.name IS NOT NULL
+              AND s.name != ''
             LIMIT 1
           ` as any[];
           
+          console.log(`🔍 Studio query result: ${JSON.stringify(studioResult)}`);
+          
           if (studioResult.length > 0 && studioResult[0].studio_name) {
             studioName = studioResult[0].studio_name;
-            console.log(`📝 Found studio name from participants: ${studioName}`);
+            console.log(`✅ Found studio name from participants: ${studioName}`);
+          } else {
+            console.warn(`⚠️ No studio found for participants: ${JSON.stringify(participantIds)}`);
           }
         }
       } catch (error) {
-        console.warn('⚠️ Could not fetch studio name from participants:', error);
+        console.error('❌ Error fetching studio name from participants:', error);
+        console.error('❌ Error details:', error instanceof Error ? error.message : String(error));
       }
     }
     
