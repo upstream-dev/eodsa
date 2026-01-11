@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
   try {
     const sqlClient = getSql();
 
-    // Find all certificates for group performances (Duet, Trio, Group)
-    const certificatesResult = await sqlClient`
+    // Find all certificates - we'll filter to group performances in application code
+    const allCertificatesResult = await sqlClient`
       SELECT 
         c.id as certificate_id,
         c.performance_id,
@@ -26,12 +26,41 @@ export async function POST(request: NextRequest) {
       JOIN performances p ON p.id = c.performance_id
       LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
       LEFT JOIN events e ON e.id = p.event_id
-      WHERE ee.performance_type IN ('Duet', 'Trio', 'Group')
-        OR (ee.performance_type IS NULL AND (
-          SELECT COUNT(*) FROM jsonb_array_elements_text(ee.participant_ids) > 1
-        ))
       ORDER BY c.created_at DESC
     ` as any[];
+
+    // Filter to only group performances (Duet, Trio, Group)
+    // Also include certificates where performance_type is null but has multiple participants
+    const certificatesResult = allCertificatesResult.filter(cert => {
+      // Explicitly group performance types
+      if (cert.performance_type && ['Duet', 'Trio', 'Group'].includes(cert.performance_type)) {
+        return true;
+      }
+      
+      // If performance_type is null, check participant count
+      if (!cert.performance_type && cert.participant_ids) {
+        try {
+          let participantIds: string[] = [];
+          if (Array.isArray(cert.participant_ids)) {
+            participantIds = cert.participant_ids;
+          } else if (typeof cert.participant_ids === 'string') {
+            try {
+              participantIds = JSON.parse(cert.participant_ids);
+            } catch {
+              participantIds = cert.participant_ids.includes(',') 
+                ? cert.participant_ids.split(',').map((id: string) => id.trim())
+                : [cert.participant_ids];
+            }
+          }
+          // Include if 2 or more participants (Duet, Trio, or Group)
+          return participantIds.length >= 2;
+        } catch {
+          return false;
+        }
+      }
+      
+      return false;
+    });
 
     console.log(`🔍 Found ${certificatesResult.length} certificates for group performances to fix`);
 
