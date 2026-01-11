@@ -477,27 +477,10 @@ export async function POST(request: NextRequest) {
 
     const certData = await certResponse.json();
 
-    // Send email notifications if certificate was successfully generated
-    if (certData.certificateId) {
-      const certificateUrl = `${baseUrl}/certificates/${performanceId}`;
-      
-      // Trigger email notifications (fire and forget)
-      fetch(`${baseUrl}/api/certificates/notify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          performanceId: performanceId,
-          eventEntryId: perf.event_entry_id,
-          certificateUrl: certificateUrl,
-          dancerName: displayName,
-          performanceTitle: perf.title || '',
-          percentage: averagePercentage,
-          medallion: medallion
-        })
-      }).catch((emailError) => {
-        console.error('Error triggering certificate email notifications:', emailError);
-      });
-    }
+    // NOTE: Email notifications are NOT sent when regenerating certificates
+    // This is intentional - notifications are only sent during initial certificate generation
+    // when scores are published, not during manual regeneration
+    console.log(`✅ Certificate regenerated successfully (no notifications sent for regeneration)`);
 
     return NextResponse.json({
       success: true,
