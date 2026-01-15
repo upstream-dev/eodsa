@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, getSql } from '@/lib/database';
-import { getMedalFromPercentage, formatCertificateDate } from '@/lib/certificate-generator';
+import { getMedalFromPercentage, formatCertificateDate, calculateRoundedPercentage } from '@/lib/certificate-generator';
 import { generateCertificateImage } from '@/lib/certificate-image-generator';
 
 /**
@@ -60,9 +60,11 @@ export async function GET(
       return sum + scoreTotal;
     }, 0);
     // Use total judges assigned, with fallback to scores.length if judges not assigned yet
-    const averagePercentage = Math.round(totalPercentage / (totalJudgesAssigned > 0 ? totalJudgesAssigned : scores.length));
+    const judgeCount = totalJudgesAssigned > 0 ? totalJudgesAssigned : scores.length;
+    // Calculate rounded percentage using centralized function (ensures consistency)
+    const averagePercentage = calculateRoundedPercentage(totalPercentage, judgeCount);
 
-    // Get medallion
+    // Get medallion (percentage is already rounded)
     const medallion = getMedalFromPercentage(averagePercentage);
 
     // Get event details for date

@@ -1529,8 +1529,9 @@ export const db = {
         const totalScore = parseFloat(row.total_score) || 0;
         const averageScore = parseFloat(row.average_score) || 0;
         const judgeCount = parseInt(row.judge_count) || 0;
-        const maxPossibleScore = judgeCount * 100; // Each judge can give max 100 points
-        const percentage = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
+        // Calculate rounded percentage using centralized function (ensures consistency)
+        const { calculateRoundedPercentage } = await import('@/lib/certificate-generator');
+        const percentage = calculateRoundedPercentage(totalScore, judgeCount);
         
         const medalInfo = getMedalFromPercentage(percentage);
         const rankingLevel = medalInfo.label;
@@ -1551,7 +1552,7 @@ export const db = {
           averageScore: averageScore,
           rank: index + 1, // Simple ranking based on total score order
           judgeCount: judgeCount,
-          percentage: Math.round(percentage),
+          percentage: percentage, // Already rounded by calculateRoundedPercentage
           rankingLevel: rankingLevel,
           choreographer: row.choreographer,
           mastery: row.mastery,
@@ -2472,10 +2473,12 @@ export const db = {
               const scoreTotal = score.technicalScore + score.musicalScore + score.performanceScore + score.stylingScore + score.overallImpressionScore;
               return sum + scoreTotal;
             }, 0);
-            const averagePercentage = Math.round(totalPercentage / (totalJudgesAssigned > 0 ? totalJudgesAssigned : scores.length));
+            const judgeCount = totalJudgesAssigned > 0 ? totalJudgesAssigned : scores.length;
+            // Calculate rounded percentage using centralized function (ensures consistency)
+            const { calculateRoundedPercentage, getMedalFromPercentage } = await import('@/lib/certificate-generator');
+            const averagePercentage = calculateRoundedPercentage(totalPercentage, judgeCount);
 
-            // Get medallion
-            const { getMedalFromPercentage } = await import('@/lib/certificate-generator');
+            // Get medallion (percentage is already rounded)
             const medallion = getMedalFromPercentage(averagePercentage);
 
             // Get participant names
@@ -4699,11 +4702,12 @@ export const db = {
       // Calculate average using total judges assigned to event (not just scores submitted)
       const totalSum = judgeScores.reduce((sum, js) => sum + js.total, 0);
       const totalJudgesAssigned = perf.total_judges || judgeScores.length;
-      // Use total judges assigned, with fallback to scores.length if judges not assigned yet
+      // Note: judgeScores.total is already out of 100 (sum of 5 criteria), so average is already a percentage
       const average = totalJudgesAssigned > 0 ? totalSum / totalJudgesAssigned : 0;
-      const percentage = average; // Already out of 100
+      // Round the percentage using mathematical rounding (round half up) for consistency
+      const percentage = Math.round(average);
 
-      // Get medal from existing function
+      // Get medal from existing function (percentage is already rounded)
       const { getMedalFromPercentage } = await import('./types');
       const medal = getMedalFromPercentage(percentage);
 

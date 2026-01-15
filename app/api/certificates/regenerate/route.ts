@@ -91,7 +91,9 @@ export async function POST(request: NextRequest) {
     }, 0);
     
     const judgeCount = totalJudgesAssigned > 0 ? totalJudgesAssigned : scores.length;
-    const averagePercentage = judgeCount > 0 ? Math.round(totalPercentage / judgeCount) : 0;
+    // Calculate rounded percentage using centralized function (ensures consistency)
+    const { calculateRoundedPercentage } = await import('@/lib/certificate-generator');
+    const averagePercentage = judgeCount > 0 ? calculateRoundedPercentage(totalPercentage, judgeCount) : 0;
 
     console.log(`📊 Certificate regeneration - Score calculation:`, {
       totalPercentage,

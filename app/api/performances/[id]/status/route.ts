@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
 import { emailService } from '@/lib/email';
-import { getMedalFromPercentage, formatCertificateDate } from '@/lib/certificate-generator';
+import { getMedalFromPercentage, formatCertificateDate, calculateRoundedPercentage } from '@/lib/certificate-generator';
 
 export async function PUT(
   request: NextRequest,
@@ -57,9 +57,11 @@ export async function PUT(
             return sum + scoreTotal;
           }, 0);
           // Use total judges assigned, with fallback to scores.length if judges not assigned yet
-          const averagePercentage = Math.round(totalPercentage / (totalJudgesAssigned > 0 ? totalJudgesAssigned : scores.length));
+          const judgeCount = totalJudgesAssigned > 0 ? totalJudgesAssigned : scores.length;
+          // Calculate rounded percentage using centralized function (ensures consistency)
+          const averagePercentage = calculateRoundedPercentage(totalPercentage, judgeCount);
 
-          // Get medallion
+          // Get medallion (percentage is already rounded)
           const medallion = getMedalFromPercentage(averagePercentage);
 
           // Get dancer information

@@ -233,6 +233,7 @@ function AdminCertificatesPageContent() {
   const updatePreviewUrl = (ranking: RankingData | null = previewRanking) => {
     if (!ranking) return;
     
+    // Ensure percentage is rounded (ranking.averageScore should already be rounded from database)
     const percentage = Math.round(ranking.averageScore);
     // Hard-coded event date for Nationals 2025
     const eventDate = 'October 11, 2025';
@@ -334,9 +335,9 @@ function AdminCertificatesPageContent() {
 
       for (const winner of winnersToGenerate) {
         try {
-          // Calculate percentage correctly: (totalScore / (judgeCount * 100)) * 100
-          const maxPossibleScore = winner.judgeCount * 100; // Each judge can give max 100 points
-          const percentage = maxPossibleScore > 0 ? Math.round((winner.totalScore / maxPossibleScore) * 100 * 10) / 10 : 0;
+          // Calculate rounded percentage using centralized function (ensures consistency)
+          const { calculateRoundedPercentage } = await import('@/lib/certificate-generator');
+          const percentage = calculateRoundedPercentage(winner.totalScore, winner.judgeCount);
           
           // Fetch the performance to get the actual dancer ID, EODSA ID, and event details
           let dancerId = winner.performanceId; // fallback to performanceId

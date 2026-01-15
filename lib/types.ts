@@ -616,8 +616,17 @@ export interface MedalInfo {
   emoji: string;
 }
 
+/**
+ * Get medal info from percentage score
+ * IMPORTANT: Percentage should already be rounded using calculateRoundedPercentage()
+ * before calling this function to ensure consistency.
+ * This function includes a defensive rounding check.
+ */
 export const getMedalFromPercentage = (percentage: number): MedalInfo => {
-  if (percentage < 70) {
+  // Ensure percentage is rounded (defensive check)
+  const roundedPercentage = Math.round(percentage);
+  
+  if (roundedPercentage < 70) {
     return {
       type: 'bronze',
       label: 'Bronze',
@@ -626,7 +635,7 @@ export const getMedalFromPercentage = (percentage: number): MedalInfo => {
       borderColor: 'border-amber-300',
       emoji: '🥉'
     };
-  } else if (percentage >= 70 && percentage < 75) {
+  } else if (roundedPercentage >= 70 && roundedPercentage < 75) {
     return {
       type: 'silver',
       label: 'Silver',
@@ -635,7 +644,7 @@ export const getMedalFromPercentage = (percentage: number): MedalInfo => {
       borderColor: 'border-gray-300',
       emoji: '🥈'
     };
-  } else if (percentage >= 75 && percentage < 80) {
+  } else if (roundedPercentage >= 75 && roundedPercentage < 80) {
     return {
       type: 'silver_plus',
       label: 'Silver+',
@@ -644,7 +653,7 @@ export const getMedalFromPercentage = (percentage: number): MedalInfo => {
       borderColor: 'border-slate-300',
       emoji: '🥈+'
     };
-  } else if (percentage >= 80 && percentage < 85) {
+  } else if (roundedPercentage >= 80 && roundedPercentage < 85) {
     return {
       type: 'gold',
       label: 'Gold',
@@ -653,7 +662,7 @@ export const getMedalFromPercentage = (percentage: number): MedalInfo => {
       borderColor: 'border-yellow-300',
       emoji: '🥇'
     };
-  } else if (percentage >= 85 && percentage < 90) {
+  } else if (roundedPercentage >= 85 && roundedPercentage < 90) {
     return {
       type: 'legend',
       label: 'Legend',
@@ -662,7 +671,7 @@ export const getMedalFromPercentage = (percentage: number): MedalInfo => {
       borderColor: 'border-yellow-300',
       emoji: '🏅'
     };
-  } else if (percentage >= 90 && percentage < 95) {
+  } else if (roundedPercentage >= 90 && roundedPercentage < 95) {
     return {
       type: 'opus',
       label: 'Opus',

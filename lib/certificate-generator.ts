@@ -136,16 +136,50 @@ export function generateCertificateHTML(data: CertificateData): string {
 }
 
 /**
+ * Calculate rounded percentage from total score and judge count
+ * Uses mathematical rounding (round half up) to ensure consistency
+ * 
+ * This is the SOURCE OF TRUTH for percentage calculation.
+ * All percentage values should be calculated using this function BEFORE:
+ * - Award band/medal calculation
+ * - Certificate generation
+ * - Results display
+ * 
+ * Validation examples:
+ * - 89.6 → 90 → Opus (rounds up)
+ * - 89.4 → 89 → Legend (rounds down)
+ * - 89.5 → 90 → Opus (round half up)
+ * 
+ * @param totalScore - Sum of all scores from all judges
+ * @param judgeCount - Number of judges (or max possible score = judgeCount * 100)
+ * @returns Rounded percentage (0-100)
+ */
+export function calculateRoundedPercentage(totalScore: number, judgeCount: number): number {
+  if (judgeCount <= 0) return 0;
+  
+  const maxPossibleScore = judgeCount * 100; // Each judge can give max 100 points
+  const rawPercentage = (totalScore / maxPossibleScore) * 100;
+  
+  // Mathematical rounding (round half up) - this is the standard rounding
+  return Math.round(rawPercentage);
+}
+
+/**
  * Get medal type from percentage score
+ * IMPORTANT: Percentage should already be rounded using calculateRoundedPercentage()
+ * before calling this function to ensure consistency.
  */
 export function getMedalFromPercentage(percentage: number): 'Elite' | 'Opus' | 'Legend' | 'Gold' | 'Silver+' | 'Silver' | 'Bronze' | '' {
-  if (percentage >= 95) return 'Elite';
-  if (percentage >= 90) return 'Opus';
-  if (percentage >= 85) return 'Legend';
-  if (percentage >= 80) return 'Gold';
-  if (percentage >= 75) return 'Silver+';
-  if (percentage >= 70) return 'Silver';
-  if (percentage <= 69) return 'Bronze';
+  // Ensure percentage is rounded (defensive check)
+  const roundedPercentage = Math.round(percentage);
+  
+  if (roundedPercentage >= 95) return 'Elite';
+  if (roundedPercentage >= 90) return 'Opus';
+  if (roundedPercentage >= 85) return 'Legend';
+  if (roundedPercentage >= 80) return 'Gold';
+  if (roundedPercentage >= 75) return 'Silver+';
+  if (roundedPercentage >= 70) return 'Silver';
+  if (roundedPercentage < 70) return 'Bronze';
   return '';
 }
 

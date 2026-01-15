@@ -428,10 +428,12 @@ function AdminRankingsPage() {
   };
 
   const calculatePercentageAndRanking = (totalScore: number, judgeCount: number) => {
-    // Calculate percentage: (totalScore / (judgeCount * 100)) * 100
-    const maxPossibleScore = judgeCount * 100; // Each judge can give max 100 points (5 criteria × 20 each)
-    const percentage = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
+    // Calculate rounded percentage using centralized function (ensures consistency)
+    // Import dynamically to avoid SSR issues
+    const { calculateRoundedPercentage } = require('@/lib/certificate-generator');
+    const percentage = calculateRoundedPercentage(totalScore, judgeCount);
     
+    // Get medal info using rounded percentage
     const medalInfo = getMedalFromPercentage(percentage);
     let rankingColor = '';
     
@@ -462,7 +464,7 @@ function AdminRankingsPage() {
     }
     
     return { 
-      percentage: Math.round(percentage * 10) / 10, 
+      percentage: percentage, // Already rounded by calculateRoundedPercentage
       rankingLevel: medalInfo.label, 
       rankingColor, 
       medalEmoji: medalInfo.emoji 
