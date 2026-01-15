@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import type { Contestant, Performance, Judge, Score, Dancer, EventEntry, Ranking, Event } from './types';
 import { getMedalFromPercentage } from './types';
+import { calculateRoundedPercentage, getMedalFromPercentage as getMedalFromPercentageCert } from './certificate-generator';
 
 // Custom fetch for Neon with better error handling and timeout
 function createNeonFetch() {
@@ -1530,7 +1531,6 @@ export const db = {
         const averageScore = parseFloat(row.average_score) || 0;
         const judgeCount = parseInt(row.judge_count) || 0;
         // Calculate rounded percentage using centralized function (ensures consistency)
-        const { calculateRoundedPercentage } = await import('@/lib/certificate-generator');
         const percentage = calculateRoundedPercentage(totalScore, judgeCount);
         
         const medalInfo = getMedalFromPercentage(percentage);
@@ -2475,11 +2475,10 @@ export const db = {
             }, 0);
             const judgeCount = totalJudgesAssigned > 0 ? totalJudgesAssigned : scores.length;
             // Calculate rounded percentage using centralized function (ensures consistency)
-            const { calculateRoundedPercentage, getMedalFromPercentage } = await import('@/lib/certificate-generator');
             const averagePercentage = calculateRoundedPercentage(totalPercentage, judgeCount);
 
             // Get medallion (percentage is already rounded)
-            const medallion = getMedalFromPercentage(averagePercentage);
+            const medallion = getMedalFromPercentageCert(averagePercentage);
 
             // Get participant names
             let participantNames: string[] = [];
@@ -4708,7 +4707,6 @@ export const db = {
       const percentage = Math.round(average);
 
       // Get medal from existing function (percentage is already rounded)
-      const { getMedalFromPercentage } = await import('./types');
       const medal = getMedalFromPercentage(percentage);
 
       return {
