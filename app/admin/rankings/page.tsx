@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMedalFromPercentage } from '@/lib/types';
+import { calculateRoundedPercentage } from '@/lib/certificate-generator';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { usePhase2Feature } from '@/hooks/usePhase2Feature';
@@ -429,8 +430,6 @@ function AdminRankingsPage() {
 
   const calculatePercentageAndRanking = (totalScore: number, judgeCount: number) => {
     // Calculate rounded percentage using centralized function (ensures consistency)
-    // Import dynamically to avoid SSR issues
-    const { calculateRoundedPercentage } = require('@/lib/certificate-generator');
     const percentage = calculateRoundedPercentage(totalScore, judgeCount);
     
     // Get medal info using rounded percentage
