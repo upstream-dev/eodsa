@@ -132,7 +132,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`🏅 Medallion calculated: ${medallion} for percentage ${averagePercentage}`);
 
-    // Get participant names
+    // Parse participant_ids first (needed for both name lookup and type inference)
+    let participantIds: string[] = [];
+    try {
+      if (perf.participant_ids) {
+        if (Array.isArray(perf.participant_ids)) {
+          participantIds = perf.participant_ids;
+        } else if (typeof perf.participant_ids === 'string') {
+          try {
+            participantIds = JSON.parse(perf.participant_ids);
+          } catch {
+            participantIds = perf.participant_ids.includes(',') 
+              ? perf.participant_ids.split(',').map((id: string) => id.trim())
+              : [perf.participant_ids];
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing participant_ids:', error);
+      participantIds = [];
+    }
+
+    // Get participant names - CRITICAL: If names are missing or contain "Participant 1", look up from participant_ids
     let participantNames: string[] = [];
     try {
       if (perf.participant_names) {
@@ -153,6 +174,42 @@ export async function POST(request: NextRequest) {
       participantNames = [];
     }
 
+    // CRITICAL FIX: If participant names are missing, empty, or contain "Participant 1", look up actual names from participant_ids
+    const hasInvalidNames = participantNames.length === 0 || 
+      participantNames.some(name => name === 'Participant 1' || name.startsWith('Participant ') || name === 'Unknown Dancer');
+    
+    if (hasInvalidNames && participantIds.length > 0) {
+      console.log(`🔍 Participant names are invalid/missing, looking up from participant_ids: ${JSON.stringify(participantIds)}`);
+      participantNames = [];
+      for (const participantId of participantIds) {
+        try {
+          // Try by dancer ID first
+          const dancerResultById = await sqlClient`
+            SELECT id, eodsa_id, name FROM dancers WHERE id = ${participantId} LIMIT 1
+          ` as any[];
+          
+          if (dancerResultById.length > 0 && dancerResultById[0].name) {
+            participantNames.push(dancerResultById[0].name);
+            continue;
+          }
+          
+          // Try by EODSA ID
+          const dancerResultByEodsa = await sqlClient`
+            SELECT id, eodsa_id, name FROM dancers WHERE eodsa_id = ${participantId} LIMIT 1
+          ` as any[];
+          
+          if (dancerResultByEodsa.length > 0 && dancerResultByEodsa[0].name) {
+            participantNames.push(dancerResultByEodsa[0].name);
+          } else {
+            console.warn(`⚠️ Could not find dancer for participant ID: ${participantId}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error looking up dancer for participant ID ${participantId}:`, error);
+        }
+      }
+      console.log(`✅ Resolved participant names: ${JSON.stringify(participantNames)}`);
+    }
+
     // Determine display name
     // CRITICAL: For Duet/Trio/Group, get studio_name from participants via studio_applications (SAME AS DANCERS PAGE)
     // For Solo, use participant/dancer names
@@ -171,33 +228,18 @@ export async function POST(request: NextRequest) {
         inferredPerformanceType = 'Group';
       }
       console.log(`📝 Inferred performance type from participant count (${participantNames.length}): ${inferredPerformanceType}`);
-    } else if (!inferredPerformanceType && perf.participant_ids) {
+    } else if (!inferredPerformanceType && participantIds.length > 0) {
       // Try to infer from participant_ids if participantNames not available
-      let participantIds: string[] = [];
-      if (Array.isArray(perf.participant_ids)) {
-        participantIds = perf.participant_ids;
-      } else if (typeof perf.participant_ids === 'string') {
-        try {
-          participantIds = JSON.parse(perf.participant_ids);
-        } catch {
-          participantIds = perf.participant_ids.includes(',') 
-            ? perf.participant_ids.split(',').map((id: string) => id.trim())
-            : [perf.participant_ids];
-        }
+      if (participantIds.length === 1) {
+        inferredPerformanceType = 'Solo';
+      } else if (participantIds.length === 2) {
+        inferredPerformanceType = 'Duet';
+      } else if (participantIds.length === 3) {
+        inferredPerformanceType = 'Trio';
+      } else if (participantIds.length >= 4) {
+        inferredPerformanceType = 'Group';
       }
-      
-      if (participantIds.length > 0) {
-        if (participantIds.length === 1) {
-          inferredPerformanceType = 'Solo';
-        } else if (participantIds.length === 2) {
-          inferredPerformanceType = 'Duet';
-        } else if (participantIds.length === 3) {
-          inferredPerformanceType = 'Trio';
-        } else if (participantIds.length >= 4) {
-          inferredPerformanceType = 'Group';
-        }
-        console.log(`📝 Inferred performance type from participant_ids count (${participantIds.length}): ${inferredPerformanceType}`);
-      }
+      console.log(`📝 Inferred performance type from participant_ids count (${participantIds.length}): ${inferredPerformanceType}`);
     }
     
     const isGroupPerformance = inferredPerformanceType && ['Duet', 'Trio', 'Group'].includes(inferredPerformanceType);
@@ -326,8 +368,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // CRITICAL FIX: Get actual dancer ID and EODSA ID for solo performances
+    // This ensures the certificate shows up in "My Certificates"
+    let actualDancerId: string | null = contestantId || null;
+    let actualEodsaId: string | null = perf.eodsa_id || null;
+    
+    if (!isGroupPerformance && participantIds.length > 0) {
+      // For solo performances, get the actual dancer's ID and EODSA ID
+      try {
+        const firstParticipantId = participantIds[0];
+        // Try by dancer ID first
+        const dancerResultById = await sqlClient`
+          SELECT id, eodsa_id FROM dancers WHERE id = ${firstParticipantId} LIMIT 1
+        ` as any[];
+        
+        if (dancerResultById.length > 0) {
+          actualDancerId = dancerResultById[0].id;
+          actualEodsaId = dancerResultById[0].eodsa_id || null;
+        } else {
+          // Try by EODSA ID
+          const dancerResultByEodsa = await sqlClient`
+            SELECT id, eodsa_id FROM dancers WHERE eodsa_id = ${firstParticipantId} LIMIT 1
+          ` as any[];
+          
+          if (dancerResultByEodsa.length > 0) {
+            actualDancerId = dancerResultByEodsa[0].id;
+            actualEodsaId = dancerResultByEodsa[0].eodsa_id || null;
+          }
+        }
+        console.log(`✅ Resolved dancer ID: ${actualDancerId}, EODSA ID: ${actualEodsaId}`);
+      } catch (error) {
+        console.error('Error looking up dancer ID/EODSA ID:', error);
+      }
+    }
+
     // Validate required fields before generating
-    const dancerId = contestantId || performanceId; // Use performanceId as fallback if no contestant_id
+    const dancerId = actualDancerId || contestantId || performanceId; // Use actual dancer ID, then contestant ID, then performanceId as fallback
     const style = perf.item_style || 'Unknown';
     const title = perf.title || 'Untitled Performance';
     const eventDate = perf.event_date || new Date().toISOString().split('T')[0];
@@ -426,7 +502,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         dancerId: dancerId,
         dancerName: finalDancerName, // Studio name for groups, dancer name for solo
-        eodsaId: perf.eodsa_id || undefined,
+        eodsaId: actualEodsaId || perf.eodsa_id || undefined,
         performanceId: performanceId,
         eventEntryId: perf.event_entry_id,
         eventId: perf.event_id,
