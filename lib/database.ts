@@ -1177,34 +1177,53 @@ export const db = {
               }
             }
             
-            // Get participant names from unified dancers
+            // Get participant names from unified dancers - CRITICAL: Try both dancer ID and EODSA ID
             const participantNames: string[] = [];
             try {
-              const { unifiedDb } = await import('./database');
+              const sqlClientInner = getSql();
               for (const pid of participantIds) {
                 try {
-                  const dancer = await unifiedDb.getDancerById(pid);
-                  if (dancer?.name) {
-                    participantNames.push(dancer.name);
-                  } else {
-                    participantNames.push(`Participant ${participantNames.length + 1}`);
+                  // Try by dancer ID first
+                  const dancerResultById = await sqlClientInner`
+                    SELECT id, eodsa_id, name FROM dancers WHERE id = ${pid} LIMIT 1
+                  ` as any[];
+                  
+                  if (dancerResultById.length > 0 && dancerResultById[0].name) {
+                    participantNames.push(dancerResultById[0].name);
+                    continue;
                   }
-                } catch {
-                  participantNames.push(`Participant ${participantNames.length + 1}`);
+                  
+                  // Try by EODSA ID
+                  const dancerResultByEodsa = await sqlClientInner`
+                    SELECT id, eodsa_id, name FROM dancers WHERE eodsa_id = ${pid} LIMIT 1
+                  ` as any[];
+                  
+                  if (dancerResultByEodsa.length > 0 && dancerResultByEodsa[0].name) {
+                    participantNames.push(dancerResultByEodsa[0].name);
+                  } else {
+                    console.warn(`⚠️ Could not find dancer for participant ID: ${pid} (tried both id and eodsa_id)`);
+                    // Don't add "Participant 1" - leave empty, will be resolved later during certificate generation
+                  }
+                } catch (error) {
+                  console.error(`❌ Error looking up dancer for participant ID ${pid}:`, error);
+                  // Don't add "Participant 1" - leave empty
                 }
               }
-            } catch {
-              // Fallback: use generic names
-              participantIds.forEach((_, i) => participantNames.push(`Participant ${i + 1}`));
+            } catch (error) {
+              console.error('Error fetching participant names:', error);
+              // Don't add "Participant 1" - leave empty
             }
             
             // Create the performance
+            // CRITICAL: Only use fallback if we truly have no participant IDs
+            // If we have participant IDs but couldn't resolve names, store empty array
+            // Names will be resolved during certificate generation
             await this.createPerformance({
               eventId: entry.event_id,
               eventEntryId: entry.id,
               contestantId: entry.contestant_id,
               title: entry.item_name || 'Untitled Performance',
-              participantNames: participantNames.length > 0 ? participantNames : ['Participant 1'],
+              participantNames: participantNames.length > 0 ? participantNames : (participantIds.length > 0 ? [] : ['Participant 1']),
               duration: entry.estimated_duration || 0,
               choreographer: entry.choreographer || '',
               mastery: entry.mastery || 'Water (Competitive)',
@@ -3303,34 +3322,53 @@ export const db = {
               }
             }
             
-            // Get participant names from unified dancers
+            // Get participant names from unified dancers - CRITICAL: Try both dancer ID and EODSA ID
             const participantNames: string[] = [];
             try {
-              const { unifiedDb } = await import('./database');
+              const sqlClientInner = getSql();
               for (const pid of participantIds) {
                 try {
-                  const dancer = await unifiedDb.getDancerById(pid);
-                  if (dancer?.name) {
-                    participantNames.push(dancer.name);
-                  } else {
-                    participantNames.push(`Participant ${participantNames.length + 1}`);
+                  // Try by dancer ID first
+                  const dancerResultById = await sqlClientInner`
+                    SELECT id, eodsa_id, name FROM dancers WHERE id = ${pid} LIMIT 1
+                  ` as any[];
+                  
+                  if (dancerResultById.length > 0 && dancerResultById[0].name) {
+                    participantNames.push(dancerResultById[0].name);
+                    continue;
                   }
-                } catch {
-                  participantNames.push(`Participant ${participantNames.length + 1}`);
+                  
+                  // Try by EODSA ID
+                  const dancerResultByEodsa = await sqlClientInner`
+                    SELECT id, eodsa_id, name FROM dancers WHERE eodsa_id = ${pid} LIMIT 1
+                  ` as any[];
+                  
+                  if (dancerResultByEodsa.length > 0 && dancerResultByEodsa[0].name) {
+                    participantNames.push(dancerResultByEodsa[0].name);
+                  } else {
+                    console.warn(`⚠️ Could not find dancer for participant ID: ${pid} (tried both id and eodsa_id)`);
+                    // Don't add "Participant 1" - leave empty, will be resolved later during certificate generation
+                  }
+                } catch (error) {
+                  console.error(`❌ Error looking up dancer for participant ID ${pid}:`, error);
+                  // Don't add "Participant 1" - leave empty
                 }
               }
-            } catch {
-              // Fallback: use generic names
-              participantIds.forEach((_, i) => participantNames.push(`Participant ${i + 1}`));
+            } catch (error) {
+              console.error('Error fetching participant names:', error);
+              // Don't add "Participant 1" - leave empty
             }
             
             // Create the performance
+            // CRITICAL: Only use fallback if we truly have no participant IDs
+            // If we have participant IDs but couldn't resolve names, store empty array
+            // Names will be resolved during certificate generation
             await this.createPerformance({
               eventId: eventId,
               eventEntryId: entry.id,
               contestantId: entry.contestant_id,
               title: entry.item_name || 'Untitled Performance',
-              participantNames: participantNames.length > 0 ? participantNames : ['Participant 1'],
+              participantNames: participantNames.length > 0 ? participantNames : (participantIds.length > 0 ? [] : ['Participant 1']),
               duration: entry.estimated_duration || 0,
               choreographer: entry.choreographer || '',
               mastery: entry.mastery || 'Water (Competitive)',
