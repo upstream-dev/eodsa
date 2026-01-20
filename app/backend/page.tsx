@@ -8,6 +8,10 @@ export default function BackendDashboard() {
   const { isEnabled: isPhase2Enabled, isLoading } = usePhase2Feature();
   const [batchFixLoading, setBatchFixLoading] = useState(false);
   const [batchFixReport, setBatchFixReport] = useState<any>(null);
+  const [nameFixLoading, setNameFixLoading] = useState(false);
+  const [nameFixReport, setNameFixReport] = useState<any>(null);
+  const [oldName, setOldName] = useState('Esmari Cnradie');
+  const [newName, setNewName] = useState('Esmari Conradie');
   
   // Portal links that should be disabled when Phase 2 is disabled
   const phase2Portals = [
@@ -147,6 +151,132 @@ export default function BackendDashboard() {
                   {batchFixLoading ? 'Processing...' : '🔧 Fix Participant Name Certificates'}
                 </button>
               </div>
+
+              {/* Fix Dancer Name Tool */}
+              <div className="bg-gray-700/50 rounded-lg p-4 mt-4">
+                <h4 className="text-lg font-semibold text-white mb-2">Fix Dancer Name Typo</h4>
+                <p className="text-gray-300 text-sm mb-4">
+                  Fix a typo in a dancer's name across the database and regenerate certificates.
+                </p>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">Old Name (with typo)</label>
+                    <input
+                      type="text"
+                      value={oldName}
+                      onChange={(e) => setOldName(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Esmari Cnradie"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">New Name (corrected)</label>
+                    <input
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Esmari Conradie"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (nameFixLoading || !oldName || !newName) return;
+                    setNameFixLoading(true);
+                    setNameFixReport(null);
+                    
+                    try {
+                      const response = await fetch('/api/admin/fix-dancer-name', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          oldName: oldName.trim(),
+                          newName: newName.trim()
+                        })
+                      });
+                      
+                      const data = await response.json();
+                      setNameFixReport(data);
+                    } catch (error) {
+                      setNameFixReport({
+                        success: false,
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                      });
+                    } finally {
+                      setNameFixLoading(false);
+                    }
+                  }}
+                  disabled={nameFixLoading || !oldName || !newName}
+                  className={`w-full px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    nameFixLoading || !oldName || !newName
+                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl'
+                  }`}
+                >
+                  {nameFixLoading ? 'Processing...' : '✏️ Fix Dancer Name'}
+                </button>
+              </div>
+
+              {/* Name Fix Report Display */}
+              {nameFixReport && (
+                <div className={`rounded-lg p-4 border-2 mt-4 ${
+                  nameFixReport.success
+                    ? 'bg-green-900/20 border-green-500/30'
+                    : 'bg-red-900/20 border-red-500/30'
+                }`}>
+                  <h4 className={`text-lg font-semibold mb-2 ${
+                    nameFixReport.success ? 'text-green-300' : 'text-red-300'
+                  }`}>
+                    {nameFixReport.success ? '✅ Name Fix Report' : '❌ Name Fix Failed'}
+                  </h4>
+                  
+                  {nameFixReport.success && nameFixReport.results && (
+                    <div className="space-y-2 text-sm">
+                      <div className="text-gray-300">
+                        <span className="font-semibold">Dancers Updated:</span> {nameFixReport.results.dancersUpdated}
+                      </div>
+                      <div className="text-gray-300">
+                        <span className="font-semibold">Performances Updated:</span> {nameFixReport.results.performancesUpdated}
+                      </div>
+                      <div className="text-gray-300">
+                        <span className="font-semibold">Certificates Found:</span> {nameFixReport.results.certificatesFound}
+                      </div>
+                      <div className="text-green-300">
+                        <span className="font-semibold">Certificates Regenerated:</span> {nameFixReport.results.certificatesRegenerated}
+                      </div>
+                      
+                      {nameFixReport.results.errors && nameFixReport.results.errors.length > 0 && (
+                        <div className="mt-4">
+                          <h5 className="font-semibold text-red-300 mb-2">Errors ({nameFixReport.results.errors.length}):</h5>
+                          <div className="max-h-40 overflow-y-auto space-y-1">
+                            {nameFixReport.results.errors.slice(0, 10).map((err: any, idx: number) => (
+                              <div key={idx} className="text-xs text-red-200 bg-red-900/30 p-2 rounded">
+                                <div><span className="font-semibold">Type:</span> {err.type}</div>
+                                <div><span className="font-semibold">Error:</span> {err.error.substring(0, 100)}...</div>
+                              </div>
+                            ))}
+                            {nameFixReport.results.errors.length > 10 && (
+                              <div className="text-xs text-gray-400 italic">
+                                ... and {nameFixReport.results.errors.length - 10} more errors
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {!nameFixReport.success && (
+                    <div className="text-red-200 text-sm">
+                      <p><span className="font-semibold">Error:</span> {nameFixReport.error || 'Unknown error'}</p>
+                      {nameFixReport.details && (
+                        <p className="mt-2 text-xs text-gray-400">{nameFixReport.details}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Report Display */}
               {batchFixReport && (
