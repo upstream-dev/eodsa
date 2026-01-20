@@ -10,6 +10,124 @@ export async function POST(request: NextRequest) {
   try {
     const sqlClient = getSql();
 
+    // CRITICAL: First fix corrupted participant_names in performances table
+    const corruptedPerformances = await sqlClient`
+      SELECT 
+        p.id as performance_id,
+        p.participant_names,
+        p.title as performance_title,
+        p.event_entry_id,
+        p.contestant_id,
+        ee.performance_type,
+        ee.participant_ids,
+        ee.studio_name as event_entry_studio_name,
+        c.name as contestant_name
+      FROM performances p
+      LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
+      LEFT JOIN contestants c ON c.id = p.contestant_id
+      WHERE 
+        (p.participant_names::text ILIKE '%Participant 1%' OR p.participant_names::text = '[]')
+        AND (
+          ee.performance_type IN ('Duet', 'Trio', 'Group')
+          OR (ee.performance_type IS NULL AND ee.participant_ids IS NOT NULL)
+        )
+      ORDER BY p.created_at DESC
+    ` as any[];
+
+    console.log(`🔍 Found ${corruptedPerformances.length} group performances with corrupted participant_names`);
+
+    // Fix the database first
+    const dbFixes = {
+      total: corruptedPerformances.length,
+      fixed: 0,
+      failed: 0,
+      errors: [] as Array<{ performanceId: string; error: string }>
+    };
+
+    for (const perf of corruptedPerformances) {
+      try {
+        // For groups: Use studio_name from event_entries
+        let correctedNames: string[] = [];
+        
+        if (perf.event_entry_studio_name && perf.event_entry_studio_name.trim() !== '') {
+          correctedNames = [perf.event_entry_studio_name];
+        } else {
+          // Try to get studio name from participants
+          let participantIds: string[] = [];
+          try {
+            if (perf.participant_ids) {
+              if (Array.isArray(perf.participant_ids)) {
+                participantIds = perf.participant_ids;
+              } else if (typeof perf.participant_ids === 'string') {
+                try {
+                  participantIds = JSON.parse(perf.participant_ids);
+                } catch {
+                  participantIds = perf.participant_ids.includes(',') 
+                    ? perf.participant_ids.split(',').map((id: string) => id.trim())
+                    : [perf.participant_ids];
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error parsing participant_ids:`, error);
+          }
+
+          let studioName: string | null = null;
+          for (const pid of participantIds) {
+            try {
+              const studioResult = await sqlClient`
+                SELECT DISTINCT s.name as studio_name
+                FROM dancers d
+                LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+                LEFT JOIN studios s ON sa.studio_id = s.id
+                WHERE (d.id = ${pid} OR d.eodsa_id = ${pid})
+                  AND s.name IS NOT NULL
+                  AND s.name != ''
+                LIMIT 1
+              ` as any[];
+              
+              if (studioResult.length > 0 && studioResult[0].studio_name) {
+                studioName = studioResult[0].studio_name;
+                break;
+              }
+            } catch (error) {
+              console.error(`Error looking up studio for participant ${pid}:`, error);
+            }
+          }
+          
+          if (studioName) {
+            correctedNames = [studioName];
+          }
+        }
+
+        // Update the database if we found corrected names
+        if (correctedNames.length > 0) {
+          await sqlClient`
+            UPDATE performances 
+            SET participant_names = ${JSON.stringify(correctedNames)}
+            WHERE id = ${perf.performance_id}
+          `;
+          dbFixes.fixed++;
+          console.log(`✅ Fixed group performance ${perf.performance_id}: ${JSON.stringify(correctedNames)}`);
+        } else {
+          console.warn(`⚠️ Could not determine studio name for performance ${perf.performance_id}`);
+          dbFixes.failed++;
+        }
+      } catch (error) {
+        dbFixes.failed++;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        dbFixes.errors.push({
+          performanceId: perf.performance_id,
+          error: errorMessage
+        });
+        console.error(`❌ Error fixing performance ${perf.performance_id}:`, errorMessage);
+      }
+    }
+
+    console.log(`\n📊 Database fixes completed:`);
+    console.log(`   Fixed: ${dbFixes.fixed}`);
+    console.log(`   Failed: ${dbFixes.failed}`);
+
     // Find all certificates - we'll filter to group performances in application code
     const allCertificatesResult = await sqlClient`
       SELECT 
@@ -69,7 +187,8 @@ export async function POST(request: NextRequest) {
       processed: 0,
       succeeded: 0,
       failed: 0,
-      errors: [] as Array<{ certificateId: string; performanceId: string; error: string }>
+      errors: [] as Array<{ certificateId: string; performanceId: string; error: string }>,
+      databaseFixes: dbFixes
     };
 
     // Derive base URL from request URL
@@ -135,8 +254,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Batch fix completed: ${results.succeeded} succeeded, ${results.failed} failed`,
-      results
+      message: `Batch fix completed: ${dbFixes.fixed} database records fixed, ${results.succeeded} certificates regenerated, ${results.failed} failed`,
+      results: {
+        ...results,
+        databaseFixes: {
+          total: dbFixes.total,
+          fixed: dbFixes.fixed,
+          failed: dbFixes.failed,
+          errors: dbFixes.errors
+        }
+      }
     });
 
   } catch (error) {
