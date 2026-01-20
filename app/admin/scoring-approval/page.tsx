@@ -23,6 +23,7 @@ interface JudgeScore {
 interface PerformanceApproval {
   performanceId: string;
   performanceTitle: string;
+  dancerName?: string;
   eventId: string;
   totalJudges: number;
   scoredJudges: number;
@@ -381,6 +382,11 @@ function ScoringApprovalPageContent() {
                           {approval.scoresPublished ? 'PUBLISHED' : 'PENDING'}
                         </span>
                       </div>
+                      {approval.dancerName && (
+                        <p className="text-sm text-gray-600 mb-2">
+                          <span className="font-medium">Dancer/Studio:</span> {approval.dancerName}
+                        </p>
+                      )}
 
                       {/* Average Score & Medal */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -463,9 +469,16 @@ function ScoringApprovalPageContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
             <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
-              <h3 className="text-base sm:text-xl font-semibold text-black pr-4">
-                {selectedApproval.performanceTitle}
-              </h3>
+              <div className="flex-1 pr-4">
+                <h3 className="text-base sm:text-xl font-semibold text-black">
+                  {selectedApproval.performanceTitle}
+                </h3>
+                {selectedApproval.dancerName && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    <span className="font-medium">Dancer/Studio:</span> {selectedApproval.dancerName}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setShowDetails(false)}
                 className="text-gray-400 hover:text-gray-600 text-2xl sm:text-xl flex-shrink-0 p-2"

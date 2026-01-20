@@ -4738,6 +4738,7 @@ export const db = {
     // IMPORTANT: Get performances with ALL judges scored - aggregated view
     // This query is DYNAMIC - it counts actual judges assigned, NOT hard-coded to 4
     // Performance appears when: scored_judges = total_judges (regardless of number)
+    // Also include dancer name from participant_names or contestant_name
     const performancesQuery = performanceId
       ? sqlClient`
           WITH performance_judge_counts AS (
@@ -4746,13 +4747,21 @@ export const db = {
               p.title as performance_title,
               p.event_id,
               p.scores_published,
+              p.participant_names,
+              p.event_entry_id,
+              p.contestant_id,
+              ee.performance_type,
+              ee.studio_name as event_entry_studio_name,
+              c.name as contestant_name,
               COUNT(DISTINCT jea.judge_id) as total_judges,
               COUNT(DISTINCT s.judge_id) as scored_judges
             FROM performances p
             JOIN judge_event_assignments jea ON jea.event_id = p.event_id
             LEFT JOIN scores s ON s.performance_id = p.id
+            LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
+            LEFT JOIN contestants c ON c.id = p.contestant_id
             WHERE p.id = ${performanceId}
-            GROUP BY p.id, p.title, p.event_id, p.scores_published
+            GROUP BY p.id, p.title, p.event_id, p.scores_published, p.participant_names, p.event_entry_id, p.contestant_id, ee.performance_type, ee.studio_name, c.name
           )
           SELECT * FROM performance_judge_counts
           WHERE scored_judges > 0 AND scored_judges = total_judges
@@ -4764,12 +4773,20 @@ export const db = {
               p.title as performance_title,
               p.event_id,
               p.scores_published,
+              p.participant_names,
+              p.event_entry_id,
+              p.contestant_id,
+              ee.performance_type,
+              ee.studio_name as event_entry_studio_name,
+              c.name as contestant_name,
               COUNT(DISTINCT jea.judge_id) as total_judges,
               COUNT(DISTINCT s.judge_id) as scored_judges
             FROM performances p
             JOIN judge_event_assignments jea ON jea.event_id = p.event_id
             LEFT JOIN scores s ON s.performance_id = p.id
-            GROUP BY p.id, p.title, p.event_id, p.scores_published
+            LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
+            LEFT JOIN contestants c ON c.id = p.contestant_id
+            GROUP BY p.id, p.title, p.event_id, p.scores_published, p.participant_names, p.event_entry_id, p.contestant_id, ee.performance_type, ee.studio_name, c.name
           )
           SELECT * FROM performance_judge_counts
           WHERE scored_judges > 0 AND scored_judges = total_judges
@@ -4828,9 +4845,49 @@ export const db = {
       // Get medal from existing function (percentage is already rounded)
       const medal = getMedalFromPercentage(percentage);
 
+      // Determine dancer name: For groups use studio name, for solos use participant names or contestant name
+      let dancerName: string = '';
+      try {
+        // Parse participant_names
+        let participantNames: string[] = [];
+        if (perf.participant_names) {
+          try {
+            if (typeof perf.participant_names === 'string') {
+              participantNames = JSON.parse(perf.participant_names);
+            } else if (Array.isArray(perf.participant_names)) {
+              participantNames = perf.participant_names;
+            }
+          } catch {
+            // If parsing fails, try as comma-separated string
+            participantNames = perf.participant_names.includes(',') 
+              ? perf.participant_names.split(',').map((n: string) => n.trim())
+              : [perf.participant_names];
+          }
+        }
+
+        // Check if it's a group performance
+        const isGroupPerformance = perf.performance_type && ['Duet', 'Trio', 'Group'].includes(perf.performance_type);
+        
+        if (isGroupPerformance) {
+          // For groups: Use studio name from event_entries
+          dancerName = perf.event_entry_studio_name || participantNames.join(', ') || perf.contestant_name || 'Studio Name';
+        } else {
+          // For solos: Use participant names or contestant name
+          if (participantNames.length > 0 && !participantNames.some(name => name === 'Participant 1' || name.startsWith('Participant '))) {
+            dancerName = participantNames.join(', ');
+          } else {
+            dancerName = perf.contestant_name || participantNames.join(', ') || 'Unknown Dancer';
+          }
+        }
+      } catch (error) {
+        console.error('Error determining dancer name:', error);
+        dancerName = perf.contestant_name || 'Unknown Dancer';
+      }
+
       return {
         performanceId: perf.performance_id,
         performanceTitle: perf.performance_title,
+        dancerName: dancerName,
         eventId: perf.event_id,
         totalJudges: perf.total_judges,
         scoredJudges: perf.scored_judges,
