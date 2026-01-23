@@ -179,6 +179,8 @@ function AdminRankingsPage() {
           firstItem: Array.isArray(data) && data.length > 0 ? data[0] : 'empty array'
         });
         if (Array.isArray(data) && data.length > 0) {
+          // Check age categories in the data
+          const ageCategories = new Set(data.map((r: RankingData) => r.ageCategory).filter(Boolean));
           console.log('📋 Sample ranking data structure:', {
             eventId: data[0].eventId,
             eventName: data[0].eventName,
@@ -188,6 +190,13 @@ function AdminRankingsPage() {
             roundedPercentage: data[0].roundedPercentage,
             hasAllFields: Object.keys(data[0])
           });
+          console.log('🎂 Age categories found in data:', Array.from(ageCategories));
+          console.log('🎂 Age category breakdown:', 
+            Array.from(ageCategories).map(age => ({
+              ageCategory: age,
+              count: data.filter((r: RankingData) => r.ageCategory === age).length
+            }))
+          );
         }
         setRankings(data);
       } else if (response.status === 403) {

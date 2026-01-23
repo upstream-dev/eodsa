@@ -1652,8 +1652,71 @@ export const db = {
         return [];
       }
 
+      // Calculate age categories for all results first (same as calculateRankings)
+      const { calculateAgeCategoryForEntry } = await import('./age-category-calculator');
+      const resultsWithAgeCategories = await Promise.all(
+        result.map(async (row: any) => {
+          let calculatedAgeCategory = row.age_category || null;
+          
+          // Try to calculate age category from participant_ids if available
+          // Check both event_date and eventDate (different query aliases)
+          const eventDate = row.event_date || row.eventDate;
+          
+          if (row.participant_ids && eventDate) {
+            try {
+              const participantIds = typeof row.participant_ids === 'string' 
+                ? JSON.parse(row.participant_ids || '[]') 
+                : row.participant_ids;
+              
+              if (Array.isArray(participantIds) && participantIds.length > 0) {
+                console.log(`🔍 [Nationals] Calculating age category for performance ${row.performance_id} with ${participantIds.length} participants, event date: ${eventDate}`);
+                const calculated = await calculateAgeCategoryForEntry(
+                  participantIds,
+                  eventDate,
+                  sqlClient
+                );
+                if (calculated && calculated !== 'N/A' && calculated !== '') {
+                  calculatedAgeCategory = calculated;
+                  console.log(`✅ [Nationals] Calculated age category for performance ${row.performance_id}: ${calculated} (was: ${row.age_category})`);
+                } else {
+                  console.warn(`⚠️ [Nationals] Age category calculation returned N/A for performance ${row.performance_id}`);
+                }
+              } else {
+                console.warn(`⚠️ [Nationals] No participant IDs found for performance ${row.performance_id}`);
+              }
+            } catch (error) {
+              console.warn(`❌ [Nationals] Error calculating age category for ranking ${row.performance_id}:`, error);
+              // Fall back to event age category
+            }
+          } else {
+            console.warn(`⚠️ [Nationals] Missing participant_ids or event_date for performance ${row.performance_id}`, {
+              hasParticipantIds: !!row.participant_ids,
+              hasEventDate: !!eventDate
+            });
+          }
+          
+          // Ensure we have a valid age category - use event age category as fallback
+          if (!calculatedAgeCategory || calculatedAgeCategory === 'N/A' || calculatedAgeCategory === '') {
+            calculatedAgeCategory = row.age_category || 'N/A';
+          }
+          
+          return {
+            ...row,
+            calculated_age_category: calculatedAgeCategory
+          };
+        })
+      );
+      
+      // Log age category distribution
+      const ageCategoryCounts = resultsWithAgeCategories.reduce((acc: Record<string, number>, row: any) => {
+        const ageCat = row.calculated_age_category || row.age_category || 'N/A';
+        acc[ageCat] = (acc[ageCat] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('🎂 [Nationals] Age category distribution in rankings:', ageCategoryCounts);
+      
       // Process results with proper rounding and tie-breaking
-      const formattedResult = await Promise.all(result.map(async (row: any) => {
+      const formattedResult = await Promise.all(resultsWithAgeCategories.map(async (row: any) => {
         // Use participant_names from performances table if available, otherwise parse from participant_ids
         let participantNames: string[] = [];
         try {
@@ -1750,12 +1813,14 @@ export const db = {
             ? participantNames.join(', ') 
             : row.contestant_name || 'Unknown';
         
+        const finalAgeCategory = row.calculated_age_category || row.age_category || 'N/A';
+        
         return {
           performanceId: row.performance_id,
           eventId: row.event_id,
           eventName: row.event_name,
           region: row.region || 'Nationals',
-          ageCategory: row.age_category,
+          ageCategory: finalAgeCategory, // Use calculated age category
           performanceType: row.performance_type,
           title: row.title,
           itemStyle: row.item_style,
@@ -2093,22 +2158,53 @@ export const db = {
       const { calculateAgeCategoryForEntry } = await import('./age-category-calculator');
       const resultsWithAgeCategories = await Promise.all(
         result.map(async (row: any) => {
-          let calculatedAgeCategory = row.age_category;
+          let calculatedAgeCategory = row.age_category || null;
           
           // Try to calculate age category from participant_ids if available
-          if (row.participant_ids && row.event_date) {
+          // Check both event_date and eventDate (different query aliases)
+          const eventDate = row.event_date || row.eventDate;
+          
+          if (row.participant_ids && eventDate) {
             try {
-              const participantIds = JSON.parse(row.participant_ids || '[]');
-              if (participantIds.length > 0) {
-                calculatedAgeCategory = await calculateAgeCategoryForEntry(
+              const participantIds = typeof row.participant_ids === 'string' 
+                ? JSON.parse(row.participant_ids || '[]') 
+                : row.participant_ids;
+              
+              if (Array.isArray(participantIds) && participantIds.length > 0) {
+                console.log(`🔍 Calculating age category for performance ${row.performance_id} with ${participantIds.length} participants, event date: ${eventDate}`);
+                const calculated = await calculateAgeCategoryForEntry(
                   participantIds,
-                  row.event_date,
+                  eventDate,
                   sqlClient
                 );
+                if (calculated && calculated !== 'N/A' && calculated !== '') {
+                  calculatedAgeCategory = calculated;
+                  console.log(`✅ Calculated age category for performance ${row.performance_id}: ${calculated} (was: ${row.age_category})`);
+                } else {
+                  console.warn(`⚠️ Age category calculation returned N/A for performance ${row.performance_id} (participantIds: ${JSON.stringify(participantIds)}, eventDate: ${eventDate})`);
+                }
+              } else {
+                console.warn(`⚠️ No participant IDs found for performance ${row.performance_id} (participant_ids: ${row.participant_ids})`);
               }
             } catch (error) {
-              console.warn('Error calculating age category for ranking:', error);
+              console.warn(`❌ Error calculating age category for ranking ${row.performance_id}:`, error);
               // Fall back to event age category
+            }
+          } else {
+            console.warn(`⚠️ Missing participant_ids or event_date for performance ${row.performance_id}`, {
+              hasParticipantIds: !!row.participant_ids,
+              hasEventDate: !!eventDate,
+              participantIds: row.participant_ids,
+              eventDate: eventDate,
+              rowKeys: Object.keys(row)
+            });
+          }
+          
+          // Ensure we have a valid age category - use event age category as fallback
+          if (!calculatedAgeCategory || calculatedAgeCategory === 'N/A' || calculatedAgeCategory === '') {
+            calculatedAgeCategory = row.age_category || 'N/A';
+            if (calculatedAgeCategory === 'N/A') {
+              console.warn(`⚠️ Performance ${row.performance_id} has no age category (event: ${row.age_category})`);
             }
           }
           
@@ -2118,6 +2214,14 @@ export const db = {
           };
         })
       );
+      
+      // Log age category distribution
+      const ageCategoryCounts = resultsWithAgeCategories.reduce((acc: Record<string, number>, row: any) => {
+        const ageCat = row.calculated_age_category || row.age_category || 'N/A';
+        acc[ageCat] = (acc[ageCat] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('🎂 Age category distribution in rankings:', ageCategoryCounts);
     
       // Build final result objects with participant names
       // Note: No deduplication here - the frontend handles deduplication when filters are applied
@@ -2271,12 +2375,14 @@ export const db = {
         // Calculate rounded percentage using the centralized function
         const roundedPercentage = calculateRoundedPercentage(totalScore, judgeCount);
         
+        const finalAgeCategory = row.calculated_age_category || row.age_category || 'N/A';
+        
         return {
           performanceId: row.performance_id,
           eventId: row.event_id,
           eventName: row.event_name,
-          region: row.region,
-          ageCategory: row.calculated_age_category, // Use calculated age category
+          region: row.region || 'Nationals',
+          ageCategory: finalAgeCategory, // Use calculated age category, fallback to event age category
           performanceType: row.performance_type,
           title: row.title,
           itemStyle: row.item_style,
