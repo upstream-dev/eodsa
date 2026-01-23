@@ -1422,41 +1422,54 @@ export const db = {
       
       let result: any[] = [];
 
-      // Handle event filtering
+      // Query from regular events table (performances + scores)
+      // This is the unified approach - query directly from source
       if (eventIds && eventIds.length > 0) {
-        console.log('Filtering by specific nationals events:', eventIds);
+        console.log('Filtering by specific events:', eventIds);
         
         // For single event (most common case)
         if (eventIds.length === 1) {
           const eventId = eventIds[0];
           result = await sqlClient`
             SELECT 
-              nee.id as performance_id,
-              ne.id as event_id,
-              ne.name as event_name,
-              'Nationals' as region,
-              nee.age_category,
-              nee.performance_type,
-              nee.item_name as title,
-              nee.item_style,
-              nee.participant_ids,
+              p.id as performance_id,
+              e.id as event_id,
+              e.name as event_name,
+              COALESCE(e.region, 'Nationals') as region,
+              COALESCE(
+                ee.performance_type,
+                CASE 
+                  WHEN jsonb_array_length(ee.participant_ids::jsonb) = 1 THEN 'Solo'
+                  WHEN jsonb_array_length(ee.participant_ids::jsonb) = 2 THEN 'Duet'
+                  WHEN jsonb_array_length(ee.participant_ids::jsonb) = 3 THEN 'Trio'
+                  WHEN jsonb_array_length(ee.participant_ids::jsonb) >= 4 THEN 'Group'
+                  ELSE e.performance_type
+                END
+              ) as performance_type,
+              e.event_date,
+              p.title,
+              p.item_style,
+              p.participant_names,
               c.name as contestant_name,
               c.type as contestant_type,
               c.studio_name,
-              AVG(ns.technical_score + ns.musical_score + ns.performance_score + ns.styling_score + ns.overall_impression_score) as total_score,
-              AVG((ns.technical_score + ns.musical_score + ns.performance_score + ns.styling_score + ns.overall_impression_score) / 5) as average_score,
-              COUNT(ns.id) as judge_count,
-              nee.choreographer,
-              nee.mastery,
-              nee.item_number
-            FROM nationals_event_entries nee
-            JOIN nationals_events ne ON nee.nationals_event_id = ne.id
-            JOIN contestants c ON nee.contestant_id = c.id
-            LEFT JOIN nationals_scores ns ON nee.id = ns.performance_id
-            WHERE ne.id = ${eventId} AND nee.approved = true
-            GROUP BY nee.id, ne.id, ne.name, nee.age_category, nee.performance_type, nee.item_name, nee.item_style, nee.participant_ids, c.name, c.type, c.studio_name, nee.choreographer, nee.mastery, nee.item_number
-            HAVING COUNT(ns.id) > 0
-            ORDER BY total_score DESC
+              ee.participant_ids,
+              ee.entry_type,
+              SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
+              COUNT(DISTINCT s.judge_id) as judge_count,
+              -- Raw decimal average (for tie-breaking)
+              AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score,
+              p.item_number,
+              p.mastery,
+              e.age_category
+            FROM performances p
+            JOIN events e ON p.event_id = e.id
+            LEFT JOIN contestants c ON p.contestant_id = c.id
+            LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
+            LEFT JOIN scores s ON p.id = s.performance_id
+            WHERE e.id = ${eventId} AND p.scores_published = true
+            GROUP BY p.id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type, p.item_number, p.mastery
+            HAVING COUNT(s.id) > 0
           ` as any[];
         } else {
           // For multiple events, query each separately and combine
@@ -1464,67 +1477,91 @@ export const db = {
           for (const eventId of eventIds) {
             const eventResult = await sqlClient`
               SELECT 
-                nee.id as performance_id,
-                ne.id as event_id,
-                ne.name as event_name,
-                'Nationals' as region,
-                nee.age_category,
-                nee.performance_type,
-                nee.item_name as title,
-                nee.item_style,
-                nee.participant_ids,
+                p.id as performance_id,
+                e.id as event_id,
+                e.name as event_name,
+                COALESCE(e.region, 'Nationals') as region,
+                COALESCE(
+                  ee.performance_type,
+                  CASE 
+                    WHEN jsonb_array_length(ee.participant_ids::jsonb) = 1 THEN 'Solo'
+                    WHEN jsonb_array_length(ee.participant_ids::jsonb) = 2 THEN 'Duet'
+                    WHEN jsonb_array_length(ee.participant_ids::jsonb) = 3 THEN 'Trio'
+                    WHEN jsonb_array_length(ee.participant_ids::jsonb) >= 4 THEN 'Group'
+                    ELSE e.performance_type
+                  END
+                ) as performance_type,
+                e.event_date,
+                p.title,
+                p.item_style,
+                p.participant_names,
                 c.name as contestant_name,
                 c.type as contestant_type,
                 c.studio_name,
-                AVG(ns.technical_score + ns.musical_score + ns.performance_score + ns.styling_score + ns.overall_impression_score) as total_score,
-                AVG((ns.technical_score + ns.musical_score + ns.performance_score + ns.styling_score + ns.overall_impression_score) / 5) as average_score,
-                COUNT(ns.id) as judge_count,
-                nee.choreographer,
-                nee.mastery,
-                nee.item_number
-              FROM nationals_event_entries nee
-              JOIN nationals_events ne ON nee.nationals_event_id = ne.id
-              JOIN contestants c ON nee.contestant_id = c.id
-              LEFT JOIN nationals_scores ns ON nee.id = ns.performance_id
-              WHERE ne.id = ${eventId} AND nee.approved = true
-              GROUP BY nee.id, ne.id, ne.name, nee.age_category, nee.performance_type, nee.item_name, nee.item_style, nee.participant_ids, c.name, c.type, c.studio_name, nee.choreographer, nee.mastery, nee.item_number
-              HAVING COUNT(ns.id) > 0
-              ORDER BY total_score DESC
+                ee.participant_ids,
+                ee.entry_type,
+                SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
+                COUNT(DISTINCT s.judge_id) as judge_count,
+                -- Raw decimal average (for tie-breaking)
+                AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score,
+                p.item_number,
+                p.mastery,
+                e.age_category
+              FROM performances p
+              JOIN events e ON p.event_id = e.id
+              LEFT JOIN contestants c ON p.contestant_id = c.id
+              LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
+              LEFT JOIN scores s ON p.id = s.performance_id
+              WHERE e.id = ${eventId} AND p.scores_published = true
+              GROUP BY p.id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type, p.item_number, p.mastery
+              HAVING COUNT(s.id) > 0
             ` as any[];
             allResults.push(...eventResult);
           }
           result = allResults;
         }
       } else {
-        // No event filtering - get all nationals rankings
+        // No event filtering - get all events with published scores
         result = await sqlClient`
           SELECT 
-            nee.id as performance_id,
-            ne.id as event_id,
-            ne.name as event_name,
-            'Nationals' as region,
-            nee.age_category,
-            nee.performance_type,
-            nee.item_name as title,
-            nee.item_style,
-            nee.participant_ids,
+            p.id as performance_id,
+            e.id as event_id,
+            e.name as event_name,
+            COALESCE(e.region, 'Nationals') as region,
+            COALESCE(
+              ee.performance_type,
+              CASE 
+                WHEN jsonb_array_length(ee.participant_ids::jsonb) = 1 THEN 'Solo'
+                WHEN jsonb_array_length(ee.participant_ids::jsonb) = 2 THEN 'Duet'
+                WHEN jsonb_array_length(ee.participant_ids::jsonb) = 3 THEN 'Trio'
+                WHEN jsonb_array_length(ee.participant_ids::jsonb) >= 4 THEN 'Group'
+                ELSE e.performance_type
+              END
+            ) as performance_type,
+            e.event_date,
+            p.title,
+            p.item_style,
+            p.participant_names,
             c.name as contestant_name,
             c.type as contestant_type,
             c.studio_name,
-            AVG(ns.technical_score + ns.musical_score + ns.performance_score + ns.styling_score + ns.overall_impression_score) as total_score,
-            AVG((ns.technical_score + ns.musical_score + ns.performance_score + ns.styling_score + ns.overall_impression_score) / 5) as average_score,
-            COUNT(ns.id) as judge_count,
-            nee.choreographer,
-            nee.mastery,
-            nee.item_number
-          FROM nationals_event_entries nee
-          JOIN nationals_events ne ON nee.nationals_event_id = ne.id
-          JOIN contestants c ON nee.contestant_id = c.id
-          LEFT JOIN nationals_scores ns ON nee.id = ns.performance_id
-          WHERE nee.approved = true
-          GROUP BY nee.id, ne.id, ne.name, nee.age_category, nee.performance_type, nee.item_name, nee.item_style, nee.participant_ids, c.name, c.type, c.studio_name, nee.choreographer, nee.mastery, nee.item_number
-          HAVING COUNT(ns.id) > 0
-          ORDER BY total_score DESC
+            ee.participant_ids,
+            ee.entry_type,
+            SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
+            COUNT(DISTINCT s.judge_id) as judge_count,
+            -- Raw decimal average (for tie-breaking)
+            AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score,
+            p.item_number,
+            p.mastery,
+            e.age_category
+          FROM performances p
+          JOIN events e ON p.event_id = e.id
+          LEFT JOIN contestants c ON p.contestant_id = c.id
+          LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
+          LEFT JOIN scores s ON p.id = s.performance_id
+          WHERE p.scores_published = true
+          GROUP BY p.id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type, p.item_number, p.mastery
+          HAVING COUNT(s.id) > 0
         ` as any[];
       }
       
@@ -1537,56 +1574,229 @@ export const db = {
         return [];
       }
 
-      // If no results, return empty array
+      // If no results, run diagnostic queries to find the issue
       if (result.length === 0) {
-        console.log('No nationals rankings found for the given criteria');
+        console.log('⚠️ No nationals rankings found for the given criteria');
+        console.log('🔍 Running diagnostic queries...');
+        
+        try {
+          // Check 1: Do nationals entries exist?
+          const entriesCheck = await sqlClient`
+            SELECT COUNT(*) as count FROM nationals_event_entries WHERE approved = true
+          ` as any[];
+          console.log('  ✅ Approved nationals entries:', entriesCheck[0]?.count || 0);
+          
+          // Check 2: Do performances exist for nationals entries?
+          const performancesCheck = await sqlClient`
+            SELECT COUNT(*) as count 
+            FROM nationals_event_entries nee
+            JOIN performances p ON p.event_entry_id = nee.id
+            WHERE nee.approved = true
+          ` as any[];
+          console.log('  ✅ Performances linked to approved entries:', performancesCheck[0]?.count || 0);
+          
+          // Check 3: Are scores published?
+          const publishedCheck = await sqlClient`
+            SELECT COUNT(*) as count 
+            FROM nationals_event_entries nee
+            JOIN performances p ON p.event_entry_id = nee.id
+            WHERE nee.approved = true AND p.scores_published = true
+          ` as any[];
+          console.log('  ✅ Published performances:', publishedCheck[0]?.count || 0);
+          
+          // Check 4: Do scores exist?
+          const scoresCheck = await sqlClient`
+            SELECT COUNT(DISTINCT p.id) as count 
+            FROM nationals_event_entries nee
+            JOIN performances p ON p.event_entry_id = nee.id
+            LEFT JOIN scores s ON s.performance_id = p.id
+            WHERE nee.approved = true AND p.scores_published = true AND s.id IS NOT NULL
+          ` as any[];
+          console.log('  ✅ Performances with scores:', scoresCheck[0]?.count || 0);
+          
+          // Check 5: Sample data to see what's missing
+          const sampleData = await sqlClient`
+            SELECT 
+              nee.id as entry_id,
+              nee.approved as entry_approved,
+              p.id as performance_id,
+              p.scores_published,
+              COUNT(s.id) as score_count
+            FROM nationals_event_entries nee
+            LEFT JOIN performances p ON p.event_entry_id = nee.id
+            LEFT JOIN scores s ON s.performance_id = p.id
+            WHERE nee.approved = true
+            GROUP BY nee.id, nee.approved, p.id, p.scores_published
+            LIMIT 5
+          ` as any[];
+          console.log('  📊 Sample data (first 5 approved entries):', JSON.stringify(sampleData, null, 2));
+          
+          // Check 6: Event filtering (if applicable)
+          if (eventIds && eventIds.length > 0) {
+            const eventCheck = await sqlClient`
+              SELECT COUNT(*) as count 
+              FROM nationals_events 
+              WHERE id = ANY(${eventIds})
+            ` as any[];
+            console.log('  ✅ Nationals events matching filter:', eventCheck[0]?.count || 0);
+          } else {
+            const allEventsCheck = await sqlClient`
+              SELECT COUNT(*) as count FROM nationals_events
+            ` as any[];
+            console.log('  ✅ Total nationals events:', allEventsCheck[0]?.count || 0);
+          }
+        } catch (diagError) {
+          console.error('❌ Error running diagnostics:', diagError);
+        }
+        
         return [];
       }
 
-      // Calculate rankings within each category
-      const formattedResult = result.map((row: any, index: number) => {
-        const participantNames = row.participant_ids ? JSON.parse(row.participant_ids) : [];
-        const totalScore = parseFloat(row.total_score) || 0;
-        const averageScore = parseFloat(row.average_score) || 0;
-        const judgeCount = parseInt(row.judge_count) || 0;
-        // Calculate rounded percentage using centralized function (ensures consistency)
-        const percentage = calculateRoundedPercentage(totalScore, judgeCount);
+      // Process results with proper rounding and tie-breaking
+      const formattedResult = await Promise.all(result.map(async (row: any) => {
+        // Use participant_names from performances table if available, otherwise parse from participant_ids
+        let participantNames: string[] = [];
+        try {
+          if (row.participant_names) {
+            if (typeof row.participant_names === 'string') {
+              participantNames = JSON.parse(row.participant_names);
+            } else if (Array.isArray(row.participant_names)) {
+              participantNames = row.participant_names;
+            }
+          }
+          // Fallback to participant_ids if participant_names not available
+          if (participantNames.length === 0 && row.participant_ids) {
+            const participantIds = typeof row.participant_ids === 'string' 
+              ? JSON.parse(row.participant_ids || '[]') 
+              : row.participant_ids;
+            
+            if (Array.isArray(participantIds) && participantIds.length > 0) {
+              // Fetch dancer names from database
+              let dancerResults = await sqlClient`
+                SELECT id, eodsa_id, name FROM dancers WHERE id = ANY(${participantIds})
+              ` as any[];
+              
+              if (dancerResults.length === 0) {
+                dancerResults = await sqlClient`
+                  SELECT id, eodsa_id, name FROM dancers WHERE eodsa_id = ANY(${participantIds})
+                ` as any[];
+              }
+              
+              for (const pid of participantIds) {
+                const dancer = dancerResults.find((d: any) => d.id === pid || d.eodsa_id === pid);
+                if (dancer?.name) {
+                  participantNames.push(dancer.name);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Error parsing participant names:', error);
+        }
         
-        const medalInfo = getMedalFromPercentage(percentage);
-        const rankingLevel = medalInfo.label;
+        // Get studio information - for Duets and Groups, use studio name from studio_applications
+        let studioInfo = '';
+        const isGroupOrDuet = row.performance_type === 'Duet' || row.performance_type === 'Group' || row.performance_type === 'Trio';
+        
+        if (isGroupOrDuet && row.participant_ids) {
+          try {
+            const participantIds = typeof row.participant_ids === 'string' 
+              ? JSON.parse(row.participant_ids) 
+              : row.participant_ids;
+            
+            if (Array.isArray(participantIds) && participantIds.length > 0) {
+              const firstParticipantId = participantIds[0];
+              
+              const studioResult = await sqlClient`
+                SELECT s.name as studio_name
+                FROM dancers d
+                LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+                LEFT JOIN studios s ON sa.studio_id = s.id
+                WHERE (d.eodsa_id = ${firstParticipantId} OR d.id = ${firstParticipantId})
+                LIMIT 1
+              ` as any[];
+              
+              if (studioResult.length > 0 && studioResult[0].studio_name) {
+                studioInfo = studioResult[0].studio_name;
+              }
+            }
+          } catch (error) {
+            console.warn('Error fetching studio name for Duet/Group:', error);
+          }
+        }
+        
+        // Fallback to contestant studio name
+        if (!studioInfo && row.contestant_type === 'studio' && row.studio_name) {
+          studioInfo = row.studio_name;
+        } else if (!studioInfo && row.studio_name) {
+          studioInfo = row.studio_name;
+        }
+        
+        // Calculate scores
+        const totalScore = parseFloat(row.total_score) || 0;
+        const judgeCount = parseInt(row.judge_count) || 1;
+        const rawAverageScore = parseFloat(row.raw_average_score) || 0;
+        
+        // Calculate rounded percentage using the centralized function
+        const roundedPercentage = calculateRoundedPercentage(totalScore, judgeCount);
+        
+        // Get medal info using rounded percentage
+        const medalInfo = getMedalFromPercentageCert(roundedPercentage);
+        
+        // For Duets/Groups, display studio name; for Solo, display participant names
+        const displayName = isGroupOrDuet && studioInfo 
+          ? studioInfo 
+          : participantNames.length > 0 
+            ? participantNames.join(', ') 
+            : row.contestant_name || 'Unknown';
         
         return {
           performanceId: row.performance_id,
           eventId: row.event_id,
           eventName: row.event_name,
-          region: row.region,
+          region: row.region || 'Nationals',
           ageCategory: row.age_category,
           performanceType: row.performance_type,
           title: row.title,
           itemStyle: row.item_style,
-          contestantName: participantNames.length > 0 ? participantNames.join(', ') : row.contestant_name,
+          contestantName: displayName,
           participantNames: participantNames,
-          studioName: row.studio_name,
+          studioName: studioInfo,
           totalScore: totalScore,
-          averageScore: averageScore,
-          rank: index + 1, // Simple ranking based on total score order
+          averageScore: rawAverageScore, // Raw decimal average (for tie-breaking)
+          rawAverageScore: rawAverageScore, // Keep raw average for tie-breaking
+          roundedPercentage: roundedPercentage, // Rounded percentage (for display and award bands)
+          rank: 0, // Rank will be calculated after sorting
           judgeCount: judgeCount,
-          percentage: percentage, // Already rounded by calculateRoundedPercentage
-          rankingLevel: rankingLevel,
-          choreographer: row.choreographer,
+          rankingLevel: medalInfo || 'Unknown', // Medal info is a string
+          choreographer: null, // Not available in regular events query
           mastery: row.mastery,
           itemNumber: row.item_number
         };
-      });
+      }));
 
-      // Sort by total score descending and assign proper ranks
-      formattedResult.sort((a, b) => b.totalScore - a.totalScore);
+      // Sort by rounded percentage DESC, then raw decimal average DESC (tie-breaking)
+      formattedResult.sort((a, b) => {
+        // Primary sort: rounded percentage descending
+        if (b.roundedPercentage !== a.roundedPercentage) {
+          return b.roundedPercentage - a.roundedPercentage;
+        }
+        // Secondary sort: raw decimal average descending (tie-breaker)
+        return b.rawAverageScore - a.rawAverageScore;
+      });
       
-      // Assign ranks considering ties
+      // Assign ranks (handling ties properly)
       let currentRank = 1;
       for (let i = 0; i < formattedResult.length; i++) {
-        if (i > 0 && formattedResult[i].totalScore < formattedResult[i-1].totalScore) {
-          currentRank = i + 1;
+        if (i > 0) {
+          const prev = formattedResult[i - 1];
+          const curr = formattedResult[i];
+          // If rounded percentage differs, increment rank
+          if (curr.roundedPercentage !== prev.roundedPercentage) {
+            currentRank = i + 1;
+          }
+          // If rounded percentage is same but raw average differs, same rank (tie broken by raw average)
+          // If both are same, same rank (true tie)
         }
         formattedResult[i].rank = currentRank;
       }
@@ -1645,7 +1855,9 @@ export const db = {
               ee.participant_ids,
               ee.entry_type,
               SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
-              COUNT(DISTINCT s.judge_id) as judge_count
+              COUNT(DISTINCT s.judge_id) as judge_count,
+              -- Raw decimal average (for tie-breaking)
+              AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score
             FROM performances p
             JOIN events e ON p.event_id = e.id
             LEFT JOIN contestants c ON p.contestant_id = c.id
@@ -1654,7 +1866,6 @@ export const db = {
             WHERE e.id = ${eventId} AND p.scores_published = true
             GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
-            ORDER BY e.region, e.age_category, performance_type, total_score DESC
           ` as any[];
         } else {
           // For multiple events, we'll query each separately and combine
@@ -1690,16 +1901,17 @@ export const db = {
                 ee.participant_ids,
                 ee.entry_type,
                 SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
-                COUNT(DISTINCT s.judge_id) as judge_count
+                COUNT(DISTINCT s.judge_id) as judge_count,
+                -- Raw decimal average (for tie-breaking)
+                AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score
               FROM performances p
               JOIN events e ON p.event_id = e.id
-              JOIN contestants c ON p.contestant_id = c.id
+              LEFT JOIN contestants c ON p.contestant_id = c.id
               LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
               LEFT JOIN scores s ON p.id = s.performance_id
               WHERE e.id = ${eventId} AND p.scores_published = true
               GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
               HAVING COUNT(s.id) > 0
-              ORDER BY e.region, e.age_category, performance_type, total_score DESC
             ` as any[];
             allResults.push(...eventResult);
           }
@@ -1729,7 +1941,9 @@ export const db = {
               ee.participant_ids,
               ee.entry_type,
               SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
-              COUNT(DISTINCT s.judge_id) as judge_count
+              COUNT(DISTINCT s.judge_id) as judge_count,
+              -- Raw decimal average (for tie-breaking)
+              AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score
               FROM performances p
               JOIN events e ON p.event_id = e.id
               LEFT JOIN contestants c ON p.contestant_id = c.id
@@ -1738,7 +1952,6 @@ export const db = {
               WHERE e.region = ${region} AND e.age_category = ${ageCategory} AND e.performance_type = ${performanceType} AND p.scores_published = true
             GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
-            ORDER BY e.region, e.age_category, e.performance_type, total_score DESC
           ` as any[];
         } else if (region && ageCategory) {
           result = await sqlClient`
@@ -1762,7 +1975,9 @@ export const db = {
               ee.participant_ids,
               ee.entry_type,
               SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
-              COUNT(DISTINCT s.judge_id) as judge_count
+              COUNT(DISTINCT s.judge_id) as judge_count,
+              -- Raw decimal average (for tie-breaking)
+              AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score
               FROM performances p
               JOIN events e ON p.event_id = e.id
               LEFT JOIN contestants c ON p.contestant_id = c.id
@@ -1771,7 +1986,6 @@ export const db = {
               WHERE e.region = ${region} AND e.age_category = ${ageCategory} AND p.scores_published = true
             GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
-            ORDER BY e.region, e.age_category, e.performance_type, total_score DESC
           ` as any[];
         } else if (region) {
           result = await sqlClient`
@@ -1795,7 +2009,9 @@ export const db = {
               ee.participant_ids,
               ee.entry_type,
               SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
-              COUNT(DISTINCT s.judge_id) as judge_count
+              COUNT(DISTINCT s.judge_id) as judge_count,
+              -- Raw decimal average (for tie-breaking)
+              AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score
               FROM performances p
               JOIN events e ON p.event_id = e.id
               LEFT JOIN contestants c ON p.contestant_id = c.id
@@ -1804,7 +2020,6 @@ export const db = {
               WHERE e.region = ${region} AND p.scores_published = true
             GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
-            ORDER BY e.region, e.age_category, e.performance_type, total_score DESC
           ` as any[];
         } else {
           result = await sqlClient`
@@ -1837,7 +2052,9 @@ export const db = {
               ee.participant_ids,
               ee.entry_type,
               SUM(s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score) as total_score,
-              COUNT(DISTINCT s.judge_id) as judge_count
+              COUNT(DISTINCT s.judge_id) as judge_count,
+              -- Raw decimal average (for tie-breaking)
+              AVG((s.technical_score + s.musical_score + s.performance_score + s.styling_score + s.overall_impression_score))::numeric as raw_average_score
               FROM performances p
               JOIN events e ON p.event_id = e.id
               LEFT JOIN contestants c ON p.contestant_id = c.id
@@ -1846,7 +2063,6 @@ export const db = {
               WHERE p.scores_published = true
             GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
-            ORDER BY e.region, e.age_category, performance_type, total_score DESC
           ` as any[];
         }
       }
@@ -1964,12 +2180,79 @@ export const db = {
           }
         }
         
-        // Create display name based on performance type and data available
-        let displayName = '';
+        // Get studio information - try multiple sources
+        // For Duets and Groups, use studio name from studio_applications
+        const isGroupOrDuet = row.performance_type === 'Duet' || row.performance_type === 'Group' || row.performance_type === 'Trio';
         let studioInfo = '';
         
-        if (participantNames.length > 0) {
-          // Use actual participant names (the dancers)
+        if (isGroupOrDuet && row.participant_ids) {
+          // For Duets/Groups, get studio from first participant's studio application
+          try {
+            const participantIds = typeof row.participant_ids === 'string' 
+              ? JSON.parse(row.participant_ids) 
+              : row.participant_ids;
+            
+            if (Array.isArray(participantIds) && participantIds.length > 0) {
+              const firstParticipantId = participantIds[0];
+              
+              // Get studio name via studio_applications (accepted application logic)
+              const studioResult = await sqlClient`
+                SELECT s.name as studio_name
+                FROM dancers d
+                LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+                LEFT JOIN studios s ON sa.studio_id = s.id
+                WHERE (d.eodsa_id = ${firstParticipantId} OR d.id = ${firstParticipantId})
+                LIMIT 1
+              ` as any[];
+              
+              if (studioResult.length > 0 && studioResult[0].studio_name) {
+                studioInfo = studioResult[0].studio_name;
+              }
+            }
+          } catch (error) {
+            console.warn('Error fetching studio name for Duet/Group:', error);
+          }
+        }
+        
+        // Fallback to contestant studio name if not found
+        if (!studioInfo && row.contestant_type === 'studio' && row.studio_name) {
+          studioInfo = row.studio_name;
+        } else if (!studioInfo && row.studio_name) {
+          studioInfo = row.studio_name;
+        } else if (!studioInfo && row.participant_ids) {
+          // For solo performances, get studio from dancer's studio association
+          try {
+            const participantIds = typeof row.participant_ids === 'string' 
+              ? JSON.parse(row.participant_ids) 
+              : row.participant_ids;
+            
+            if (Array.isArray(participantIds) && participantIds.length > 0) {
+              const firstParticipantId = participantIds[0];
+              
+              const studioResult = await sqlClient`
+                SELECT s.name as studio_name
+                FROM dancers d
+                LEFT JOIN studio_applications sa ON d.id = sa.dancer_id AND sa.status = 'accepted'
+                LEFT JOIN studios s ON sa.studio_id = s.id
+                WHERE (d.eodsa_id = ${firstParticipantId} OR d.id = ${firstParticipantId})
+                LIMIT 1
+              ` as any[];
+              
+              if (studioResult.length > 0 && studioResult[0].studio_name) {
+                studioInfo = studioResult[0].studio_name;
+              }
+            }
+          } catch (error) {
+            console.warn('Error fetching studio name from dancer associations:', error);
+          }
+        }
+        
+        // Create display name based on performance type
+        // For Duets/Groups: show studio name; for Solo: show participant names
+        let displayName = '';
+        if (isGroupOrDuet && studioInfo) {
+          displayName = studioInfo;
+        } else if (participantNames.length > 0) {
           displayName = participantNames.join(', ');
         } else {
           // Fallback: use contestant name or title
@@ -1980,62 +2263,13 @@ export const db = {
           }
         }
         
-        // Get studio information - try multiple sources
-        // First try from contestant (for group/studio entries)
-        if (row.contestant_type === 'studio' && row.studio_name) {
-          studioInfo = row.studio_name;
-        } else if (row.studio_name) {
-          // Sometimes studio_name might be set even if contestant_type is not 'studio'
-          studioInfo = row.studio_name;
-        } else {
-          // For solo/individual performances, get studio from dancer's studio association
-          // Check if we have participant_ids to look up dancer studio associations
-          if (row.participant_ids) {
-            try {
-              const participantIds = typeof row.participant_ids === 'string' 
-                ? JSON.parse(row.participant_ids) 
-                : row.participant_ids;
-              
-              if (Array.isArray(participantIds) && participantIds.length > 0) {
-                // Fetch studio name from dancer's studio applications
-                // For solo performances, check the first (and only) participant's studio
-                // For group performances, check the first participant's studio (all should be from same studio)
-                const firstParticipantId = participantIds[0];
-                
-                try {
-                  // First, find the dancer by EODSA ID or internal ID
-                  // participant_ids might contain either EODSA IDs (like "E123456") or internal IDs
-                  const dancerInfo = await sqlClient`
-                    SELECT id, eodsa_id FROM dancers 
-                    WHERE eodsa_id = ${firstParticipantId} OR id = ${firstParticipantId}
-                    LIMIT 1
-                  ` as any[];
-                  
-                  if (dancerInfo.length > 0) {
-                    const dancerId = dancerInfo[0].id;
-                    
-                    // Now look up the studio association using the dancer's internal ID
-                    const studioResult = await sqlClient`
-                      SELECT s.name as studio_name
-                      FROM studio_applications sa
-                      JOIN studios s ON sa.studio_id = s.id
-                      WHERE sa.dancer_id = ${dancerId} AND sa.status = 'accepted'
-                      LIMIT 1
-                    ` as any[];
-                    
-                    if (studioResult.length > 0) {
-                      studioInfo = studioResult[0].studio_name;
-                    }
-                  }
-                } catch (error) {
-                  console.warn('Error fetching studio name from dancer associations:', error);
-                }
-              }
-            } catch (error) {
-              console.warn('Error parsing participant_ids for studio lookup:', error);
-            }
-          }
-        }
+        // Calculate scores
+        const totalScore = parseFloat(row.total_score) || 0;
+        const judgeCount = parseInt(row.judge_count) || 1;
+        const rawAverageScore = parseFloat(row.raw_average_score) || 0;
+        
+        // Calculate rounded percentage using the centralized function
+        const roundedPercentage = calculateRoundedPercentage(totalScore, judgeCount);
         
         return {
           performanceId: row.performance_id,
@@ -2046,24 +2280,46 @@ export const db = {
           performanceType: row.performance_type,
           title: row.title,
           itemStyle: row.item_style,
-          contestantName: displayName, // Now shows participant names instead of contestant name
+          contestantName: displayName, // Shows studio name for Duets/Groups, participant names for Solo
           participantNames: participantNames, // Keep original participant names for reference
           studioName: studioInfo, // Studio information for display
-          totalScore: parseFloat(row.total_score) || 0,
-          // Calculate average using total judges assigned (not just scores submitted)
-          totalJudgesAssigned: parseInt(row.total_judges_assigned) || parseInt(row.judge_count) || 1,
-          averageScore: (() => {
-            const totalScore = parseFloat(row.total_score) || 0;
-            const totalJudges = parseInt(row.total_judges_assigned) || parseInt(row.judge_count) || 1;
-            return totalJudges > 0 ? totalScore / totalJudges : 0;
-          })(),
-          rank: 0, // Rank is calculated on the frontend based on view mode
-          judgeCount: parseInt(row.judge_count) || 0,
+          totalScore: totalScore,
+          averageScore: rawAverageScore, // Raw decimal average (for tie-breaking)
+          rawAverageScore: rawAverageScore, // Keep raw average for tie-breaking
+          roundedPercentage: roundedPercentage, // Rounded percentage (for display and award bands)
+          rank: 0, // Rank will be calculated after sorting
+          judgeCount: judgeCount,
           itemNumber: row.item_number,
           mastery: row.mastery,
           entryType: row.entry_type || 'live' // Add entry type (live/virtual)
         };
       }));
+      
+      // Sort by rounded percentage DESC, then raw decimal average DESC (tie-breaking)
+      finalResults.sort((a, b) => {
+        // Primary sort: rounded percentage descending
+        if (b.roundedPercentage !== a.roundedPercentage) {
+          return b.roundedPercentage - a.roundedPercentage;
+        }
+        // Secondary sort: raw decimal average descending (tie-breaker)
+        return b.rawAverageScore - a.rawAverageScore;
+      });
+      
+      // Assign ranks (handling ties properly)
+      let currentRank = 1;
+      for (let i = 0; i < finalResults.length; i++) {
+        if (i > 0) {
+          const prev = finalResults[i - 1];
+          const curr = finalResults[i];
+          // If rounded percentage differs, increment rank
+          if (curr.roundedPercentage !== prev.roundedPercentage) {
+            currentRank = i + 1;
+          }
+          // If rounded percentage is same but raw average differs, same rank (tie broken by raw average)
+          // If both are same, same rank (true tie)
+        }
+        finalResults[i].rank = currentRank;
+      }
       
       return finalResults;
     } catch (error) {

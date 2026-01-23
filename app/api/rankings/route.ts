@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     await ensureDbInitialized();
     
     const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type'); // Check for 'nationals' type
     const region = searchParams.get('region') || undefined;
     const ageCategory = searchParams.get('ageCategory') || undefined;
     const performanceType = searchParams.get('performanceType') || undefined;
@@ -33,10 +34,15 @@ export async function GET(request: NextRequest) {
     // If specific event IDs are requested, pass them to the calculation
     const selectedEventIds = eventIds ? eventIds.split(',') : undefined;
     
-    console.log('📊 Rankings API called with params:', { region, ageCategory, performanceType, eventIds: selectedEventIds });
+    console.log('📊 Rankings API called with params:', { type, region, ageCategory, performanceType, eventIds: selectedEventIds });
     
-    // Use regional rankings (now renamed to nationals)
-    const rankings = await db.calculateRankings(region, ageCategory, performanceType, selectedEventIds);
+    // Use nationals rankings if type=nationals, otherwise use regional rankings
+    let rankings;
+    if (type === 'nationals') {
+      rankings = await db.calculateNationalsRankings(selectedEventIds);
+    } else {
+      rankings = await db.calculateRankings(region, ageCategory, performanceType, selectedEventIds);
+    }
     
     console.log('📊 Rankings API returning:', rankings.length, 'rankings');
     

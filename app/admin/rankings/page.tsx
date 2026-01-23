@@ -18,14 +18,16 @@ interface RankingData {
   performanceType: string;
   title: string;
   itemStyle: string;
-  contestantName: string; // Now displays participant names instead of contestant name
+  contestantName: string; // Shows participant names for Solo, studio name for Duets/Groups
   participantNames?: string[]; // Original participant names for reference
   studioName?: string; // Studio information for display
   totalScore: number;
-  averageScore: number;
+  averageScore: number; // Raw decimal average (for tie-breaking)
+  rawAverageScore?: number; // Raw decimal average (explicit field)
+  roundedPercentage?: number; // Rounded percentage (for display and award bands)
   rank: number;
   judgeCount: number;
-  percentage: number;
+  percentage?: number; // Legacy field, use roundedPercentage instead
   rankingLevel: string;
   itemNumber?: number; // Item number for program order
   mastery?: string; // Mastery level
@@ -55,6 +57,11 @@ function AdminRankingsPage() {
   const [error, setError] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
+  // Debug Phase 2 feature flag
+  useEffect(() => {
+    console.log('🚩 Phase 2 Feature Flag:', { isPhase2Enabled, isLoadingFlag });
+  }, [isPhase2Enabled, isLoadingFlag]);
+  
   // Filters
   // Region filtering removed - Nationals only now
   const [events, setEvents] = useState<Array<{id: string; name: string}>>([]);
@@ -67,23 +74,29 @@ function AdminRankingsPage() {
   const [entryTypeFilter, setEntryTypeFilter] = useState<'all' | 'live' | 'virtual'>('all');
 
   useEffect(() => {
+    console.log('🔐 Checking admin authentication...');
     // Check admin authentication
     const adminSession = localStorage.getItem('adminSession');
     if (adminSession) {
       try {
         const session = JSON.parse(adminSession);
+        console.log('🔐 Admin session found:', { isAdmin: session.isAdmin });
         if (session.isAdmin) {
           setIsAuthenticated(true);
+          console.log('✅ Admin authenticated, loading initial data...');
           loadInitialData();
         } else {
+          console.log('❌ Session exists but user is not admin');
           setError('Admin access required to view rankings');
           setIsLoading(false);
         }
-      } catch {
+      } catch (error) {
+        console.error('❌ Error parsing admin session:', error);
         setError('Invalid session. Please login as admin.');
         setIsLoading(false);
       }
     } else {
+      console.log('❌ No admin session found');
       setError('Admin authentication required. Please login.');
       setIsLoading(false);
     }
@@ -95,10 +108,14 @@ function AdminRankingsPage() {
 
   // Load rankings only once on authentication (all filters are client-side for Nationals)
   useEffect(() => {
+    console.log('🔄 useEffect for loadRankings:', { isAuthenticated, isLoading });
     if (isAuthenticated && !isLoading) {
+      console.log('✅ Conditions met, calling loadRankings...');
       loadRankings();
+    } else {
+      console.log('⏸️ Conditions not met:', { isAuthenticated, isLoading });
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isLoading]);
 
   const loadInitialData = async () => {
     setIsLoading(true);
@@ -124,9 +141,19 @@ function AdminRankingsPage() {
   };
 
   const loadRankings = async (forceLoad = false) => {
-    if (!isAuthenticated && !forceLoad) return;
-    if (!isPhase2Enabled) return; // Don't load if Phase 2 is disabled
+    console.log('🔍 loadRankings called:', { isAuthenticated, forceLoad, isPhase2Enabled });
     
+    if (!isAuthenticated && !forceLoad) {
+      console.log('❌ loadRankings: Not authenticated and not force load, returning early');
+      return;
+    }
+    
+    if (!isPhase2Enabled) {
+      console.log('❌ loadRankings: Phase 2 not enabled, returning early');
+      return; // Don't load if Phase 2 is disabled
+    }
+    
+    console.log('✅ loadRankings: Starting API call...');
     setIsRefreshing(true);
     setError('');
     
@@ -139,61 +166,112 @@ function AdminRankingsPage() {
       // Load all data and filter on client
       
       const url = `/api/rankings?${params.toString()}`;
-      console.log('Loading rankings from:', url);
+      console.log('📡 Loading rankings from:', url);
       
       const response = await fetch(url);
+      console.log('📥 API Response status:', response.status, response.statusText);
+      
       if (response.ok) {
         const data = await response.json();
-        console.log('Rankings data received:', data);
+        console.log('✅ Rankings data received:', {
+          isArray: Array.isArray(data),
+          length: Array.isArray(data) ? data.length : 'not an array',
+          firstItem: Array.isArray(data) && data.length > 0 ? data[0] : 'empty array'
+        });
+        if (Array.isArray(data) && data.length > 0) {
+          console.log('📋 Sample ranking data structure:', {
+            eventId: data[0].eventId,
+            eventName: data[0].eventName,
+            performanceType: data[0].performanceType,
+            ageCategory: data[0].ageCategory,
+            itemStyle: data[0].itemStyle,
+            roundedPercentage: data[0].roundedPercentage,
+            hasAllFields: Object.keys(data[0])
+          });
+        }
         setRankings(data);
       } else if (response.status === 403) {
         // Feature disabled
+        console.log('❌ API returned 403: Feature disabled');
         setError('This feature is temporarily unavailable.');
         setRankings([]);
       } else {
-        console.error('Failed to load rankings, status:', response.status);
-        setError('Failed to load rankings');
+        const errorText = await response.text();
+        console.error('❌ Failed to load rankings:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        setError(`Failed to load rankings: ${response.status} ${response.statusText}`);
       }
-    } catch (error) {
-      setError('Failed to load rankings');
+    } catch (error: any) {
+      console.error('❌ Exception in loadRankings:', error);
+      setError(`Failed to load rankings: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsRefreshing(false);
+      console.log('🏁 loadRankings: Finished');
     }
   };
 
   const applyFilters = () => {
+    console.log('🔍 applyFilters called:', {
+      rankingsLength: rankings.length,
+      selectedEventId,
+      selectedAgeCategory,
+      selectedPerformanceType,
+      selectedStyle,
+      entryTypeFilter,
+      masteryFilter,
+      viewMode
+    });
+    
     let filtered = rankings;
+    console.log('📊 Initial filtered count:', filtered.length);
     
     // Apply event filter
     if (selectedEventId && selectedEventId !== 'all') {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(ranking => ranking.eventId === selectedEventId);
+      console.log(`🎯 Event filter (${selectedEventId}): ${beforeCount} → ${filtered.length}`);
     }
     
     // Apply age category filter (client-side for Nationals due to dynamic age calculation)
     if (selectedAgeCategory) {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(ranking => ranking.ageCategory === selectedAgeCategory);
+      console.log(`🎯 Age category filter (${selectedAgeCategory}): ${beforeCount} → ${filtered.length}`);
     }
     
     // Apply performance type filter (client-side for Nationals)
     if (selectedPerformanceType) {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(ranking => ranking.performanceType === selectedPerformanceType);
+      console.log(`🎯 Performance type filter (${selectedPerformanceType}): ${beforeCount} → ${filtered.length}`);
     }
     
     // Apply style filter
     if (selectedStyle) {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(ranking => ranking.itemStyle === selectedStyle);
+      console.log(`🎯 Style filter (${selectedStyle}): ${beforeCount} → ${filtered.length}`);
     }
     
     // Apply entry type filter
     if (entryTypeFilter !== 'all') {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(ranking => (ranking.entryType || 'live') === entryTypeFilter);
+      console.log(`🎯 Entry type filter (${entryTypeFilter}): ${beforeCount} → ${filtered.length}`);
     }
     
     // Apply mastery level filter
     if (masteryFilter === 'competitive') {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(ranking => ranking.mastery?.toLowerCase().includes('water') || ranking.mastery?.toLowerCase().includes('competition'));
+      console.log(`🎯 Mastery filter (competitive): ${beforeCount} → ${filtered.length}`);
     } else if (masteryFilter === 'advanced') {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(ranking => ranking.mastery?.toLowerCase().includes('fire') || ranking.mastery?.toLowerCase().includes('advanced'));
+      console.log(`🎯 Mastery filter (advanced): ${beforeCount} → ${filtered.length}`);
     }
     
     // Apply view mode filters with deduplication
@@ -203,7 +281,13 @@ function AdminRankingsPage() {
       const bestPerformanceByContestant = new Map<string, RankingData>();
       filtered.forEach(ranking => {
         const existing = bestPerformanceByContestant.get(ranking.contestantName);
-        if (!existing || ranking.totalScore > existing.totalScore) {
+        const existingRounded = existing?.roundedPercentage ?? (existing ? calculateRoundedPercentage(existing.totalScore, existing.judgeCount) : 0);
+        const rankingRounded = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
+        const existingRaw = existing?.rawAverageScore ?? existing?.averageScore ?? 0;
+        const rankingRaw = ranking.rawAverageScore ?? ranking.averageScore ?? 0;
+        
+        if (!existing || rankingRounded > existingRounded || 
+            (rankingRounded === existingRounded && rankingRaw > existingRaw)) {
           bestPerformanceByContestant.set(ranking.contestantName, ranking);
         }
       });
@@ -219,14 +303,27 @@ function AdminRankingsPage() {
       }, {} as Record<string, RankingData[]>);
 
       filtered = Object.values(groupedByAge).flatMap(group => 
-        group.sort((a, b) => b.totalScore - a.totalScore).slice(0, 3)
+        group.sort((a, b) => {
+          const aRounded = a.roundedPercentage ?? calculateRoundedPercentage(a.totalScore, a.judgeCount);
+          const bRounded = b.roundedPercentage ?? calculateRoundedPercentage(b.totalScore, b.judgeCount);
+          if (bRounded !== aRounded) return bRounded - aRounded;
+          const aRaw = a.rawAverageScore ?? a.averageScore;
+          const bRaw = b.rawAverageScore ?? b.averageScore;
+          return bRaw - aRaw;
+        }).slice(0, 3)
       );
     } else if (viewMode === 'top3_style') {
       // Deduplicate first: keep only best performance per contestant
       const bestPerformanceByContestant = new Map<string, RankingData>();
       filtered.forEach(ranking => {
         const existing = bestPerformanceByContestant.get(ranking.contestantName);
-        if (!existing || ranking.totalScore > existing.totalScore) {
+        const existingRounded = existing?.roundedPercentage ?? (existing ? calculateRoundedPercentage(existing.totalScore, existing.judgeCount) : 0);
+        const rankingRounded = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
+        const existingRaw = existing?.rawAverageScore ?? existing?.averageScore ?? 0;
+        const rankingRaw = ranking.rawAverageScore ?? ranking.averageScore ?? 0;
+        
+        if (!existing || rankingRounded > existingRounded || 
+            (rankingRounded === existingRounded && rankingRaw > existingRaw)) {
           bestPerformanceByContestant.set(ranking.contestantName, ranking);
         }
       });
@@ -242,7 +339,14 @@ function AdminRankingsPage() {
       }, {} as Record<string, RankingData[]>);
 
       filtered = Object.values(groupedByStyle).flatMap(group => 
-        group.sort((a, b) => b.totalScore - a.totalScore).slice(0, 3)
+        group.sort((a, b) => {
+          const aRounded = a.roundedPercentage ?? calculateRoundedPercentage(a.totalScore, a.judgeCount);
+          const bRounded = b.roundedPercentage ?? calculateRoundedPercentage(b.totalScore, b.judgeCount);
+          if (bRounded !== aRounded) return bRounded - aRounded;
+          const aRaw = a.rawAverageScore ?? a.averageScore;
+          const bRaw = b.rawAverageScore ?? b.averageScore;
+          return bRaw - aRaw;
+        }).slice(0, 3)
       );
     } else if (viewMode === 'top3_duets') {
       // Deduplicate first: keep only best performance per contestant
@@ -251,14 +355,27 @@ function AdminRankingsPage() {
         .filter(ranking => ranking.performanceType === 'Duet')
         .forEach(ranking => {
           const existing = bestPerformanceByContestant.get(ranking.contestantName);
-          if (!existing || ranking.totalScore > existing.totalScore) {
+          const existingRounded = existing?.roundedPercentage ?? (existing ? calculateRoundedPercentage(existing.totalScore, existing.judgeCount) : 0);
+          const rankingRounded = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
+          const existingRaw = existing?.rawAverageScore ?? existing?.averageScore ?? 0;
+          const rankingRaw = ranking.rawAverageScore ?? ranking.averageScore ?? 0;
+          
+          if (!existing || rankingRounded > existingRounded || 
+              (rankingRounded === existingRounded && rankingRaw > existingRaw)) {
             bestPerformanceByContestant.set(ranking.contestantName, ranking);
           }
         });
       
       // Filter for duets only and get top 3
       filtered = Array.from(bestPerformanceByContestant.values())
-        .sort((a, b) => b.totalScore - a.totalScore)
+        .sort((a, b) => {
+          const aRounded = a.roundedPercentage ?? calculateRoundedPercentage(a.totalScore, a.judgeCount);
+          const bRounded = b.roundedPercentage ?? calculateRoundedPercentage(b.totalScore, b.judgeCount);
+          if (bRounded !== aRounded) return bRounded - aRounded;
+          const aRaw = a.rawAverageScore ?? a.averageScore;
+          const bRaw = b.rawAverageScore ?? b.averageScore;
+          return bRaw - aRaw;
+        })
         .slice(0, 3);
     } else if (viewMode === 'top3_groups') {
       // Deduplicate first: keep only best performance per contestant
@@ -267,14 +384,27 @@ function AdminRankingsPage() {
         .filter(ranking => ranking.performanceType === 'Group')
         .forEach(ranking => {
           const existing = bestPerformanceByContestant.get(ranking.contestantName);
-          if (!existing || ranking.totalScore > existing.totalScore) {
+          const existingRounded = existing?.roundedPercentage ?? (existing ? calculateRoundedPercentage(existing.totalScore, existing.judgeCount) : 0);
+          const rankingRounded = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
+          const existingRaw = existing?.rawAverageScore ?? existing?.averageScore ?? 0;
+          const rankingRaw = ranking.rawAverageScore ?? ranking.averageScore ?? 0;
+          
+          if (!existing || rankingRounded > existingRounded || 
+              (rankingRounded === existingRounded && rankingRaw > existingRaw)) {
             bestPerformanceByContestant.set(ranking.contestantName, ranking);
           }
         });
       
       // Filter for groups only and get top 3
       filtered = Array.from(bestPerformanceByContestant.values())
-        .sort((a, b) => b.totalScore - a.totalScore)
+        .sort((a, b) => {
+          const aRounded = a.roundedPercentage ?? calculateRoundedPercentage(a.totalScore, a.judgeCount);
+          const bRounded = b.roundedPercentage ?? calculateRoundedPercentage(b.totalScore, b.judgeCount);
+          if (bRounded !== aRounded) return bRounded - aRounded;
+          const aRaw = a.rawAverageScore ?? a.averageScore;
+          const bRaw = b.rawAverageScore ?? b.averageScore;
+          return bRaw - aRaw;
+        })
         .slice(0, 3);
     } else if (viewMode === 'top3_trios') {
       // Deduplicate first: keep only best performance per contestant
@@ -283,14 +413,27 @@ function AdminRankingsPage() {
         .filter(ranking => ranking.performanceType === 'Trio')
         .forEach(ranking => {
           const existing = bestPerformanceByContestant.get(ranking.contestantName);
-          if (!existing || ranking.totalScore > existing.totalScore) {
+          const existingRounded = existing?.roundedPercentage ?? (existing ? calculateRoundedPercentage(existing.totalScore, existing.judgeCount) : 0);
+          const rankingRounded = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
+          const existingRaw = existing?.rawAverageScore ?? existing?.averageScore ?? 0;
+          const rankingRaw = ranking.rawAverageScore ?? ranking.averageScore ?? 0;
+          
+          if (!existing || rankingRounded > existingRounded || 
+              (rankingRounded === existingRounded && rankingRaw > existingRaw)) {
             bestPerformanceByContestant.set(ranking.contestantName, ranking);
           }
         });
       
       // Filter for trios only and get top 3
       filtered = Array.from(bestPerformanceByContestant.values())
-        .sort((a, b) => b.totalScore - a.totalScore)
+        .sort((a, b) => {
+          const aRounded = a.roundedPercentage ?? calculateRoundedPercentage(a.totalScore, a.judgeCount);
+          const bRounded = b.roundedPercentage ?? calculateRoundedPercentage(b.totalScore, b.judgeCount);
+          if (bRounded !== aRounded) return bRounded - aRounded;
+          const aRaw = a.rawAverageScore ?? a.averageScore;
+          const bRaw = b.rawAverageScore ?? b.averageScore;
+          return bRaw - aRaw;
+        })
         .slice(0, 3);
     } else if (viewMode === 'top10_soloists') {
       // Deduplicate first: keep only best performance per contestant
@@ -299,25 +442,72 @@ function AdminRankingsPage() {
         .filter(ranking => ranking.performanceType === 'Solo')
         .forEach(ranking => {
           const existing = bestPerformanceByContestant.get(ranking.contestantName);
-          if (!existing || ranking.totalScore > existing.totalScore) {
+          const existingRounded = existing?.roundedPercentage ?? (existing ? calculateRoundedPercentage(existing.totalScore, existing.judgeCount) : 0);
+          const rankingRounded = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
+          const existingRaw = existing?.rawAverageScore ?? existing?.averageScore ?? 0;
+          const rankingRaw = ranking.rawAverageScore ?? ranking.averageScore ?? 0;
+          
+          if (!existing || rankingRounded > existingRounded || 
+              (rankingRounded === existingRounded && rankingRaw > existingRaw)) {
             bestPerformanceByContestant.set(ranking.contestantName, ranking);
           }
         });
       
       // Filter for solos only and get top 10
       filtered = Array.from(bestPerformanceByContestant.values())
-        .sort((a, b) => b.totalScore - a.totalScore)
+        .sort((a, b) => {
+          const aRounded = a.roundedPercentage ?? calculateRoundedPercentage(a.totalScore, a.judgeCount);
+          const bRounded = b.roundedPercentage ?? calculateRoundedPercentage(b.totalScore, b.judgeCount);
+          if (bRounded !== aRounded) return bRounded - aRounded;
+          const aRaw = a.rawAverageScore ?? a.averageScore;
+          const bRaw = b.rawAverageScore ?? b.averageScore;
+          return bRaw - aRaw;
+        })
         .slice(0, 10);
     }
     
     // Sort filtered results by total score (descending) and recalculate ranks
-    filtered.sort((a, b) => b.totalScore - a.totalScore);
+    // Sort by rounded percentage DESC, then raw decimal average DESC (tie-breaking)
+    filtered.sort((a, b) => {
+      const aRounded = a.roundedPercentage ?? calculateRoundedPercentage(a.totalScore, a.judgeCount);
+      const bRounded = b.roundedPercentage ?? calculateRoundedPercentage(b.totalScore, b.judgeCount);
+      
+      // Primary sort: rounded percentage descending
+      if (bRounded !== aRounded) {
+        return bRounded - aRounded;
+      }
+      // Secondary sort: raw decimal average descending (tie-breaker)
+      const aRaw = a.rawAverageScore ?? a.averageScore;
+      const bRaw = b.rawAverageScore ?? b.averageScore;
+      return bRaw - aRaw;
+    });
     
-    // Recalculate ranks for filtered results
-    const rankedFiltered = filtered.map((ranking, index) => ({
-      ...ranking,
-      rank: index + 1 // Assign new rank based on position in filtered list
-    }));
+    // Recalculate ranks for filtered results (handling ties properly)
+    let currentRank = 1;
+    const rankedFiltered = filtered.map((ranking, index) => {
+      if (index > 0) {
+        const prev = filtered[index - 1];
+        const prevRounded = prev.roundedPercentage ?? calculateRoundedPercentage(prev.totalScore, prev.judgeCount);
+        const currRounded = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
+        
+        // If rounded percentage differs, increment rank
+        if (currRounded !== prevRounded) {
+          currentRank = index + 1;
+        }
+        // If rounded percentage is same but raw average differs, same rank (tie broken by raw average)
+        // If both are same, same rank (true tie)
+      }
+      
+      return {
+        ...ranking,
+        rank: currentRank
+      };
+    });
+    
+    console.log('✅ Final filteredRankings count:', rankedFiltered.length);
+    if (rankedFiltered.length > 0) {
+      console.log('📋 Sample filtered ranking:', rankedFiltered[0]);
+    }
     
     setFilteredRankings(rankedFiltered);
   };
@@ -361,7 +551,7 @@ function AdminRankingsPage() {
 
     // Convert data to CSV rows
     const rows = filteredRankings.map((ranking, index) => {
-      const { percentage, rankingLevel } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount);
+      const { percentage, rankingLevel } = calculatePercentageAndRanking(ranking);
       
       return [
         index + 1, // Rank
@@ -428,9 +618,9 @@ function AdminRankingsPage() {
     return `#${rank}`;
   };
 
-  const calculatePercentageAndRanking = (totalScore: number, judgeCount: number) => {
-    // Calculate rounded percentage using centralized function (ensures consistency)
-    const percentage = calculateRoundedPercentage(totalScore, judgeCount);
+  const calculatePercentageAndRanking = (ranking: RankingData) => {
+    // Use roundedPercentage if available, otherwise calculate it
+    const percentage = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
     
     // Get medal info using rounded percentage
     const medalInfo = getMedalFromPercentage(percentage);
@@ -550,38 +740,53 @@ function AdminRankingsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-6 ${themeClasses.cardShadow} border ${themeClasses.metricCardBorder} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                {filteredRankings.length}
-              </div>
-              <div className={`text-sm ${themeClasses.textSecondary} font-medium`}>Total Performances</div>
-            </div>
-          </div>
-          <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-6 ${themeClasses.cardShadow} border ${themeClasses.metricCardBorder} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                {new Set(filteredRankings.map(r => r.studioName)).size}
-              </div>
-              <div className={`text-sm ${themeClasses.textSecondary} font-medium`}>Studios</div>
-            </div>
-          </div>
-          <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-6 ${themeClasses.cardShadow} border ${themeClasses.metricCardBorder} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
-                {new Set(filteredRankings.map(r => r.ageCategory)).size}
-              </div>
-              <div className={`text-sm ${themeClasses.textSecondary} font-medium`}>Age Categories</div>
-            </div>
-          </div>
-          <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-6 ${themeClasses.cardShadow} border ${themeClasses.metricCardBorder} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                {new Set(filteredRankings.map(r => r.itemStyle)).size}
-              </div>
-              <div className={`text-sm ${themeClasses.textSecondary} font-medium`}>Dance Styles</div>
-            </div>
-          </div>
+          {(() => {
+            // Calculate stats from rankings filtered by selected event only (not other filters)
+            const eventFilteredRankings = selectedEventId === 'all' 
+              ? rankings 
+              : rankings.filter(r => r.eventId === selectedEventId);
+            
+            const totalPerformances = eventFilteredRankings.length;
+            const studios = new Set(eventFilteredRankings.map(r => r.studioName).filter(s => s)).size;
+            const styles = new Set(eventFilteredRankings.map(r => r.itemStyle).filter(s => s)).size;
+            
+            return (
+              <>
+                <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-6 ${themeClasses.cardShadow} border ${themeClasses.metricCardBorder} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
+                  <div className="text-center">
+                    <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                      {totalPerformances}
+                    </div>
+                    <div className={`text-sm ${themeClasses.textSecondary} font-medium`}>Total Performances</div>
+                  </div>
+                </div>
+                <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-6 ${themeClasses.cardShadow} border ${themeClasses.metricCardBorder} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
+                  <div className="text-center">
+                    <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                      {studios}
+                    </div>
+                    <div className={`text-sm ${themeClasses.textSecondary} font-medium`}>Studios</div>
+                  </div>
+                </div>
+                <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-6 ${themeClasses.cardShadow} border ${themeClasses.metricCardBorder} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
+                  <div className="text-center">
+                    <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
+                      {new Set(eventFilteredRankings.map(r => r.ageCategory)).size}
+                    </div>
+                    <div className={`text-sm ${themeClasses.textSecondary} font-medium`}>Age Categories</div>
+                  </div>
+                </div>
+                <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-6 ${themeClasses.cardShadow} border ${themeClasses.metricCardBorder} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
+                  <div className="text-center">
+                    <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                      {styles}
+                    </div>
+                    <div className={`text-sm ${themeClasses.textSecondary} font-medium`}>Dance Styles</div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* Nationals Breakdown */}
@@ -915,7 +1120,7 @@ function AdminRankingsPage() {
                   </thead>
                   <tbody>
                     {filteredRankings.map((ranking, index) => {
-                      const { percentage, rankingLevel, rankingColor, medalEmoji } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount);
+                      const { percentage, rankingLevel, rankingColor, medalEmoji } = calculatePercentageAndRanking(ranking);
 
                       // Use the recalculated rank from applyFilters
                       // The rank is already correctly calculated in applyFilters()
