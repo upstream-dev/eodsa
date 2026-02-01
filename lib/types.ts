@@ -391,10 +391,18 @@ export const DANCE_STYLES = [
   'Speciality Styles'
 ];
 
-// UPDATED: Mastery levels for nationals competitions only
+// Mastery levels for Nationals only (Water and Fire)
 export const MASTERY_LEVELS = [
   'Water (Competitive)',
   'Fire (Advanced)'
+];
+
+// Mastery levels for Regional events only (all 4 levels)
+export const REGIONAL_MASTERY_LEVELS = [
+  'Water (Competitive)',   // Competitive
+  'Fire (Advanced)',       // Advanced
+  'Air (Special Needs)',   // Special Needs
+  'Earth (Eisteddfod)'     // Eisteddfod
 ];
 
 // Updated for client requirements
@@ -422,12 +430,14 @@ export const TIME_LIMITS = {
   Group: 3.5 // minutes (3:30)
 };
 
-// EODSA Fee Structure - Updated for Nationals 2024 (Water and Fire only)
+// EODSA Fee Structure - Nationals (Water/Fire only); Regional supports all 4 levels
 export const EODSA_FEES = {
   // Registration fees per person
   REGISTRATION: {
     'Water (Competitive)': 300,    // R300 PP for Water (Competition)
     'Fire (Advanced)': 300,        // R300 PP for Fire (Advanced)
+    'Air (Special Needs)': 300,    // Regional: Special Needs
+    'Earth (Eisteddfod)': 300,     // Regional: Eisteddfod
     'Nationals': 300               // R300 PP for Nationals entry
   },
   

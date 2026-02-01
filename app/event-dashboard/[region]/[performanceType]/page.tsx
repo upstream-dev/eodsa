@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AGE_CATEGORIES, MASTERY_LEVELS, ITEM_STYLES, TIME_LIMITS, calculateEODSAFee } from '@/lib/types';
+import { AGE_CATEGORIES, MASTERY_LEVELS, REGIONAL_MASTERY_LEVELS, ITEM_STYLES, TIME_LIMITS, calculateEODSAFee } from '@/lib/types';
 // Registration fee checking moved to API calls
 import { useAlert } from '@/components/ui/custom-alert';
 import { MultiSelectDancers } from '@/components/ui/multi-select-dancers';
@@ -30,6 +30,7 @@ interface Event {
   groupFeePerDancer?: number;
   largeGroupFeePerDancer?: number;
   currency?: string;
+  eventType?: 'REGIONAL_EVENT' | 'NATIONAL_EVENT' | 'QUALIFIER_EVENT' | 'INTERNATIONAL_VIRTUAL_EVENT';
 }
 
 interface Contestant {
@@ -158,6 +159,9 @@ export default function PerformanceTypeEntryPage() {
       default: return 'R';
     }
   };
+
+  // Mastery levels driven by event type: Regional events get all 4; Nationals get Water/Fire only
+  const masteryLevelsForForm = selectedEvent?.eventType === 'NATIONAL_EVENT' ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS;
 
   // Skip validation entirely if studio mode, otherwise require eodsaId or allowEmptyStart
   if (!region || !performanceType || (!eodsaId && !studioId && !allowEmptyStart)) {
@@ -1826,7 +1830,7 @@ export default function PerformanceTypeEntryPage() {
                                 required
                               >
                                 <option value="">Select mastery level</option>
-                                {MASTERY_LEVELS.map((level) => (
+                                {masteryLevelsForForm.map((level) => (
                                   <option key={level} value={level}>{level}</option>
                                 ))}
                               </select>
@@ -1940,7 +1944,7 @@ export default function PerformanceTypeEntryPage() {
                             required
                           >
                             <option value="">Select mastery level</option>
-                            {MASTERY_LEVELS.map((level) => (
+                            {masteryLevelsForForm.map((level) => (
                               <option key={level} value={level}>{level}</option>
                             ))}
                           </select>

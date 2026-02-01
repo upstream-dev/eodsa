@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, initializeDatabase, unifiedDb } from '@/lib/database';
 import { emailService } from '@/lib/email';
 import { getExistingSoloEntries, validateAndCorrectEntryFee } from '@/lib/pricing-utils';
-import { getAgeCategoryFromAge, calculateAgeOnDate } from '@/lib/types';
+import { getAgeCategoryFromAge, calculateAgeOnDate, MASTERY_LEVELS, REGIONAL_MASTERY_LEVELS } from '@/lib/types';
 
 // Helper function to check if a dancer's age matches the event's age category
 function checkAgeEligibility(dancerAge: number, ageCategory: string): boolean {
@@ -414,6 +414,21 @@ export async function POST(request: NextRequest) {
             error: 'This event has custom qualification requirements. Please contact the administrator for more information.',
             qualificationBlocked: true,
             qualificationSource: 'CUSTOM'
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Mastery level validation: Regional events allow all 4 levels; Nationals only Water/Fire
+    if (body.mastery) {
+      const allowedMastery = eventType === 'REGIONAL_EVENT' ? REGIONAL_MASTERY_LEVELS : MASTERY_LEVELS;
+      if (!allowedMastery.includes(body.mastery)) {
+        return NextResponse.json(
+          {
+            error: eventType === 'REGIONAL_EVENT'
+              ? 'Invalid mastery level. Regional events accept: Water (Competitive), Fire (Advanced), Air (Special Needs), Earth (Eisteddfod).'
+              : 'Invalid mastery level. Nationals events accept only: Water (Competitive), Fire (Advanced).'
           },
           { status: 400 }
         );

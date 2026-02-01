@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unifiedDb, initializeDatabase } from '@/lib/database';
-import { MASTERY_LEVELS, ITEM_STYLES } from '@/lib/types';
+import { MASTERY_LEVELS, REGIONAL_MASTERY_LEVELS, ITEM_STYLES } from '@/lib/types';
 
 // Update a specific competition entry for a studio
 export async function PUT(
@@ -21,8 +21,10 @@ export async function PUT(
       );
     }
 
-    // Validate updates
-    if (updates.mastery && !MASTERY_LEVELS.includes(updates.mastery)) {
+    // Validate updates: allow both Nationals (Water/Fire) and Regional (all 4) mastery levels
+    const validMasteryLevels = [...MASTERY_LEVELS, ...REGIONAL_MASTERY_LEVELS];
+    const uniqueMasteryLevels = [...new Set(validMasteryLevels)];
+    if (updates.mastery && !uniqueMasteryLevels.includes(updates.mastery)) {
       return NextResponse.json(
         { error: 'Invalid mastery level' },
         { status: 400 }
