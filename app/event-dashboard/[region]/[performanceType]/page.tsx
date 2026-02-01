@@ -160,8 +160,9 @@ export default function PerformanceTypeEntryPage() {
     }
   };
 
-  // Mastery levels driven by event type: Regional events get all 4; Nationals get Water/Fire only
-  const masteryLevelsForForm = selectedEvent?.eventType === 'NATIONAL_EVENT' ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS;
+  // Mastery levels: Regional events get all 4; Nationals get Water/Fire only. Use both eventType and region so prod works even if eventType is missing/wrong.
+  const isNationalsEvent = selectedEvent?.eventType === 'NATIONAL_EVENT' || region?.toLowerCase() === 'nationals';
+  const masteryLevelsForForm = isNationalsEvent ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS;
 
   // Skip validation entirely if studio mode, otherwise require eodsaId or allowEmptyStart
   if (!region || !performanceType || (!eodsaId && !studioId && !allowEmptyStart)) {

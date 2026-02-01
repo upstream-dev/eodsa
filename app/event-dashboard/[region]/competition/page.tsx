@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { PERFORMANCE_TYPES, MASTERY_LEVELS, ITEM_STYLES, Event } from '@/lib/types';
+import { PERFORMANCE_TYPES, MASTERY_LEVELS, REGIONAL_MASTERY_LEVELS, ITEM_STYLES, Event } from '@/lib/types';
 import CountdownTimer from '@/app/components/CountdownTimer';
 import { useToast } from '@/components/ui/simple-toast';
 import MusicUpload from '@/components/MusicUpload';
@@ -2079,7 +2079,7 @@ export default function CompetitionEntryPage() {
                         className="w-full p-4 bg-slate-700/50 border-2 border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 text-base"
                       >
                         <option value="">Select mastery level</option>
-                        {MASTERY_LEVELS.map((level) => (
+                        {(region?.toLowerCase() === 'nationals' ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS).map((level) => (
                           <option key={level} value={level}>{level}</option>
                         ))}
                       </select>
