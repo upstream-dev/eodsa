@@ -224,6 +224,12 @@ export default function CompetitionEntryPage() {
   const proceedToPaymentRef = useRef<HTMLButtonElement | null>(null);
   const entryTypeRef = useRef<HTMLDivElement | null>(null);
 
+  // Mastery options: use loaded event when available (so Nationals/competition?eventId=Regional shows 4 options)
+  const isNationalsEvent = event
+    ? (event.region === 'Nationals' || (event as { eventType?: string }).eventType === 'NATIONAL_EVENT')
+    : (region?.toLowerCase() === 'nationals');
+  const masteryLevelsForCompetition = isNationalsEvent ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS;
+
   useEffect(() => {
     if (region && eventId) {
       if (eodsaId) {
@@ -2079,7 +2085,7 @@ export default function CompetitionEntryPage() {
                         className="w-full p-4 bg-slate-700/50 border-2 border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 text-base"
                       >
                         <option value="">Select mastery level</option>
-                        {(region?.toLowerCase() === 'nationals' ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS).map((level) => (
+                        {masteryLevelsForCompetition.map((level) => (
                           <option key={level} value={level}>{level}</option>
                         ))}
                       </select>
