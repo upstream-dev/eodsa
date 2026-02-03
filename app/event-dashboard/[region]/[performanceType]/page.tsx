@@ -160,8 +160,8 @@ export default function PerformanceTypeEntryPage() {
     }
   };
 
-  // Mastery levels: Regional events get all 4; Nationals get Water/Fire only. Use both eventType and region so prod works even if eventType is missing/wrong.
-  const isNationalsEvent = selectedEvent?.eventType === 'NATIONAL_EVENT' || region?.toLowerCase() === 'nationals';
+  // Mastery levels: event_type is the primary rule. REGIONAL_EVENT/QUALIFIER_EVENT = 4 levels; NATIONAL_EVENT = 2 only.
+  const isNationalsEvent = selectedEvent?.eventType === 'NATIONAL_EVENT';
   const masteryLevelsForForm = isNationalsEvent ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS;
 
   // Skip validation entirely if studio mode, otherwise require eodsaId or allowEmptyStart

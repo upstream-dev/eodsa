@@ -420,21 +420,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Mastery level validation: Regional/Qualifier = all 4 levels; Nationals = Water/Fire only. Use event name + region + eventType.
+    // Mastery level validation: event_type is the primary rule. REGIONAL_EVENT/QUALIFIER_EVENT = all 4 levels; NATIONAL_EVENT = 2 only.
     if (body.mastery) {
-      const ev = event as { name?: string; region?: string };
-      const isRegionalOrQualifier =
-        ev?.name?.toLowerCase().includes('regional') ||
-        eventType === 'REGIONAL_EVENT' ||
-        eventType === 'QUALIFIER_EVENT' ||
-        (ev?.region && ev.region !== 'Nationals');
-      const allowedMastery = isRegionalOrQualifier ? REGIONAL_MASTERY_LEVELS : MASTERY_LEVELS;
+      const allowedMastery = eventType === 'NATIONAL_EVENT' ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS;
       if (!allowedMastery.includes(body.mastery)) {
         return NextResponse.json(
           {
-            error: isRegionalOrQualifier
-              ? 'Invalid mastery level. Regional events accept: Water (Competitive), Fire (Advanced), Air (Special Needs), Earth (Eisteddfod).'
-              : 'Invalid mastery level. Nationals events accept only: Water (Competitive), Fire (Advanced).'
+            error: eventType === 'NATIONAL_EVENT'
+              ? 'Invalid mastery level. Nationals events accept only: Water (Competitive), Fire (Advanced).'
+              : 'Invalid mastery level. Regional events accept: Water (Competitive), Fire (Advanced), Air (Special Needs), Earth (Eisteddfod).'
           },
           { status: 400 }
         );

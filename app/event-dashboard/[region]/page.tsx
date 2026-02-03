@@ -145,14 +145,14 @@ export default function NationalsEventsPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // Filter to only show UNIFIED events (performanceType === 'All')
-          // This excludes old separate events like "National Test - Solo", "National Test - Duet"
-      const nationalsEvents = data.events.filter((event: Event) =>
-        event.region === 'Nationals' &&
-            event.performanceType === 'All' &&
-        (event.status === 'registration_open' || event.status === 'upcoming')
-      );
-      setEvents(nationalsEvents);
+          // Show Nationals + Regional + Qualifier events (one dashboard for all). Use event_type so Regionals with region=Western Cape etc. still show.
+          const ev = data.events as (Event & { eventType?: string })[];
+          const openEvents = ev.filter((event) =>
+            (event.performanceType === 'All' || !event.performanceType) &&
+            (event.status === 'registration_open' || event.status === 'upcoming') &&
+            (event.region === 'Nationals' || event.eventType === 'REGIONAL_EVENT' || event.eventType === 'QUALIFIER_EVENT')
+          );
+          setEvents(openEvents);
         }
       }
     } catch (error) {
@@ -252,7 +252,7 @@ export default function NationalsEventsPage() {
           
           {/* Loading Text */}
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-white">Loading Nationals Events</h3>
+            <h3 className="text-xl font-bold text-white">Loading Open Events</h3>
             <p className="text-slate-400 text-sm">Preparing your competition dashboard...</p>
           </div>
           
