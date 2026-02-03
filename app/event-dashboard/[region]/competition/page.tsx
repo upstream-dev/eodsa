@@ -224,10 +224,17 @@ export default function CompetitionEntryPage() {
   const proceedToPaymentRef = useRef<HTMLButtonElement | null>(null);
   const entryTypeRef = useRef<HTMLDivElement | null>(null);
 
-  // Mastery options: use loaded event when available (so Nationals/competition?eventId=Regional shows 4 options)
+  // Mastery options: Regional/Qualifier = 4 levels; Nationals = 2 levels. Use event name + region + eventType.
+  // Show 4 options UNLESS we're certain it's Nationals (region AND eventType both Nationals). Event name "Regional" always = 4.
+  const eventEv = event as { name?: string; region?: string; eventType?: string } | null;
+  const isRegionalOrQualifier =
+    eventEv?.name?.toLowerCase().includes('regional') ||
+    eventEv?.eventType === 'REGIONAL_EVENT' ||
+    eventEv?.eventType === 'QUALIFIER_EVENT' ||
+    (eventEv?.region && eventEv.region !== 'Nationals');
   const isNationalsEvent = event
-    ? (event.region === 'Nationals' || (event as { eventType?: string }).eventType === 'NATIONAL_EVENT')
-    : (region?.toLowerCase() === 'nationals');
+    ? !isRegionalOrQualifier && eventEv?.region === 'Nationals' && eventEv?.eventType === 'NATIONAL_EVENT'
+    : region?.toLowerCase() === 'nationals';
   const masteryLevelsForCompetition = isNationalsEvent ? MASTERY_LEVELS : REGIONAL_MASTERY_LEVELS;
 
   useEffect(() => {
