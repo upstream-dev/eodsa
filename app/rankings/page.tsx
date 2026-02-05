@@ -628,7 +628,7 @@ function RankingsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className={`border-b ${themeClasses.borderColor}`}>
+                  <tr className={`border-b ${themeClasses.cardBorder}`}>
                       <th className={`text-left py-4 px-6 font-bold ${themeClasses.textPrimary}`}>Rank</th>
                       <th className={`text-left py-4 px-6 font-bold ${themeClasses.textPrimary}`}>Item #</th>
                       <th className={`text-left py-4 px-6 font-bold ${themeClasses.textPrimary}`}>Performance</th>
@@ -645,7 +645,7 @@ function RankingsPage() {
                       const displayRank = ranking.rank;
                       
                       return (
-                        <tr key={ranking.performanceId} className={`border-b ${themeClasses.borderColor} hover:${themeClasses.hoverBg} transition-colors`}>
+                        <tr key={ranking.performanceId} className={`border-b ${themeClasses.cardBorder} hover:${themeClasses.hoverBg} transition-colors`}>
                           <td className="py-4 px-6">
                             <div className={`inline-flex items-center px-3 py-1 ${themeClasses.cardRadius} text-sm font-bold border ${getRankBadgeColor(displayRank)}`}>
                               #{displayRank}
