@@ -124,100 +124,26 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* Unified Dancer Portal Card */}
+            {/* Dancer Portal Card (Secure Login Only) */}
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-purple-500/30 p-6 text-center hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-purple-500/20">
               <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
                 <span className="text-white text-2xl">🩰</span>
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Dancer Portal</h3>
               <p className="text-gray-300 mb-4 text-sm">
-                Already registered? Enter your EODSA ID to access your dashboard or use secure login.
+                Already registered? Use secure login to access your dancer dashboard and enter events.
               </p>
               
               <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Enter Element of Dance ID (e.g. E123456)"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  id="eodsa-id-input"
-                />
-                <div id="eodsa-error" className="hidden text-red-300 text-xs mt-1"></div>
-                <button
-                  onClick={async () => {
-                    const input = document.getElementById('eodsa-id-input') as HTMLInputElement;
-                    const errorDiv = document.getElementById('eodsa-error') as HTMLDivElement;
-                    const button = event?.target as HTMLButtonElement;
-                    
-                    if (!input?.value.trim()) {
-                      errorDiv.textContent = 'Please enter an EODSA ID';
-                      errorDiv.classList.remove('hidden');
-                      return;
-                    }
-                    
-                    const eodsaId = input.value.trim().toUpperCase();
-                    
-                    // Show loading state
-                    const originalText = button.textContent;
-                    button.textContent = 'Validating...';
-                    button.disabled = true;
-                    errorDiv.classList.add('hidden');
-                    
-                    try {
-                      // Try unified system first
-                      let found = false;
-                      const unifiedResponse = await fetch(`/api/dancers/by-eodsa-id/${eodsaId}`);
-                      if (unifiedResponse.ok) {
-                        const unifiedData = await unifiedResponse.json();
-                        if (unifiedData.success && unifiedData.dancer) {
-                          found = true;
-                        }
-                      }
-                      
-                      // If not found in unified system, try legacy system
-                      if (!found) {
-                        const legacyResponse = await fetch(`/api/contestants/by-eodsa-id/${eodsaId}`);
-                        if (legacyResponse.ok) {
-                          const legacyData = await legacyResponse.json();
-                          if (legacyData && legacyData.eodsaId) {
-                            found = true;
-                          }
-                        }
-                      }
-                      
-                      if (found) {
-                        // Valid EODSA ID, redirect to dashboard
-                        window.location.href = `/event-dashboard?eodsaId=${eodsaId}`;
-                      } else {
-                        // Invalid EODSA ID
-                        errorDiv.textContent = `EODSA ID "${eodsaId}" not found. Please check your ID or register first.`;
-                        errorDiv.classList.remove('hidden');
-                        button.textContent = originalText;
-                        button.disabled = false;
-                      }
-                    } catch (error) {
-                      console.error('Error validating EODSA ID:', error);
-                      errorDiv.textContent = 'Unable to validate EODSA ID. Please check your connection and try again.';
-                      errorDiv.classList.remove('hidden');
-                      button.textContent = originalText;
-                      button.disabled = false;
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                <Link 
+                  href="/dancer-login"
+                  className="block w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl text-sm"
                 >
-                  Enter Event Dashboard
-                </button>
-                
-                <div className="border-t border-gray-600 pt-3">
-                  <Link 
-                    href="/dancer-login"
-                    className="block w-full px-4 py-2 border-2 border-purple-500 text-purple-400 rounded-lg font-semibold hover:bg-purple-500 hover:text-white transition-all duration-300 text-sm"
-                  >
-                    Secure Login
-                  </Link>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Use your EODSA ID & National ID
-                  </p>
-                </div>
+                  Secure Dancer Login
+                </Link>
+                <p className="text-xs text-gray-400">
+                  After logging in, you can clearly select your event and complete your entry from your dashboard.
+                </p>
               </div>
             </div>
 

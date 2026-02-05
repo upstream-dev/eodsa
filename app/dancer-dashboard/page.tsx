@@ -679,6 +679,7 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
   const [error, setError] = useState('');
   const [selectedScore, setSelectedScore] = useState<any | null>(null);
   const [showScoreDetails, setShowScoreDetails] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     loadScores();
@@ -779,7 +780,13 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
               </h3>
               <p className="text-gray-400 text-sm mt-1">View your performance scores and judge feedback</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => setIsCollapsed(prev => !prev)}
+                className="px-3 py-1 text-xs bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                {isCollapsed ? '▸ Show list' : '▾ Hide list'}
+              </button>
               <select
                 value={selectedEventId}
                 onChange={(e) => onEventChange(e.target.value)}
@@ -801,153 +808,157 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
           </div>
         </div>
 
-        {error && (
-          <div className="p-4 bg-red-500/20 border-b border-red-500/30 text-red-200">
-            {error}
-          </div>
-        )}
-
-        {(() => {
-          // Filter scores by event
-          const filteredScores = selectedEventId === 'all' 
-            ? scores 
-            : scores.filter(score => score.eventId === selectedEventId);
-          
-          if (filteredScores.length === 0) {
-            return (
-              <div className="p-8 text-center">
-                <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🏅</span>
-                </div>
-                <p className="text-gray-400 mb-2">
-                  {scores.length === 0 
-                    ? 'No scores available yet' 
-                    : 'No scores found for selected event'}
-                </p>
-                <p className="text-gray-500 text-sm">
-                  {scores.length === 0 
-                    ? 'Scores will appear here after judges have scored your performances and they\'ve been approved.'
-                    : 'Change the event filter to see scores from other events.'}
-                </p>
+        {!isCollapsed && (
+          <>
+            {error && (
+              <div className="p-4 bg-red-500/20 border-b border-red-500/30 text-red-200">
+                {error}
               </div>
-            );
-          }
-          
-          return (
-            <div className="p-6">
-              <div className="space-y-6">
-                {(() => {
-                  // Group scores by performance
-                  const groupedScores = filteredScores.reduce((acc: any, score: any) => {
-                    const perfId = score.performanceId;
-                    if (!acc[perfId]) {
-                      acc[perfId] = {
-                        performanceId: perfId,
-                        performanceTitle: score.performanceTitle,
-                        scores: []
-                      };
-                    }
-                    acc[perfId].scores.push(score);
-                    return acc;
-                  }, {});
+            )}
 
-                  return Object.values(groupedScores).map((group: any) => {
-                  // Calculate average score for this performance
-                  const totalScores = group.scores.map((s: any) => calculateTotalScore(s));
-                  const avgScore = totalScores.reduce((sum: number, score: number) => sum + score, 0) / totalScores.length;
-                  const roundedAvg = Math.round(avgScore * 100) / 100;
+            {(() => {
+              // Filter scores by event
+              const filteredScores = selectedEventId === 'all' 
+                ? scores 
+                : scores.filter(score => score.eventId === selectedEventId);
+              
+              if (filteredScores.length === 0) {
+                return (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">🏅</span>
+                    </div>
+                    <p className="text-gray-400 mb-2">
+                      {scores.length === 0 
+                        ? 'No scores available yet' 
+                        : 'No scores found for selected event'}
+                    </p>
+                    <p className="text-gray-500 text-sm">
+                      {scores.length === 0 
+                        ? 'Scores will appear here after judges have scored your performances and they\'ve been approved.'
+                        : 'Change the event filter to see scores from other events.'}
+                    </p>
+                  </div>
+                );
+              }
+              
+              return (
+                <div className="p-6">
+                  <div className="space-y-6">
+                    {(() => {
+                      // Group scores by performance
+                      const groupedScores = filteredScores.reduce((acc: any, score: any) => {
+                        const perfId = score.performanceId;
+                        if (!acc[perfId]) {
+                          acc[perfId] = {
+                            performanceId: perfId,
+                            performanceTitle: score.performanceTitle,
+                            scores: []
+                          };
+                        }
+                        acc[perfId].scores.push(score);
+                        return acc;
+                      }, {});
 
-                  return (
-                    <div key={group.performanceId} className="bg-gray-700/50 rounded-xl p-4 border border-gray-600">
-                      <div className="mb-4 pb-3 border-b border-gray-600">
-                        <div className="flex justify-between items-start">
-                          <h4 className="text-xl font-bold text-white">{group.performanceTitle}</h4>
-                          <div className="text-right">
-                            <div className={`text-4xl font-bold ${getMedalColor(roundedAvg)}`}>
-                              {roundedAvg}<span className="text-xl text-gray-400">/100</span>
-                            </div>
-                            <div className={`text-sm font-semibold ${getMedalColor(roundedAvg)}`}>
-                              ⭐ AVERAGE SCORE
-                            </div>
-                            <div className={`text-xs font-semibold ${getMedalColor(roundedAvg)} mt-1`}>
-                              {getMedalName(roundedAvg)} Medal
-                            </div>
-                            <div className="text-xs text-gray-400 mt-1">
-                              From {group.scores.length} {group.scores.length === 1 ? 'judge' : 'judges'}
+                      return Object.values(groupedScores).map((group: any) => {
+                      // Calculate average score for this performance
+                      const totalScores = group.scores.map((s: any) => calculateTotalScore(s));
+                      const avgScore = totalScores.reduce((sum: number, score: number) => sum + score, 0) / totalScores.length;
+                      const roundedAvg = Math.round(avgScore * 100) / 100;
+
+                      return (
+                        <div key={group.performanceId} className="bg-gray-700/50 rounded-xl p-4 border border-gray-600">
+                          <div className="mb-4 pb-3 border-b border-gray-600">
+                            <div className="flex justify-between items-start">
+                              <h4 className="text-xl font-bold text-white">{group.performanceTitle}</h4>
+                              <div className="text-right">
+                                <div className={`text-4xl font-bold ${getMedalColor(roundedAvg)}`}>
+                                  {roundedAvg}<span className="text-xl text-gray-400">/100</span>
+                                </div>
+                                <div className={`text-sm font-semibold ${getMedalColor(roundedAvg)}`}>
+                                  ⭐ AVERAGE SCORE
+                                </div>
+                                <div className={`text-xs font-semibold ${getMedalColor(roundedAvg)} mt-1`}>
+                                  {getMedalName(roundedAvg)} Medal
+                                </div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                  From {group.scores.length} {group.scores.length === 1 ? 'judge' : 'judges'}
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-400 font-semibold mb-2">Individual Judge Scores:</p>
-                        {group.scores.map((score: any) => {
-                          const totalScore = calculateTotalScore(score);
-                          return (
-                            <div
-                              key={score.id}
-                              className="bg-gray-800/50 rounded-lg p-3 border border-gray-600 hover:border-purple-500 transition-all duration-300 cursor-pointer"
-                              onClick={() => {
-                                setSelectedScore(score);
-                                setShowScoreDetails(true);
-                              }}
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="flex-1">
-                                  <p className="text-sm font-semibold text-white">Judge: {score.judgeName}</p>
-                                  <p className="text-xs text-gray-500">{new Date(score.scoredAt).toLocaleDateString()}</p>
-                                </div>
-                                <div className="text-right">
-                                  <div className={`text-2xl font-bold ${getMedalColor(totalScore)}`}>
-                                    {totalScore}<span className="text-sm text-gray-400">/100</span>
+                          
+                          <div className="space-y-3">
+                            <p className="text-sm text-gray-400 font-semibold mb-2">Individual Judge Scores:</p>
+                            {group.scores.map((score: any) => {
+                              const totalScore = calculateTotalScore(score);
+                              return (
+                                <div
+                                  key={score.id}
+                                  className="bg-gray-800/50 rounded-lg p-3 border border-gray-600 hover:border-purple-500 transition-all duration-300 cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedScore(score);
+                                    setShowScoreDetails(true);
+                                  }}
+                                >
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-white">Judge: {score.judgeName}</p>
+                                      <p className="text-xs text-gray-500">{new Date(score.scoredAt).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className={`text-2xl font-bold ${getMedalColor(totalScore)}`}>
+                                        {totalScore}<span className="text-sm text-gray-400">/100</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-5 gap-2">
+                                    <div className="text-center">
+                                      <div className="text-xs font-bold text-blue-400">{score.technicalScore}</div>
+                                      <div className="text-[9px] text-gray-500">Technical</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-xs font-bold text-purple-400">{score.musicalScore}</div>
+                                      <div className="text-[9px] text-gray-500">Musical</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-xs font-bold text-green-400">{score.performanceScore}</div>
+                                      <div className="text-[9px] text-gray-500">Performance</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-xs font-bold text-orange-400">{score.stylingScore}</div>
+                                      <div className="text-[9px] text-gray-500">Styling</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-xs font-bold text-pink-400">{score.overallImpressionScore}</div>
+                                      <div className="text-[9px] text-gray-500">Overall</div>
+                                    </div>
+                                  </div>
+
+                                  {score.comments && (
+                                    <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                                      <p className="text-xs text-blue-300 italic line-clamp-1">{score.comments}</p>
+                                    </div>
+                                  )}
+
+                                  <div className="mt-2 text-xs text-purple-400 text-right">
+                                    Click to view full details →
                                   </div>
                                 </div>
-                              </div>
-
-                              <div className="grid grid-cols-5 gap-2">
-                                <div className="text-center">
-                                  <div className="text-xs font-bold text-blue-400">{score.technicalScore}</div>
-                                  <div className="text-[9px] text-gray-500">Technical</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-xs font-bold text-purple-400">{score.musicalScore}</div>
-                                  <div className="text-[9px] text-gray-500">Musical</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-xs font-bold text-green-400">{score.performanceScore}</div>
-                                  <div className="text-[9px] text-gray-500">Performance</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-xs font-bold text-orange-400">{score.stylingScore}</div>
-                                  <div className="text-[9px] text-gray-500">Styling</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-xs font-bold text-pink-400">{score.overallImpressionScore}</div>
-                                  <div className="text-[9px] text-gray-500">Overall</div>
-                                </div>
-                              </div>
-
-                              {score.comments && (
-                                <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                                  <p className="text-xs text-blue-300 italic line-clamp-1">{score.comments}</p>
-                                </div>
-                              )}
-
-                              <div className="mt-2 text-xs text-purple-400 text-right">
-                                Click to view full details →
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                  });
-                })()}
-              </div>
-            </div>
-          );
-        })()}
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                      });
+                    })()}
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        )}
       </div>
 
       {/* Score Details Modal */}
@@ -1040,6 +1051,7 @@ function CompetitionEntriesSection({ dancerSession, selectedEventId, events, onE
   const [competitionEntries, setCompetitionEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     loadCompetitionEntries();
@@ -1119,7 +1131,13 @@ function CompetitionEntriesSection({ dancerSession, selectedEventId, events, onE
             </h3>
             <p className="text-gray-400 text-sm mt-1">All your competition entries across different events</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => setIsCollapsed(prev => !prev)}
+              className="px-3 py-1 text-xs bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              {isCollapsed ? '▸ Show list' : '▾ Hide list'}
+            </button>
             <select
               value={selectedEventId}
               onChange={(e) => onEventChange(e.target.value)}
@@ -1141,171 +1159,175 @@ function CompetitionEntriesSection({ dancerSession, selectedEventId, events, onE
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 bg-red-500/20 border-b border-red-500/30 text-red-200">
-          {error}
-        </div>
-      )}
-
-      {filteredEntries.length === 0 ? (
-        <div className="p-8 text-center">
-          <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">🏆</span>
-          </div>
-          <p className="text-gray-400 mb-2">
-            {competitionEntries.length === 0 
-              ? 'No competition entries found' 
-              : `No entries found for selected event${selectedEventId !== 'all' ? '. Try selecting "All Events".' : ''}`}
-          </p>
-          <p className="text-gray-500 text-sm mb-4">
-            {competitionEntries.length === 0 
-              ? 'You haven\'t entered any competitions yet, or entries may still be processing.'
-              : 'Change the event filter to see entries from other events.'}
-          </p>
-          {competitionEntries.length === 0 && (
-            <>
-              <div className="space-y-2 text-xs text-gray-600">
-                <p>📋 Entries are typically created by your studio or coach</p>
-                <p>🔍 EODSA ID being searched: <span className="font-mono text-gray-400">{dancerSession.eodsaId}</span></p>
-                <p>📞 Contact your studio if you expect to see entries here</p>
-              </div>
-              <button
-                onClick={loadCompetitionEntries}
-                className="mt-4 px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                🔄 Check Again
-              </button>
-            </>
+      {!isCollapsed && (
+        <>
+          {error && (
+            <div className="p-4 bg-red-500/20 border-b border-red-500/30 text-red-200">
+              {error}
+            </div>
           )}
-        </div>
-      ) : (
-        <div className="p-6">
-          <div className="space-y-6">
-            {filteredEntries.map((entry) => {
-              const isGroupEntry = entry.participantIds && entry.participantIds.length > 1;
-              const isOwner = entry.eodsaId === dancerSession.eodsaId;
-              const performanceType = isGroupEntry 
-                ? entry.participantIds.length === 2 ? 'Duet'
-                : entry.participantIds.length === 3 ? 'Trio' 
-                : 'Group'
-                : 'Solo';
-              
-              return (
-                <div key={entry.id} className="bg-gray-700/50 rounded-xl p-4 sm:p-6 border border-gray-600 hover:border-purple-500 transition-all duration-300">
-                  <div className="mb-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3">
-                      <h4 className="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-0">{entry.itemName}</h4>
-                      
-                      {/* Badges Row */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* Performance Type Badge */}
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          isGroupEntry 
-                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
-                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                        }`}>
-                          {isGroupEntry ? `👥 ${performanceType}` : '🕺 Solo'}
-                        </span>
+
+          {filteredEntries.length === 0 ? (
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🏆</span>
+              </div>
+              <p className="text-gray-400 mb-2">
+                {competitionEntries.length === 0 
+                  ? 'No competition entries found' 
+                  : `No entries found for selected event${selectedEventId !== 'all' ? '. Try selecting "All Events".' : ''}`}
+              </p>
+              <p className="text-gray-500 text-sm mb-4">
+                {competitionEntries.length === 0 
+                  ? 'You haven\'t entered any competitions yet, or entries may still be processing.'
+                  : 'Change the event filter to see entries from other events.'}
+              </p>
+              {competitionEntries.length === 0 && (
+                <>
+                  <div className="space-y-2 text-xs text-gray-600">
+                    <p>📋 Entries are typically created by your studio or coach</p>
+                    <p>🔍 EODSA ID being searched: <span className="font-mono text-gray-400">{dancerSession.eodsaId}</span></p>
+                    <p>📞 Contact your studio if you expect to see entries here</p>
+                  </div>
+                  <button
+                    onClick={loadCompetitionEntries}
+                    className="mt-4 px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    🔄 Check Again
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="p-6">
+              <div className="space-y-6">
+                {filteredEntries.map((entry) => {
+                  const isGroupEntry = entry.participantIds && entry.participantIds.length > 1;
+                  const isOwner = entry.eodsaId === dancerSession.eodsaId;
+                  const performanceType = isGroupEntry 
+                    ? entry.participantIds.length === 2 ? 'Duet'
+                    : entry.participantIds.length === 3 ? 'Trio' 
+                    : 'Group'
+                    : 'Solo';
+                  
+                  return (
+                    <div key={entry.id} className="bg-gray-700/50 rounded-xl p-4 sm:p-6 border border-gray-600 hover:border-purple-500 transition-all duration-300">
+                      <div className="mb-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3">
+                          <h4 className="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-0">{entry.itemName}</h4>
+                          
+                          {/* Badges Row */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            {/* Performance Type Badge */}
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              isGroupEntry 
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
+                                : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                            }`}>
+                              {isGroupEntry ? `👥 ${performanceType}` : '🕺 Solo'}
+                            </span>
+                            
+                            {/* Entry Type Badge */}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEntryTypeBadge(entry.entryType)}`}>
+                              {entry.entryType === 'live' ? '🎤 Live' : '📹 Virtual'}
+                            </span>
+                            
+                            {/* Status Badge */}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(entry.approved, entry.paid)}`}>
+                              {getStatusText(entry.approved, entry.paid)}
+                            </span>
+                            
+                            {/* Access Type Badge for Groups */}
+                            {isGroupEntry && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                isOwner 
+                                  ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                  : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+                              }`}>
+                                {isOwner ? '👑 Owner' : '🤝 Participant'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         
-                        {/* Entry Type Badge */}
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEntryTypeBadge(entry.entryType)}`}>
-                          {entry.entryType === 'live' ? '🎤 Live' : '📹 Virtual'}
-                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                          <p className="text-gray-300">Event: <span className="text-white font-medium">{entry.eventName}</span></p>
+                          <p className="text-gray-300">Style: <span className="text-white font-medium">{entry.itemStyle}</span></p>
+                          <p className="text-gray-300">Mastery: <span className="text-white font-medium">{entry.mastery}</span></p>
+                          {/* Duration hidden by request */}
+                          {entry.region && (
+                            <p className="text-gray-300">Region: <span className="text-white font-medium">{entry.region}</span></p>
+                          )}
+                          {entry.venue && entry.venue !== 'TBD' && (
+                            <p className="text-gray-300">Venue: <span className="text-white font-medium">{entry.venue}</span></p>
+                          )}
+                        </div>
+
+                        {/* Event Date */}
+                        {entry.eventDate && (
+                          <div className="mt-3 p-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                            <p className="text-blue-300 text-sm">
+                              📅 Event Date: <span className="font-medium">{new Date(entry.eventDate).toLocaleDateString()}</span>
+                            </p>
+                          </div>
+                        )}
                         
-                        {/* Status Badge */}
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(entry.approved, entry.paid)}`}>
-                          {getStatusText(entry.approved, entry.paid)}
-                        </span>
-                        
-                        {/* Access Type Badge for Groups */}
+                        {/* Group Info */}
                         {isGroupEntry && (
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            isOwner 
-                              ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                              : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
-                          }`}>
-                            {isOwner ? '👑 Owner' : '🤝 Participant'}
-                          </span>
+                          <div className="mt-3 p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg">
+                            <p className="text-purple-300 text-sm font-medium mb-1">
+                              🎭 Group Performance ({entry.participantIds.length} dancers)
+                            </p>
+                            <p className="text-purple-200 text-xs">
+                              {isOwner 
+                                ? 'You registered this group entry and can manage it.'
+                                : 'You\'re a participant in this group entry.'
+                              }
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Entry Fee Information */}
+                        <div className="mt-3 p-3 bg-gray-800/50 border border-gray-600 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <p className="text-gray-300 text-sm">Entry Fee:</p>
+                            <p className="text-white font-semibold">R{entry.entryFee || 0}</p>
+                          </div>
+                          {!entry.paid && (
+                            <p className="text-red-400 text-xs mt-1">⚠️ Payment required to complete registration</p>
+                          )}
+                        </div>
+
+                        {/* File Upload Status */}
+                        {entry.entryType === 'live' && (
+                          <div className="mt-3 p-2 bg-green-900/20 border border-green-500/30 rounded-lg">
+                            <p className="text-green-300 text-sm">
+                              🎵 Music File: {entry.musicFileUrl ? 
+                                <span className="text-green-400 font-medium">✅ Uploaded</span> : 
+                                <span className="text-yellow-400 font-medium">📤 Upload Required</span>
+                              }
+                            </p>
+                          </div>
+                        )}
+
+                        {entry.entryType === 'virtual' && (
+                          <div className="mt-3 p-2 bg-indigo-900/20 border border-indigo-500/30 rounded-lg">
+                            <p className="text-indigo-300 text-sm">
+                              📹 Video File: {(entry.videoFileUrl || entry.videoExternalUrl) ? 
+                                <span className="text-green-400 font-medium">✅ Uploaded</span> : 
+                                <span className="text-yellow-400 font-medium">📤 Upload Required</span>
+                              }
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
-                      <p className="text-gray-300">Event: <span className="text-white font-medium">{entry.eventName}</span></p>
-                      <p className="text-gray-300">Style: <span className="text-white font-medium">{entry.itemStyle}</span></p>
-                      <p className="text-gray-300">Mastery: <span className="text-white font-medium">{entry.mastery}</span></p>
-                      {/* Duration hidden by request */}
-                      {entry.region && (
-                        <p className="text-gray-300">Region: <span className="text-white font-medium">{entry.region}</span></p>
-                      )}
-                      {entry.venue && entry.venue !== 'TBD' && (
-                        <p className="text-gray-300">Venue: <span className="text-white font-medium">{entry.venue}</span></p>
-                      )}
-                    </div>
-
-                    {/* Event Date */}
-                    {entry.eventDate && (
-                      <div className="mt-3 p-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                        <p className="text-blue-300 text-sm">
-                          📅 Event Date: <span className="font-medium">{new Date(entry.eventDate).toLocaleDateString()}</span>
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Group Info */}
-                    {isGroupEntry && (
-                      <div className="mt-3 p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg">
-                        <p className="text-purple-300 text-sm font-medium mb-1">
-                          🎭 Group Performance ({entry.participantIds.length} dancers)
-                        </p>
-                        <p className="text-purple-200 text-xs">
-                          {isOwner 
-                            ? 'You registered this group entry and can manage it.'
-                            : 'You\'re a participant in this group entry.'
-                          }
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Entry Fee Information */}
-                    <div className="mt-3 p-3 bg-gray-800/50 border border-gray-600 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <p className="text-gray-300 text-sm">Entry Fee:</p>
-                        <p className="text-white font-semibold">R{entry.entryFee || 0}</p>
-                      </div>
-                      {!entry.paid && (
-                        <p className="text-red-400 text-xs mt-1">⚠️ Payment required to complete registration</p>
-                      )}
-                    </div>
-
-                    {/* File Upload Status */}
-                    {entry.entryType === 'live' && (
-                      <div className="mt-3 p-2 bg-green-900/20 border border-green-500/30 rounded-lg">
-                        <p className="text-green-300 text-sm">
-                          🎵 Music File: {entry.musicFileUrl ? 
-                            <span className="text-green-400 font-medium">✅ Uploaded</span> : 
-                            <span className="text-yellow-400 font-medium">📤 Upload Required</span>
-                          }
-                        </p>
-                      </div>
-                    )}
-
-                    {entry.entryType === 'virtual' && (
-                      <div className="mt-3 p-2 bg-indigo-900/20 border border-indigo-500/30 rounded-lg">
-                        <p className="text-indigo-300 text-sm">
-                          📹 Video File: {(entry.videoFileUrl || entry.videoExternalUrl) ? 
-                            <span className="text-green-400 font-medium">✅ Uploaded</span> : 
-                            <span className="text-yellow-400 font-medium">📤 Upload Required</span>
-                          }
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1317,6 +1339,7 @@ function CertificatesSection({ dancerSession, selectedEventId, events, onEventCh
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     loadCertificates();
@@ -1406,122 +1429,143 @@ function CertificatesSection({ dancerSession, selectedEventId, events, onEventCh
       <div className="p-6 border-b border-gray-700">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h3 className="text-xl font-bold text-white">🎖️ My Certificates</h3>
+            <h3 className="text-xl font-bold text-white">
+              🎖️ My Certificates
+              {!loading && certificates.length > 0 && (
+                <span className="text-sm font-normal text-gray-400 ml-2">
+                  ({certificates.length})
+                </span>
+              )}
+            </h3>
             <p className="text-gray-400 text-sm mt-1">View and download your achievement certificates</p>
           </div>
-          <select
-            value={selectedEventId}
-            onChange={(e) => onEventChange(e.target.value)}
-            className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-          >
-            <option value="all">All Events</option>
-            {events.map(event => (
-              <option key={event.id} value={event.id}>{event.name}</option>
-            ))}
-          </select>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => setIsCollapsed(prev => !prev)}
+              className="px-3 py-1 text-xs bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              {isCollapsed
+                ? `▸ View all${certificates.length ? ` (${certificates.length})` : ''}`
+                : '▾ Hide list'}
+            </button>
+            <select
+              value={selectedEventId}
+              onChange={(e) => onEventChange(e.target.value)}
+              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            >
+              <option value="all">All Events</option>
+              {events.map(event => (
+                <option key={event.id} value={event.id}>{event.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 bg-red-900/20 border-b border-red-700/30">
-          <p className="text-red-400 text-sm">{error}</p>
-        </div>
-      )}
+      {!isCollapsed && (
+        <>
+          {error && (
+            <div className="p-4 bg-red-900/20 border-b border-red-700/30">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
 
-      {filteredCertificates.length === 0 ? (
-        <div className="p-8 text-center">
-          <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">📜</span>
-          </div>
-          <p className="text-gray-400 mb-2">
-            {certificates.length === 0 
-              ? 'No certificates yet' 
-              : 'No certificates found for selected event'}
-          </p>
-          <p className="text-gray-500 text-sm">
-            {certificates.length === 0 
-              ? 'Certificates will appear here once you\'ve achieved a ranking position in competitions.'
-              : 'Change the event filter to see certificates from other events.'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-          {filteredCertificates.map((cert) => (
-            <div key={cert.id} className="bg-gray-900/50 rounded-xl border border-gray-700 overflow-hidden hover:border-purple-500/50 transition-all">
-              <div
-                className="relative h-48 cursor-pointer"
-                onClick={() => setPreviewUrl(cert.certificateUrl)}
-              >
-                <img
-                  src={cert.certificateUrl}
-                  alt={`Certificate for ${cert.title}`}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center">
-                  <span className="text-white text-4xl opacity-0 hover:opacity-100 transition-opacity">🔍</span>
-                </div>
+          {filteredCertificates.length === 0 ? (
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">📜</span>
               </div>
-              <div className="p-4">
-                <h4 className="font-semibold text-white mb-2">{cert.title}</h4>
-                <div className="space-y-1 text-sm">
-                  {cert.eventName && (
-                    <p className="text-gray-400">
-                      <span className="text-gray-500">Event:</span> {cert.eventName}
-                    </p>
-                  )}
-                  <p className="text-gray-400">
-                    <span className="text-gray-500">Style:</span> {cert.style}
-                  </p>
-                  <p className="text-gray-400">
-                    <span className="text-gray-500">Score:</span> {cert.percentage}%
-                  </p>
-                  <p className="text-gray-400">
-                    <span className="text-gray-500">Medal:</span> {cert.medallion}
-                  </p>
-                  <p className="text-gray-400">
-                    <span className="text-gray-500">Date:</span> {cert.eventDate}
-                  </p>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={() => handleDownload(cert)}
-                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold"
-                  >
-                    📥 Download
-                  </button>
-                  <button
+              <p className="text-gray-400 mb-2">
+                {certificates.length === 0 
+                  ? 'No certificates yet' 
+                  : 'No certificates found for selected event'}
+              </p>
+              <p className="text-gray-500 text-sm">
+                {certificates.length === 0 
+                  ? 'Certificates will appear here once you\'ve achieved a ranking position in competitions.'
+                  : 'Change the event filter to see certificates from other events.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+              {filteredCertificates.map((cert) => (
+                <div key={cert.id} className="bg-gray-900/50 rounded-xl border border-gray-700 overflow-hidden hover:border-purple-500/50 transition-all">
+                  <div
+                    className="relative h-48 cursor-pointer"
                     onClick={() => setPreviewUrl(cert.certificateUrl)}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
                   >
-                    👁️
-                  </button>
+                    <img
+                      src={cert.certificateUrl}
+                      alt={`Certificate for ${cert.title}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center">
+                      <span className="text-white text-4xl opacity-0 hover:opacity-100 transition-opacity">🔍</span>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h4 className="font-semibold text-white mb-2">{cert.title}</h4>
+                    <div className="space-y-1 text-sm">
+                      {cert.eventName && (
+                        <p className="text-gray-400">
+                          <span className="text-gray-500">Event:</span> {cert.eventName}
+                        </p>
+                      )}
+                      <p className="text-gray-400">
+                        <span className="text-gray-500">Style:</span> {cert.style}
+                      </p>
+                      <p className="text-gray-400">
+                        <span className="text-gray-500">Score:</span> {cert.percentage}%
+                      </p>
+                      <p className="text-gray-400">
+                        <span className="text-gray-500">Medal:</span> {cert.medallion}
+                      </p>
+                      <p className="text-gray-400">
+                        <span className="text-gray-500">Date:</span> {cert.eventDate}
+                      </p>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => handleDownload(cert)}
+                        className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold"
+                      >
+                        📥 Download
+                      </button>
+                      <button
+                        onClick={() => setPreviewUrl(cert.certificateUrl)}
+                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                      >
+                        👁️
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* Preview Modal */}
+          {previewUrl && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+              onClick={() => setPreviewUrl(null)}
+            >
+              <div className="relative max-w-4xl max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => setPreviewUrl(null)}
+                  className="absolute -top-12 right-0 text-white text-xl hover:text-gray-300 bg-gray-800/50 px-4 py-2 rounded-lg"
+                >
+                  ✕ Close
+                </button>
+                <img
+                  src={previewUrl}
+                  alt="Certificate Preview"
+                  className="max-w-full max-h-[90vh] rounded-lg shadow-2xl"
+                />
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Preview Modal */}
-      {previewUrl && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
-          onClick={() => setPreviewUrl(null)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setPreviewUrl(null)}
-              className="absolute -top-12 right-0 text-white text-xl hover:text-gray-300 bg-gray-800/50 px-4 py-2 rounded-lg"
-            >
-              ✕ Close
-            </button>
-            <img
-              src={previewUrl}
-              alt="Certificate Preview"
-              className="max-w-full max-h-[90vh] rounded-lg shadow-2xl"
-            />
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1620,6 +1664,12 @@ export default function DancerDashboardPage() {
     }
   };
 
+  const handleGoToEvents = () => {
+    if (!dancerSession) return;
+    // Take the dancer straight to the events dashboard to choose and enter events
+    router.push(`/event-dashboard/Nationals?eodsaId=${dancerSession.eodsaId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex items-center justify-center">
@@ -1695,6 +1745,27 @@ export default function DancerDashboardPage() {
       </div>
 
       <div className="container mx-auto p-4 space-y-6">
+        {/* Clear "Enter Events" call-to-action */}
+        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 rounded-2xl border border-purple-400/50 p-5 sm:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-lg">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-purple-100/80 font-semibold mb-1">
+              Enter competitions
+            </p>
+            <h2 className="text-lg sm:text-xl font-bold text-white">
+              Ready to enter events?
+            </h2>
+            <p className="text-sm text-purple-100/90 mt-1">
+              Tap the button to choose your event and complete your entries from the events dashboard.
+            </p>
+          </div>
+          <button
+            onClick={handleGoToEvents}
+            className="w-full md:w-auto px-5 py-3 bg-white text-purple-700 font-semibold rounded-xl shadow-md hover:shadow-lg hover:bg-purple-50 transition-all text-sm sm:text-base text-center"
+          >
+            Enter events & competitions
+          </button>
+        </div>
+
         {/* History Filters + Timeline */}
         {profileHistory && (
           <div className="bg-gray-800/80 rounded-2xl border border-gray-700/20 overflow-hidden">

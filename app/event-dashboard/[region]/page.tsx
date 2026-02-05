@@ -66,6 +66,35 @@ export default function NationalsEventsPage() {
     }
   }, [events]);
 
+  // Helper to label event tier clearly (Nationals / Regional / Qualifier)
+  const getEventTier = (event: Event & { eventType?: string }) => {
+    const tier = (event as any).eventType as string | undefined;
+
+    if (tier === 'REGIONAL_EVENT') {
+      return {
+        label: `${event.region} Regional`,
+        classes: 'bg-blue-500/20 text-blue-200 border border-blue-400/40',
+      };
+    }
+    if (tier === 'QUALIFIER_EVENT') {
+      return {
+        label: `${event.region} Qualifier`,
+        classes: 'bg-amber-500/20 text-amber-200 border border-amber-400/40',
+      };
+    }
+    if (event.region === 'Nationals') {
+      return {
+        label: 'Nationals',
+        classes: 'bg-fuchsia-500/20 text-fuchsia-200 border border-fuchsia-400/40',
+      };
+    }
+
+    return {
+      label: event.region || 'Competition',
+      classes: 'bg-slate-500/20 text-slate-200 border border-slate-400/40',
+    };
+  };
+
   const loadContestant = async (id: string) => {
     try {
       // Try unified system first (new dancers)
@@ -294,10 +323,19 @@ export default function NationalsEventsPage() {
           <div className="text-center">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                EODSA Nationals
+                EODSA Competitions
               </span>
             </h1>
-            <p className="text-slate-400 text-sm sm:text-base mb-4">Choose your performance category and register</p>
+            <p className="text-slate-400 text-sm sm:text-base mb-2">
+              Select your competition (Nationals, Regionals or Qualifiers) and then enter your performances.
+            </p>
+            {events.length > 0 && (
+              <p className="text-xs sm:text-sm text-slate-300 mb-4">
+                <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-200 border border-emerald-400/40 text-[11px] sm:text-xs font-medium">
+                  🔓 {events.length} competition{events.length === 1 ? '' : 's'} currently open for entry
+                </span>
+              </p>
+            )}
             
             {/* User Info Card - Mobile Optimized */}
             {(contestant || studioInfo) && (
@@ -335,7 +373,9 @@ export default function NationalsEventsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {events.length > 0 ? (
           <div className="space-y-8 sm:space-y-12">
-            {events.map((event) => (
+            {events.map((event) => {
+              const tier = getEventTier(event as any);
+              return (
               <div key={event.id} className="group">
                 {/* Event Header */}
                   <div className="relative mb-6 sm:mb-8">
@@ -351,17 +391,22 @@ export default function NationalsEventsPage() {
                           </div>
                           
                           <div>
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-lg text-[11px] sm:text-xs font-semibold ${tier.classes}`}>
+                                {tier.label}
+                              </span>
+                            </div>
                             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
-                            {event.name}
+                              {event.name}
                             </h2>
-                          <p className="text-slate-400 text-sm sm:text-base">{event.description}</p>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            <span className="inline-flex items-center px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs font-medium">
-                              <div className="w-2 h-2 bg-emerald-400 rounded-full mr-1 animate-pulse"></div>
-                              Open for Registration
-                            </span>
+                            <p className="text-slate-400 text-sm sm:text-base">{event.description}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <span className="inline-flex items-center px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs font-medium">
+                                <div className="w-2 h-2 bg-emerald-400 rounded-full mr-1 animate-pulse"></div>
+                                Open for Registration
+                              </span>
                               <span className="inline-flex items-center px-2 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium">
-                              All Performance Types
+                                All Performance Types
                               </span>
                             </div>
                           </div>
@@ -454,7 +499,8 @@ export default function NationalsEventsPage() {
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         ) : (
           <div className="text-center py-16 sm:py-24">
