@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSql } from '@/lib/database';
+import { getSql, db } from '@/lib/database';
 import { validateBatchEntryFees, createBatchTransactionRecords } from '@/lib/payment-validation';
 
 export async function POST(request: NextRequest) {
@@ -93,7 +93,16 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
         const entryId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-        
+
+        // Option C: Enforce qualification before creating (Water/Fire only; Air/Earth never qualify)
+        const primaryDancerId = entry.participantIds?.[0];
+        if (primaryDancerId && entry.eventId) {
+          const { allowed, error } = await db.checkEventEntryQualification(entry.eventId, primaryDancerId);
+          if (!allowed) {
+            throw new Error(error || `Entry "${entry.itemName}" failed qualification check`);
+          }
+        }
+
         try {
           await sqlClient`
             INSERT INTO event_entries (

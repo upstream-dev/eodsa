@@ -60,7 +60,8 @@ export async function GET(
     let reason = '';
 
     if (qualificationSource === 'REGIONAL') {
-      qualified = await db.checkRegionalQualification(dancerId, minimumQualificationScore);
+      // Option C: Use stored qualification (Water/Fire only; Air/Earth never qualify)
+      qualified = await db.isDancerQualifiedForNationals(dancerId, minimumQualificationScore);
       if (!qualified) {
         reason = `You must qualify from a Regional Event with a minimum score of ${minimumQualificationScore}% to enter this event. Please participate in a Regional Event first.`;
       }

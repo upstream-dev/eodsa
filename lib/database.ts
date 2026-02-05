@@ -186,6 +186,17 @@ export const initializeDatabase = async () => {
     await sqlClient`CREATE INDEX IF NOT EXISTS idx_event_manual_qualifications_event_id ON event_manual_qualifications(event_id)`;
     await sqlClient`CREATE INDEX IF NOT EXISTS idx_event_manual_qualifications_dancer_id ON event_manual_qualifications(dancer_id)`;
 
+    // Option C: dancer_nationals_qualifications - stored best qualifying score (Water/Fire only)
+    // Air and Earth never qualify. Source of truth for entry gating.
+    await sqlClient`
+      CREATE TABLE IF NOT EXISTS dancer_nationals_qualifications (
+        dancer_id TEXT PRIMARY KEY,
+        best_qualifying_score REAL,
+        updated_at TEXT NOT NULL DEFAULT (now()::text)
+      )
+    `;
+    await sqlClient`CREATE INDEX IF NOT EXISTS idx_dancer_nationals_qualifications_dancer_id ON dancer_nationals_qualifications(dancer_id)`;
+
     // Create qualification_audit_logs table for tracking qualification-related actions
     await sqlClient`
       CREATE TABLE IF NOT EXISTS qualification_audit_logs (
@@ -1078,6 +1089,22 @@ export const db = {
       await sqlClient`
         UPDATE event_entries 
         SET video_external_type = ${updates.videoExternalType || null}
+        WHERE id = ${id}
+      `;
+    }
+
+    // Entry-level performance type and age category (used for scoring/display; NULLs cause entries to not show in judge/announcer views)
+    if (updates.performanceType !== undefined) {
+      await sqlClient`
+        UPDATE event_entries 
+        SET performance_type = ${updates.performanceType || null}
+        WHERE id = ${id}
+      `;
+    }
+    if (updates.ageCategory !== undefined) {
+      await sqlClient`
+        UPDATE event_entries 
+        SET age_category = ${updates.ageCategory || null}
         WHERE id = ${id}
       `;
     }
@@ -2809,6 +2836,34 @@ export const db = {
       SET scores_published = true, scores_published_at = ${timestamp}, scores_published_by = ${publishedBy}
       WHERE id = ${performanceId}
     `;
+
+    // Option C: Recompute stored qualification when Regional scores are published (Water/Fire only)
+    try {
+      const regionalCheck = await sqlClient`
+        SELECT ee.participant_ids
+        FROM performances p
+        JOIN events e ON e.id = p.event_id
+        LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
+        WHERE p.id = ${performanceId} AND e.event_type = 'REGIONAL_EVENT'
+      ` as any[];
+      if (regionalCheck.length > 0 && regionalCheck[0].participant_ids) {
+        let participantIds: string[] = [];
+        try {
+          const raw = regionalCheck[0].participant_ids;
+          participantIds = typeof raw === 'string' ? JSON.parse(raw) : Array.isArray(raw) ? raw : [];
+        } catch { participantIds = []; }
+        for (const pid of participantIds) {
+          if (!pid) continue;
+          const dancerRow = await sqlClient`
+            SELECT id FROM dancers WHERE id = ${pid} OR eodsa_id = ${pid} LIMIT 1
+          ` as any[];
+          const dancerId = dancerRow[0]?.id || pid;
+          await this.computeAndStoreDancerNationalsQualification(dancerId);
+        }
+      }
+    } catch (qualErr) {
+      console.warn('[publishPerformanceScores] Option C qualification recompute failed:', qualErr);
+    }
 
     // Check if certificate already exists for this performance
     const existingCert = await sqlClient`
@@ -5582,6 +5637,94 @@ export const db = {
     
     const result = await query as any[];
     return result.length > 0;
+  },
+
+  // Option C: Read stored qualification (single source of truth for entry gating)
+  // Air and Earth never qualify - only Water/Fire Regional performances count
+  async isDancerQualifiedForNationals(dancerId: string, minimumScore: number): Promise<boolean> {
+    const sqlClient = getSql();
+    const result = await sqlClient`
+      SELECT best_qualifying_score FROM dancer_nationals_qualifications
+      WHERE dancer_id = ${dancerId}
+    ` as any[];
+    if (result.length === 0 || result[0].best_qualifying_score == null) return false;
+    return Number(result[0].best_qualifying_score) >= minimumScore;
+  },
+
+  // Option C: Compute best qualifying score (Water/Fire only; Air/Earth excluded)
+  // Returns the best avg score from qualifying Regional performances, or null
+  async computeDancerBestQualifyingScore(dancerId: string): Promise<number | null> {
+    const sqlClient = getSql();
+    const dancerResult = await sqlClient`
+      SELECT eodsa_id FROM dancers WHERE id = ${dancerId}
+    ` as any[];
+    if (dancerResult.length === 0) return null;
+    const eodsaId = dancerResult[0].eodsa_id;
+
+    const rows = await sqlClient`
+      SELECT AVG(
+        s.technical_score + s.musical_score + s.performance_score +
+        s.styling_score + s.overall_impression_score
+      )::real as avg_score
+      FROM performances p
+      JOIN event_entries ee ON ee.id = p.event_entry_id
+      JOIN events e ON e.id = ee.event_id
+      JOIN scores s ON s.performance_id = p.id
+      WHERE (
+        ee.eodsa_id = ${eodsaId}
+        OR ee.participant_ids::text LIKE ${`%${dancerId}%`}
+        OR ee.participant_ids::text LIKE ${`%${eodsaId}%`}
+      )
+      AND e.event_type = 'REGIONAL_EVENT'
+      AND p.scores_published = true
+      AND COALESCE(NULLIF(TRIM(p.mastery), ''), ee.mastery) IN ('Water (Competitive)', 'Fire (Advanced)')
+      GROUP BY p.id
+    ` as any[];
+
+    if (rows.length === 0) return null;
+    const maxScore = Math.max(...rows.map((r: any) => Number(r.avg_score) || 0));
+    return maxScore > 0 ? maxScore : null;
+  },
+
+  // Option C: Check if dancer can enter event (qualification gate - use before creating entry)
+  async checkEventEntryQualification(eventId: string, primaryDancerId: string): Promise<{ allowed: boolean; error?: string }> {
+    const event = await this.getEventById(eventId);
+    if (!event) return { allowed: false, error: 'Event not found' };
+    const e = event as any;
+    let eventType = e.eventType || 'REGIONAL_EVENT';
+    if (!e.eventType && event.name?.toLowerCase().includes('national')) eventType = 'NATIONAL_EVENT';
+    let qualificationRequired = e.qualificationRequired ?? false;
+    if (eventType === 'NATIONAL_EVENT' && !qualificationRequired) qualificationRequired = true;
+    if (!qualificationRequired) return { allowed: true };
+    const qualificationSource = e.qualificationSource || 'REGIONAL';
+    const minimumScore = e.minimumQualificationScore ?? 75;
+    if (qualificationSource === 'REGIONAL') {
+      const qualified = await this.isDancerQualifiedForNationals(primaryDancerId, minimumScore);
+      if (!qualified) return { allowed: false, error: `You must qualify from a Regional Event with a minimum score of ${minimumScore}% (Water/Fire only). Air and Earth performances do not qualify.` };
+    } else if (qualificationSource === 'ANY_NATIONAL_LEVEL') {
+      const qualified = await this.checkNationalLevelQualification(primaryDancerId, minimumScore);
+      if (!qualified) return { allowed: false, error: `You must have participated in a National or Qualifier Event${minimumScore ? ` with a minimum score of ${minimumScore}%` : ''} to enter.` };
+    } else if (qualificationSource === 'MANUAL') {
+      const qualified = await this.checkManualQualification(eventId, primaryDancerId);
+      if (!qualified) return { allowed: false, error: 'You must be manually qualified by an administrator to enter this event.' };
+    } else {
+      return { allowed: false, error: 'This event has custom qualification requirements. Please contact support.' };
+    }
+    return { allowed: true };
+  },
+
+  // Option C: Compute and store qualification (call on score publish)
+  async computeAndStoreDancerNationalsQualification(dancerId: string): Promise<void> {
+    const sqlClient = getSql();
+    const bestScore = await this.computeDancerBestQualifyingScore(dancerId);
+    const updatedAt = new Date().toISOString();
+    await sqlClient`
+      INSERT INTO dancer_nationals_qualifications (dancer_id, best_qualifying_score, updated_at)
+      VALUES (${dancerId}, ${bestScore}, ${updatedAt})
+      ON CONFLICT (dancer_id) DO UPDATE SET
+        best_qualifying_score = EXCLUDED.best_qualifying_score,
+        updated_at = EXCLUDED.updated_at
+    `;
   }
 };
 

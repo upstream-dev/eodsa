@@ -272,8 +272,9 @@ export async function POST(request: NextRequest) {
           );
         }
         
+        // Option C: Use stored qualification (Water/Fire only; Air/Earth never qualify)
         console.log(`[Qualification] Checking REGIONAL qualification for dancer ${primaryDancerId} (EODSA: ${body.eodsaId}) with minimum score ${minimumQualificationScore}`);
-        const hasQualification = await db.checkRegionalQualification(primaryDancerId, minimumQualificationScore);
+        const hasQualification = await db.isDancerQualifiedForNationals(primaryDancerId, minimumQualificationScore);
         console.log(`[Qualification] Qualification check result: ${hasQualification}`);
         
         if (!hasQualification) {

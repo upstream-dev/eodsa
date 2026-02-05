@@ -21,6 +21,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Option C: Nationals require Regional qualification (Water/Fire only; Air/Earth never qualify)
+    const primaryDancerId = body.participantIds[0];
+    const minimumScore = 75;
+    const qualified = await db.isDancerQualifiedForNationals(primaryDancerId, minimumScore);
+    if (!qualified) {
+      return NextResponse.json(
+        {
+          error: `You must qualify from a Regional Event with a minimum score of ${minimumScore}% (Water or Fire mastery only). Air and Earth performances do not qualify for Nationals.`,
+          qualificationBlocked: true
+        },
+        { status: 400 }
+      );
+    }
+
     // Create nationals event entry
     const nationalsEntry = await unifiedDb.createNationalsEventEntry({
       nationalsEventId: body.nationalsEventId,

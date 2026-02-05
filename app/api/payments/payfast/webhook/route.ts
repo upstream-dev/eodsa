@@ -347,7 +347,17 @@ export async function POST(request: NextRequest) {
             
             try {
               console.log(`📝 Auto-creating entry ${i + 1}/${entriesData.length}: ${entry.itemName}`);
-              
+
+              // Option C: Enforce qualification before creating (Water/Fire only; Air/Earth never qualify)
+              const primaryDancerId = entry.participantIds?.[0];
+              if (primaryDancerId) {
+                const { allowed, error } = await db.checkEventEntryQualification(entry.eventId, primaryDancerId);
+                if (!allowed) {
+                  console.warn(`⚠️ Qualification check failed for entry ${entry.itemName}:`, error);
+                  throw new Error(error || 'Qualification check failed');
+                }
+              }
+
               // Create event entry with payment reference
               const eventEntry = await db.createEventEntry({
                 eventId: entry.eventId,
