@@ -645,7 +645,7 @@ function RankingsPage() {
                       const displayRank = ranking.rank;
                       
                       return (
-                        <tr key={ranking.performanceId} className={`border-b ${themeClasses.cardBorder} hover:${themeClasses.hoverBg} transition-colors`}>
+                        <tr key={ranking.performanceId} className={`border-b ${themeClasses.cardBorder} ${themeClasses.tableRowHover} transition-colors`}>
                           <td className="py-4 px-6">
                             <div className={`inline-flex items-center px-3 py-1 ${themeClasses.cardRadius} text-sm font-bold border ${getRankBadgeColor(displayRank)}`}>
                               #{displayRank}
