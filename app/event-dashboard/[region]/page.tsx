@@ -174,14 +174,13 @@ export default function NationalsEventsPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // Filter to only show UNIFIED events (performanceType === 'All')
-          // This excludes old separate events like "National Test - Solo", "National Test - Duet"
-      const nationalsEvents = data.events.filter((event: Event) =>
-        event.region === 'Nationals' &&
+          // Show ALL event types: Nationals, Regionals, Qualifiers (unified events only)
+          // Include: Nationals (region='Nationals'), Regionals (eventType='REGIONAL_EVENT'), Qualifiers (eventType='QUALIFIER_EVENT')
+          const allOpenEvents = data.events.filter((event: Event & { eventType?: string }) =>
             event.performanceType === 'All' &&
-        (event.status === 'registration_open' || event.status === 'upcoming')
-      );
-      setEvents(nationalsEvents);
+            (event.status === 'registration_open' || event.status === 'upcoming')
+          );
+          setEvents(allOpenEvents);
         }
       }
     } catch (error) {
@@ -512,7 +511,7 @@ export default function NationalsEventsPage() {
                 </div>
                 <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">No Events Available</h3>
                 <p className="text-slate-400 max-w-md mx-auto leading-relaxed">
-                  There are currently no open events for nationals competition. Check back soon or contact support for more information.
+                  There are currently no open events (Nationals, Regionals or Qualifiers). Check back soon or contact support for more information.
                 </p>
               </div>
             </div>
