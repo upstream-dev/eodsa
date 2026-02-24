@@ -391,10 +391,12 @@ export const DANCE_STYLES = [
   'Speciality Styles'
 ];
 
-// UPDATED: Mastery levels for nationals competitions only
+// Mastery levels used across Regionals and Nationals
 export const MASTERY_LEVELS = [
   'Water (Competitive)',
-  'Fire (Advanced)'
+  'Fire (Advanced)',
+  'Earth (Eisteddfod)',
+  'Air (Special Needs)'
 ];
 
 // Updated for client requirements
@@ -426,9 +428,11 @@ export const TIME_LIMITS = {
 export const EODSA_FEES = {
   // Registration fees per person
   REGISTRATION: {
-    'Water (Competitive)': 300,    // R300 PP for Water (Competition)
-    'Fire (Advanced)': 300,        // R300 PP for Fire (Advanced)
-    'Nationals': 300               // R300 PP for Nationals entry
+    'Water (Competitive)': 300,        // R300 PP for Water (Competition)
+    'Fire (Advanced)': 300,            // R300 PP for Fire (Advanced)
+    'Earth (Eisteddfod)': 300,         // Default per-person fee for Earth
+    'Air (Special Needs)': 300,        // Default per-person fee for Air
+    'Nationals': 300                   // R300 PP for Nationals entry
   },
   
   // Solo packages - same for both Water and Fire
