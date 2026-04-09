@@ -34,6 +34,19 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error adding dancer to studio:', error);
     
+    // Handle duplicate/conflict errors with friendlier messaging
+    if (
+      error?.message?.includes('studio_applications_dancer_id_studio_id_key') ||
+      error?.message?.includes('duplicate key') ||
+      error?.message?.includes('already a member') ||
+      error?.message?.includes('pending application')
+    ) {
+      return NextResponse.json(
+        { error: error.message || 'This dancer already has a studio link for this studio' },
+        { status: 409 }
+      );
+    }
+
     // Handle specific error messages
     if (error.message) {
       return NextResponse.json(

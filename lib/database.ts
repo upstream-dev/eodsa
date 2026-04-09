@@ -6363,7 +6363,7 @@ export const unifiedDb = {
       throw new Error('Dancer must be admin-approved before being added to a studio');
     }
     
-    // Check if dancer is already associated with this studio
+    // Check if dancer already has any application history with this studio
     const existingApplication = await sqlClient`
       SELECT * FROM studio_applications 
       WHERE dancer_id = ${dancer.id} AND studio_id = ${studioId}
@@ -6376,22 +6376,69 @@ export const unifiedDb = {
       } else if (app.status === 'pending') {
         throw new Error('Dancer already has a pending application to this studio');
       }
+
+      // Reactivate previously withdrawn/rejected associations instead of inserting
+      // a duplicate row that violates the unique (dancer_id, studio_id) constraint.
+      const respondedAt = new Date().toISOString();
+      await sqlClient`
+        UPDATE studio_applications
+        SET
+          status = 'accepted',
+          responded_at = ${respondedAt},
+          responded_by = ${addedBy}
+        WHERE id = ${app.id}
+      `;
+
+      return {
+        id: app.id,
+        dancerId: dancer.id,
+        studioId: studioId,
+        status: 'accepted',
+        appliedAt: app.applied_at,
+        respondedAt: respondedAt,
+        respondedBy: addedBy,
+        dancer: dancer
+      };
     }
     
-    // Generate unique application ID
-    const applicationId = `app-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const appliedAt = new Date().toISOString();
     const respondedAt = new Date().toISOString();
-    
-    // Create an accepted application record (bypassing the approval process)
-    await sqlClient`
-      INSERT INTO studio_applications (
-        id, dancer_id, studio_id, status, applied_at, responded_at, responded_by
-      ) VALUES (
-        ${applicationId}, ${dancer.id}, ${studioId}, 'accepted', ${appliedAt}, ${respondedAt}, ${addedBy}
-      )
-    `;
-    
+
+    // Create a new accepted application record (bypassing the approval process).
+    // A duplicate can still happen under concurrency, so convert that into a
+    // readable business error.
+    const applicationId = `app-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    try {
+      await sqlClient`
+        INSERT INTO studio_applications (
+          id, dancer_id, studio_id, status, applied_at, responded_at, responded_by
+        ) VALUES (
+          ${applicationId}, ${dancer.id}, ${studioId}, 'accepted', ${appliedAt}, ${respondedAt}, ${addedBy}
+        )
+      `;
+    } catch (error: any) {
+      if (error?.message?.includes('studio_applications_dancer_id_studio_id_key')) {
+        const latestApplication = await sqlClient`
+          SELECT * FROM studio_applications
+          WHERE dancer_id = ${dancer.id} AND studio_id = ${studioId}
+          LIMIT 1
+        ` as any[];
+
+        if (latestApplication.length > 0) {
+          const latest = latestApplication[0];
+          if (latest.status === 'accepted') {
+            throw new Error('Dancer is already a member of this studio');
+          }
+          if (latest.status === 'pending') {
+            throw new Error('Dancer already has a pending application to this studio');
+          }
+        }
+
+        throw new Error('Dancer already has a studio association history. Please try again.');
+      }
+      throw error;
+    }
+
     return {
       id: applicationId,
       dancerId: dancer.id,
