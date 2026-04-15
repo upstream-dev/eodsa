@@ -354,7 +354,7 @@ function AdminRankingsPage() {
 
     // Convert data to CSV rows
     const rows = filteredRankings.map((ranking, index) => {
-      const { percentage, rankingLevel } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount, ranking.eventType);
+      const { percentage, rankingLevel } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount);
       
       return [
         index + 1, // Rank
@@ -421,12 +421,12 @@ function AdminRankingsPage() {
     return `#${rank}`;
   };
 
-  const calculatePercentageAndRanking = (totalScore: number, judgeCount: number, eventType: RankingData['eventType']) => {
+  const calculatePercentageAndRanking = (totalScore: number, judgeCount: number) => {
     // Calculate rounded percentage using centralized function (ensures consistency)
     const percentage = calculateRoundedPercentage(totalScore, judgeCount);
     
     // Get medal info using rounded percentage
-    const medalInfo = getMedalFromPercentage(percentage, eventType || 'NATIONAL_EVENT');
+    const medalInfo = getMedalFromPercentage(percentage);
     let rankingColor = '';
     
     // Use gradient colors for better visual appeal while keeping the new medal structure
@@ -439,9 +439,6 @@ function AdminRankingsPage() {
         break;
       case 'legend':
       rankingColor = 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white';
-        break;
-      case 'pro_gold':
-        rankingColor = 'bg-gradient-to-r from-yellow-500 to-amber-700 text-white';
         break;
       case 'gold':
         rankingColor = 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-white';
@@ -892,7 +889,7 @@ function AdminRankingsPage() {
                   </thead>
                   <tbody>
                     {filteredRankings.map((ranking, index) => {
-                      const { percentage, rankingLevel, rankingColor, medalEmoji } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount, ranking.eventType);
+                      const { percentage, rankingLevel, rankingColor, medalEmoji } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount);
 
                       // Use the recalculated rank from applyFilters
                       // The rank is already correctly calculated in applyFilters()
