@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 import { getMedalFromPercentage } from '@/lib/types';
 import { calculateRoundedPercentage } from '@/lib/certificate-generator';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
-import { usePhase2Feature } from '@/hooks/usePhase2Feature';
-import FeatureUnavailable from '@/components/FeatureUnavailable';
 
 interface RankingData {
   performanceId: string;
   eventId: string;
   eventName: string;
+  eventType?: 'REGIONAL_EVENT' | 'NATIONAL_EVENT' | 'QUALIFIER_EVENT' | 'INTERNATIONAL_VIRTUAL_EVENT';
   region: string;
   ageCategory: string;
   performanceType: string;
@@ -35,7 +34,6 @@ interface RankingData {
 function RankingsPage() {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
-  const { isEnabled: isPhase2Enabled, isLoading: isLoadingFlag } = usePhase2Feature();
   const [rankings, setRankings] = useState<RankingData[]>([]);
   const [filteredRankings, setFilteredRankings] = useState<RankingData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,11 +77,6 @@ function RankingsPage() {
   };
 
   const loadRankings = async () => {
-    if (!isPhase2Enabled) {
-      console.log('Phase 2 not enabled');
-      return;
-    }
-    
     setError('');
     
     try {
@@ -127,11 +120,6 @@ function RankingsPage() {
           setError('Invalid data format received');
           setRankings([]);
         }
-      } else if (response.status === 403) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('403 Error:', errorData);
-        setError(errorData.error || 'This feature is temporarily unavailable.');
-        setRankings([]);
       } else {
         const errorText = await response.text();
         console.error('Failed to load rankings, status:', response.status, 'error:', errorText);
@@ -372,7 +360,7 @@ function RankingsPage() {
 
   const calculatePercentageAndRanking = (ranking: RankingData) => {
     const percentage = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
-    const medalInfo = getMedalFromPercentage(percentage);
+    const medalInfo = getMedalFromPercentage(percentage, ranking.eventType || 'NATIONAL_EVENT');
     let rankingColor = '';
     
     switch (medalInfo.type) {
@@ -384,6 +372,9 @@ function RankingsPage() {
         break;
       case 'legend':
         rankingColor = 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white';
+        break;
+      case 'pro_gold':
+        rankingColor = 'bg-gradient-to-r from-yellow-500 to-amber-700 text-white';
         break;
       case 'gold':
         rankingColor = 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-white';
@@ -417,12 +408,7 @@ function RankingsPage() {
     }
   };
 
-  // Check Phase 2 feature flag
-  if (!isLoadingFlag && !isPhase2Enabled) {
-    return <FeatureUnavailable featureName="Rankings" />;
-  }
-
-  if (isLoading || isLoadingFlag) {
+  if (isLoading) {
     return (
       <div className={`min-h-screen ${themeClasses.loadingBg} flex items-center justify-center`}>
         <div className="text-center">

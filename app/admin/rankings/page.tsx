@@ -6,13 +6,12 @@ import { getMedalFromPercentage } from '@/lib/types';
 import { calculateRoundedPercentage } from '@/lib/certificate-generator';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { usePhase2Feature } from '@/hooks/usePhase2Feature';
-import FeatureUnavailable from '@/components/FeatureUnavailable';
 
 interface RankingData {
   performanceId: string;
   eventId: string;
   eventName: string;
+  eventType?: 'REGIONAL_EVENT' | 'NATIONAL_EVENT' | 'QUALIFIER_EVENT' | 'INTERNATIONAL_VIRTUAL_EVENT';
   region: string;
   ageCategory: string;
   performanceType: string;
@@ -47,7 +46,6 @@ interface EventWithScores {
 function AdminRankingsPage() {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
-  const { isEnabled: isPhase2Enabled, isLoading: isLoadingFlag } = usePhase2Feature();
   const [rankings, setRankings] = useState<RankingData[]>([]);
   const [filteredRankings, setFilteredRankings] = useState<RankingData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -125,7 +123,6 @@ function AdminRankingsPage() {
 
   const loadRankings = async (forceLoad = false) => {
     if (!isAuthenticated && !forceLoad) return;
-    if (!isPhase2Enabled) return; // Don't load if Phase 2 is disabled
     
     setIsRefreshing(true);
     setError('');
@@ -146,10 +143,6 @@ function AdminRankingsPage() {
         const data = await response.json();
         console.log('Rankings data received:', data);
         setRankings(data);
-      } else if (response.status === 403) {
-        // Feature disabled
-        setError('This feature is temporarily unavailable.');
-        setRankings([]);
       } else {
         console.error('Failed to load rankings, status:', response.status);
         setError('Failed to load rankings');
@@ -361,7 +354,7 @@ function AdminRankingsPage() {
 
     // Convert data to CSV rows
     const rows = filteredRankings.map((ranking, index) => {
-      const { percentage, rankingLevel } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount);
+      const { percentage, rankingLevel } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount, ranking.eventType);
       
       return [
         index + 1, // Rank
@@ -428,12 +421,12 @@ function AdminRankingsPage() {
     return `#${rank}`;
   };
 
-  const calculatePercentageAndRanking = (totalScore: number, judgeCount: number) => {
+  const calculatePercentageAndRanking = (totalScore: number, judgeCount: number, eventType: RankingData['eventType']) => {
     // Calculate rounded percentage using centralized function (ensures consistency)
     const percentage = calculateRoundedPercentage(totalScore, judgeCount);
     
     // Get medal info using rounded percentage
-    const medalInfo = getMedalFromPercentage(percentage);
+    const medalInfo = getMedalFromPercentage(percentage, eventType || 'NATIONAL_EVENT');
     let rankingColor = '';
     
     // Use gradient colors for better visual appeal while keeping the new medal structure
@@ -446,6 +439,9 @@ function AdminRankingsPage() {
         break;
       case 'legend':
       rankingColor = 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white';
+        break;
+      case 'pro_gold':
+        rankingColor = 'bg-gradient-to-r from-yellow-500 to-amber-700 text-white';
         break;
       case 'gold':
         rankingColor = 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-white';
@@ -470,12 +466,7 @@ function AdminRankingsPage() {
     };
   };
 
-  // Check Phase 2 feature flag
-  if (!isLoadingFlag && !isPhase2Enabled) {
-    return <FeatureUnavailable featureName="Rankings" />;
-  }
-
-  if (isLoading || isLoadingFlag) {
+  if (isLoading) {
     return (
       <div className={`min-h-screen ${themeClasses.loadingBg} flex items-center justify-center`}>
         <div className="text-center">
@@ -521,15 +512,9 @@ function AdminRankingsPage() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => {
-                  if (!isPhase2Enabled) {
-                    alert('This feature is temporarily unavailable.');
-                    return;
-                  }
                   exportToCSV();
                 }}
-                disabled={!isPhase2Enabled}
-                className={`${themeClasses.buttonBase} ${!isPhase2Enabled ? 'opacity-50 cursor-not-allowed' : themeClasses.buttonSuccess} flex items-center space-x-2`}
-                title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
+                className={`${themeClasses.buttonBase} ${themeClasses.buttonSuccess} flex items-center space-x-2`}
               >
                 <span>📊</span>
                 <span>Export CSV</span>
@@ -841,19 +826,11 @@ function AdminRankingsPage() {
               <div className="flex flex-col space-y-2">
                 <button
                   onClick={() => {
-                    if (!isPhase2Enabled) {
-                      alert('This feature is temporarily unavailable.');
-                      return;
-                    }
                     exportToCSV();
                   }}
-                  disabled={!isPhase2Enabled}
                   className={`w-full px-4 py-3 rounded-xl transition-all duration-200 font-semibold shadow-md flex items-center justify-center space-x-2 ${
-                    isPhase2Enabled
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
-                      : 'bg-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'
+                    'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
                   }`}
-                  title={!isPhase2Enabled ? 'This feature is temporarily unavailable.' : ''}
                 >
                   <span>📊</span>
                   <span>Export to CSV</span>
@@ -915,7 +892,7 @@ function AdminRankingsPage() {
                   </thead>
                   <tbody>
                     {filteredRankings.map((ranking, index) => {
-                      const { percentage, rankingLevel, rankingColor, medalEmoji } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount);
+                      const { percentage, rankingLevel, rankingColor, medalEmoji } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount, ranking.eventType);
 
                       // Use the recalculated rank from applyFilters
                       // The rank is already correctly calculated in applyFilters()
