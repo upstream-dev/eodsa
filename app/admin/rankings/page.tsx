@@ -440,9 +440,6 @@ function AdminRankingsPage() {
       case 'legend':
       rankingColor = 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white';
         break;
-      case 'pro_gold':
-        rankingColor = 'bg-gradient-to-r from-yellow-500 to-amber-700 text-white';
-        break;
       case 'gold':
         rankingColor = 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-white';
         break;
