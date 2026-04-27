@@ -64,9 +64,6 @@ export async function GET(
     // Calculate rounded percentage using centralized function (ensures consistency)
     const averagePercentage = calculateRoundedPercentage(totalPercentage, judgeCount);
 
-    // Get medallion (percentage is already rounded)
-    const medallion = getMedalFromPercentage(averagePercentage);
-
     // Get event details for date
     const allEvents = await db.getAllEvents();
     const event = allEvents.find(e => e.id === performance.eventId);
@@ -77,6 +74,9 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // Get medallion with event-specific scoring bands
+    const medallion = getMedalFromPercentage(averagePercentage, event.eventType || 'NATIONAL_EVENT');
 
     // Get performance type and studio name from event entry
     const sqlClient = getSql();

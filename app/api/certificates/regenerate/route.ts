@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
         p.*,
         e.event_date,
         e.name as event_name,
+        e.event_type,
         e.certificate_template_url,
         ee.performance_type,
         ee.contestant_id,
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     // Get medallion
     const { getMedalFromPercentage } = await import('@/lib/certificate-generator');
-    let medallion = getMedalFromPercentage(averagePercentage);
+    let medallion = getMedalFromPercentage(averagePercentage, perf.event_type || 'NATIONAL_EVENT');
     
     // Ensure medallion is never empty (fallback to Bronze)
     if (!medallion || medallion.trim() === '') {

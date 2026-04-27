@@ -1541,13 +1541,14 @@ export const db = {
         // Calculate rounded percentage using centralized function (ensures consistency)
         const percentage = calculateRoundedPercentage(totalScore, judgeCount);
         
-        const medalInfo = getMedalFromPercentage(percentage);
+        const medalInfo = getMedalFromPercentage(percentage, 'NATIONAL_EVENT');
         const rankingLevel = medalInfo.label;
         
         return {
           performanceId: row.performance_id,
           eventId: row.event_id,
           eventName: row.event_name,
+          eventType: row.event_type || 'NATIONAL_EVENT',
           region: row.region,
           ageCategory: row.age_category,
           performanceType: row.performance_type,
@@ -1612,6 +1613,7 @@ export const db = {
               p.event_entry_id,
               e.id as event_id,
               e.name as event_name,
+              e.event_type,
               e.region,
               e.age_category,
               COALESCE(
@@ -1641,7 +1643,7 @@ export const db = {
             LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
             LEFT JOIN scores s ON p.id = s.performance_id
             WHERE e.id = ${eventId} AND p.scores_published = true
-            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
+            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.event_type, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
             ORDER BY e.region, e.age_category, performance_type, total_score DESC
           ` as any[];
@@ -1657,6 +1659,7 @@ export const db = {
                 p.event_entry_id,
                 e.id as event_id,
                 e.name as event_name,
+                e.event_type,
                 e.region,
                 e.age_category,
                 COALESCE(
@@ -1686,7 +1689,7 @@ export const db = {
               LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
               LEFT JOIN scores s ON p.id = s.performance_id
               WHERE e.id = ${eventId} AND p.scores_published = true
-              GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
+              GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.event_type, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
               HAVING COUNT(s.id) > 0
               ORDER BY e.region, e.age_category, performance_type, total_score DESC
             ` as any[];
@@ -1705,6 +1708,7 @@ export const db = {
               p.event_entry_id,
               e.id as event_id,
               e.name as event_name,
+              e.event_type,
               e.region,
               e.age_category,
               e.performance_type,
@@ -1725,7 +1729,7 @@ export const db = {
               LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
               LEFT JOIN scores s ON p.id = s.performance_id
               WHERE e.region = ${region} AND e.age_category = ${ageCategory} AND e.performance_type = ${performanceType} AND p.scores_published = true
-            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
+            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.event_type, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
             ORDER BY e.region, e.age_category, e.performance_type, total_score DESC
           ` as any[];
@@ -1738,6 +1742,7 @@ export const db = {
               p.event_entry_id,
               e.id as event_id,
               e.name as event_name,
+              e.event_type,
               e.region,
               e.age_category,
               e.performance_type,
@@ -1758,7 +1763,7 @@ export const db = {
               LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
               LEFT JOIN scores s ON p.id = s.performance_id
               WHERE e.region = ${region} AND e.age_category = ${ageCategory} AND p.scores_published = true
-            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
+            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.event_type, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
             ORDER BY e.region, e.age_category, e.performance_type, total_score DESC
           ` as any[];
@@ -1771,6 +1776,7 @@ export const db = {
               p.event_entry_id,
               e.id as event_id,
               e.name as event_name,
+              e.event_type,
               e.region,
               e.age_category,
               e.performance_type,
@@ -1791,7 +1797,7 @@ export const db = {
               LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
               LEFT JOIN scores s ON p.id = s.performance_id
               WHERE e.region = ${region} AND p.scores_published = true
-            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
+            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.event_type, e.region, e.age_category, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
             ORDER BY e.region, e.age_category, e.performance_type, total_score DESC
           ` as any[];
@@ -1804,6 +1810,7 @@ export const db = {
               p.event_entry_id,
               e.id as event_id,
               e.name as event_name,
+              e.event_type,
               e.region,
               e.age_category,
               COALESCE(
@@ -1833,7 +1840,7 @@ export const db = {
               LEFT JOIN event_entries ee ON ee.id = p.event_entry_id
               LEFT JOIN scores s ON p.id = s.performance_id
               WHERE p.scores_published = true
-            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
+            GROUP BY p.id, p.item_number, p.mastery, p.event_entry_id, e.id, e.name, e.event_type, e.region, e.age_category, ee.performance_type, e.performance_type, e.event_date, p.title, p.item_style, p.participant_names, c.name, c.type, c.studio_name, ee.participant_ids, ee.entry_type
             HAVING COUNT(s.id) > 0
             ORDER BY e.region, e.age_category, performance_type, total_score DESC
           ` as any[];
@@ -1861,6 +1868,57 @@ export const db = {
       }
       
       console.log('✅ Found', result.length, 'rankings');
+
+      // Enrich ranking rows with announcement status and performance order metadata.
+      // This keeps ranking/scoring logic untouched while enabling live-result operations.
+      const performanceIds = result
+        .map((row: any) => row.performance_id)
+        .filter((id: string | undefined) => !!id);
+      const performanceMetaById = new Map<string, { announced: boolean; performanceOrder?: number }>();
+
+      if (performanceIds.length > 0) {
+        const performanceMetaRows = await sqlClient`
+          SELECT 
+            id,
+            COALESCE(announced, false) as announced,
+            performance_order,
+            item_number,
+            scheduled_time,
+            created_at
+          FROM performances
+          WHERE id = ANY(${performanceIds})
+        ` as any[];
+
+        // Fallback performance order if explicit ordering is missing:
+        // 1) scheduled_time, 2) created_at.
+        const fallbackOrderRows = [...performanceMetaRows].sort((a: any, b: any) => {
+          if (a.scheduled_time && b.scheduled_time) {
+            return String(a.scheduled_time).localeCompare(String(b.scheduled_time));
+          }
+          if (a.scheduled_time && !b.scheduled_time) return -1;
+          if (!a.scheduled_time && b.scheduled_time) return 1;
+          return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+        });
+
+        const fallbackOrderById = new Map<string, number>();
+        fallbackOrderRows.forEach((row: any, index: number) => {
+          fallbackOrderById.set(row.id, index + 1);
+        });
+
+        performanceMetaRows.forEach((row: any) => {
+          const parsedPerformanceOrder = row.performance_order !== null && row.performance_order !== undefined
+            ? parseInt(row.performance_order, 10)
+            : undefined;
+          const parsedItemNumber = row.item_number !== null && row.item_number !== undefined
+            ? parseInt(row.item_number, 10)
+            : undefined;
+
+          performanceMetaById.set(row.id, {
+            announced: !!row.announced,
+            performanceOrder: parsedPerformanceOrder || parsedItemNumber || fallbackOrderById.get(row.id)
+          });
+        });
+      }
     
       // Calculate age categories for all results first
       const { calculateAgeCategoryForEntry } = await import('./age-category-calculator');
@@ -2030,6 +2088,7 @@ export const db = {
           performanceId: row.performance_id,
           eventId: row.event_id,
           eventName: row.event_name,
+          eventType: row.event_type || 'REGIONAL_EVENT',
           region: row.region,
           ageCategory: row.calculated_age_category, // Use calculated age category
           performanceType: row.performance_type,
@@ -2049,6 +2108,8 @@ export const db = {
           rank: 0, // Rank is calculated on the frontend based on view mode
           judgeCount: parseInt(row.judge_count) || 0,
           itemNumber: row.item_number,
+          performanceOrder: performanceMetaById.get(row.performance_id)?.performanceOrder,
+          announced: performanceMetaById.get(row.performance_id)?.announced ?? false,
           mastery: row.mastery,
           entryType: row.entry_type || 'live' // Add entry type (live/virtual)
         };
@@ -2454,6 +2515,7 @@ export const db = {
             p.*,
             e.event_date,
             e.name as event_name,
+            e.event_type,
             ee.performance_type,
             ee.contestant_id,
             ee.id as event_entry_id,
@@ -2486,7 +2548,7 @@ export const db = {
             const averagePercentage = calculateRoundedPercentage(totalPercentage, judgeCount);
 
             // Get medallion (percentage is already rounded)
-            const medallion = getMedalFromPercentageCert(averagePercentage);
+            const medallion = getMedalFromPercentageCert(averagePercentage, perf.event_type || 'NATIONAL_EVENT');
 
             // Parse participant_ids first (needed for both name lookup and dancer ID lookup)
             let participantIds: string[] = [];
@@ -4732,14 +4794,16 @@ export const db = {
               p.id as performance_id,
               p.title as performance_title,
               p.event_id,
+              e.event_type,
               p.scores_published,
               COUNT(DISTINCT jea.judge_id) as total_judges,
               COUNT(DISTINCT s.judge_id) as scored_judges
             FROM performances p
+            JOIN events e ON e.id = p.event_id
             JOIN judge_event_assignments jea ON jea.event_id = p.event_id
             LEFT JOIN scores s ON s.performance_id = p.id
             WHERE p.id = ${performanceId}
-            GROUP BY p.id, p.title, p.event_id, p.scores_published
+            GROUP BY p.id, p.title, p.event_id, e.event_type, p.scores_published
           )
           SELECT * FROM performance_judge_counts
           WHERE scored_judges > 0 AND scored_judges = total_judges
@@ -4750,13 +4814,15 @@ export const db = {
               p.id as performance_id,
               p.title as performance_title,
               p.event_id,
+              e.event_type,
               p.scores_published,
               COUNT(DISTINCT jea.judge_id) as total_judges,
               COUNT(DISTINCT s.judge_id) as scored_judges
             FROM performances p
+            JOIN events e ON e.id = p.event_id
             JOIN judge_event_assignments jea ON jea.event_id = p.event_id
             LEFT JOIN scores s ON s.performance_id = p.id
-            GROUP BY p.id, p.title, p.event_id, p.scores_published
+            GROUP BY p.id, p.title, p.event_id, e.event_type, p.scores_published
           )
           SELECT * FROM performance_judge_counts
           WHERE scored_judges > 0 AND scored_judges = total_judges
@@ -4813,7 +4879,7 @@ export const db = {
       const percentage = Math.round(average);
 
       // Get medal from existing function (percentage is already rounded)
-      const medal = getMedalFromPercentage(percentage);
+      const medal = getMedalFromPercentage(percentage, perf.event_type || 'NATIONAL_EVENT');
 
       return {
         performanceId: perf.performance_id,
@@ -4853,6 +4919,39 @@ export const db = {
     `;
     
     return { success: true };
+  },
+
+  async setPerformanceAnnounced(performanceId: string, announced: boolean) {
+    const sqlClient = getSql();
+
+    // Ensure announcer columns exist (idempotent).
+    try {
+      await sqlClient`ALTER TABLE performances ADD COLUMN IF NOT EXISTS announced BOOLEAN DEFAULT FALSE`;
+      await sqlClient`ALTER TABLE performances ADD COLUMN IF NOT EXISTS announced_at TEXT`;
+    } catch {}
+
+    const timestamp = new Date().toISOString();
+    const updateResult = await sqlClient`
+      UPDATE performances
+      SET announced = ${announced}, announced_at = ${announced ? timestamp : null}
+      WHERE id = ${performanceId}
+      RETURNING id, event_id, title, announced, announced_at, performance_order, item_number
+    ` as any[];
+
+    if (updateResult.length === 0) {
+      return null;
+    }
+
+    const row = updateResult[0];
+    return {
+      id: row.id,
+      eventId: row.event_id,
+      title: row.title,
+      announced: !!row.announced,
+      announcedAt: row.announced_at,
+      performanceOrder: row.performance_order,
+      itemNumber: row.item_number
+    };
   },
 
   async getAnnouncedPerformances(eventId: string) {

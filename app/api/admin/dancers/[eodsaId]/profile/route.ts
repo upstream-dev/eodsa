@@ -64,6 +64,7 @@ interface PerformanceRow {
   event_id: string;
   title: string | null;
   scores_published: boolean | null;
+  event_type?: string | null;
 }
 
 interface RankingRow {
@@ -261,8 +262,9 @@ export async function GET(
           try {
             // Find performance linked to this entry
             const performanceRows = (await sql`
-              SELECT id, event_entry_id, event_id, title, scores_published
+                SELECT id, event_entry_id, event_id, title, scores_published, event_type
               FROM performances
+                LEFT JOIN events ON events.id = performances.event_id
               WHERE event_entry_id = ${entry.id}
               LIMIT 1
             `) as PerformanceRow[];
@@ -270,8 +272,9 @@ export async function GET(
             if (performanceRows.length === 0) {
               // For nationals, try by performance ID matching entry ID
               const performanceRowsById = (await sql`
-                SELECT id, event_entry_id, event_id, title, scores_published
+                SELECT id, event_entry_id, event_id, title, scores_published, event_type
                 FROM performances
+                LEFT JOIN events ON events.id = performances.event_id
                 WHERE id = ${entry.id}
                 LIMIT 1
               `) as PerformanceRow[];
@@ -304,7 +307,7 @@ export async function GET(
                   // If no medal but we have a score, calculate it
                   let medal = ranking.medal_awarded;
                   if (!medal && ranking.final_score !== null) {
-                    const medalInfo = getMedalFromPercentage(ranking.final_score);
+                    const medalInfo = getMedalFromPercentage(ranking.final_score, performance.event_type || 'NATIONAL_EVENT');
                     medal = medalInfo.label;
                   }
                   
@@ -325,7 +328,7 @@ export async function GET(
                   
                   if (scoreRows.length > 0 && scoreRows[0].avg_score !== null) {
                     const avgScore = parseFloat(scoreRows[0].avg_score);
-                    const medalInfo = getMedalFromPercentage(avgScore);
+                    const medalInfo = getMedalFromPercentage(avgScore, performance.event_type || 'NATIONAL_EVENT');
                     rankingData = {
                       rank: null,
                       score: avgScore,

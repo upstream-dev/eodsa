@@ -616,8 +616,9 @@ export interface StudioSession {
   registrationNumber: string;
 } 
 
-// Nationals Medal System
-export type MedalType = 'bronze' | 'silver' | 'silver_plus' | 'gold' | 'legend' | 'opus' | 'elite';
+type ScoringEventType = 'REGIONAL_EVENT' | 'NATIONAL_EVENT' | 'QUALIFIER_EVENT' | 'INTERNATIONAL_VIRTUAL_EVENT';
+
+export type MedalType = 'bronze' | 'silver' | 'silver_plus' | 'gold' | 'pro_gold' | 'legend' | 'opus' | 'elite';
 
 export interface MedalInfo {
   type: MedalType;
@@ -634,10 +635,59 @@ export interface MedalInfo {
  * before calling this function to ensure consistency.
  * This function includes a defensive rounding check.
  */
-export const getMedalFromPercentage = (percentage: number): MedalInfo => {
+export const getMedalFromPercentage = (percentage: number, eventType: ScoringEventType = 'NATIONAL_EVENT'): MedalInfo => {
   // Ensure percentage is rounded (defensive check)
   const roundedPercentage = Math.round(percentage);
-  
+
+  if (eventType === 'REGIONAL_EVENT') {
+    if (roundedPercentage < 65) {
+      return {
+        type: 'bronze',
+        label: 'Bronze',
+        color: 'text-amber-700',
+        bgColor: 'bg-amber-100',
+        borderColor: 'border-amber-300',
+        emoji: '🥉'
+      };
+    } else if (roundedPercentage < 75) {
+      return {
+        type: 'silver',
+        label: 'Silver',
+        color: 'text-gray-700',
+        bgColor: 'bg-gray-100',
+        borderColor: 'border-gray-300',
+        emoji: '🥈'
+      };
+    } else if (roundedPercentage < 80) {
+      return {
+        type: 'silver_plus',
+        label: 'Silver+',
+        color: 'text-slate-700',
+        bgColor: 'bg-slate-100',
+        borderColor: 'border-slate-300',
+        emoji: '🥈+'
+      };
+    } else if (roundedPercentage < 90) {
+      return {
+        type: 'gold',
+        label: 'Gold',
+        color: 'text-yellow-700',
+        bgColor: 'bg-yellow-100',
+        borderColor: 'border-yellow-300',
+        emoji: '🥇'
+      };
+    }
+
+    return {
+      type: 'pro_gold',
+      label: 'Pro Gold',
+      color: 'text-yellow-900',
+      bgColor: 'bg-yellow-200',
+      borderColor: 'border-yellow-400',
+      emoji: '🏆'
+    };
+  }
+
   if (roundedPercentage < 70) {
     return {
       type: 'bronze',

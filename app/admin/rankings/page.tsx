@@ -27,6 +27,8 @@ interface RankingData {
   percentage: number;
   rankingLevel: string;
   itemNumber?: number; // Item number for program order
+  performanceOrder?: number;
+  announced?: boolean;
   mastery?: string; // Mastery level
   entryType?: string; // Entry type (live/virtual)
 }
@@ -63,6 +65,16 @@ function AdminRankingsPage() {
   const [viewMode, setViewMode] = useState<'all' | 'top3_age' | 'top3_style' | 'top3_duets' | 'top3_groups' | 'top3_trios' | 'top10_soloists'>('all');
   const [masteryFilter, setMasteryFilter] = useState<'all' | 'competitive' | 'advanced'>('all');
   const [entryTypeFilter, setEntryTypeFilter] = useState<'all' | 'live' | 'virtual'>('all');
+  const [announcementFilter, setAnnouncementFilter] = useState<'all' | 'not_announced' | 'announced'>('not_announced');
+  const [sortMode, setSortMode] = useState<'performance_order' | 'score_desc' | 'score_asc'>('performance_order');
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  const selectedEventRankings = selectedEventId === 'all'
+    ? []
+    : rankings.filter((ranking) => ranking.eventId === selectedEventId);
+  const isRegionalEventSelected = selectedEventId !== 'all' && selectedEventRankings.some(
+    (ranking) => ranking.eventType === 'REGIONAL_EVENT'
+  );
 
   useEffect(() => {
     // Check admin authentication
@@ -89,7 +101,7 @@ function AdminRankingsPage() {
 
   useEffect(() => {
     applyFilters();
-  }, [rankings, viewMode, masteryFilter, entryTypeFilter, selectedAgeCategory, selectedPerformanceType, selectedStyle, selectedEventId]);
+  }, [rankings, viewMode, masteryFilter, entryTypeFilter, selectedAgeCategory, selectedPerformanceType, selectedStyle, selectedEventId, announcementFilter, sortMode, isRegionalEventSelected]);
 
   // Load rankings only once on authentication (all filters are client-side for Nationals)
   useEffect(() => {
@@ -302,9 +314,28 @@ function AdminRankingsPage() {
         .sort((a, b) => b.totalScore - a.totalScore)
         .slice(0, 10);
     }
+
+    if (isRegionalEventSelected) {
+      if (announcementFilter === 'not_announced') {
+        filtered = filtered.filter((ranking) => !ranking.announced);
+      } else if (announcementFilter === 'announced') {
+        filtered = filtered.filter((ranking) => !!ranking.announced);
+      }
+    }
     
-    // Sort filtered results by total score (descending) and recalculate ranks
-    filtered.sort((a, b) => b.totalScore - a.totalScore);
+    // Sort according to the selected operational view.
+    if (sortMode === 'performance_order') {
+      filtered.sort((a, b) => {
+        const aOrder = a.performanceOrder ?? a.itemNumber ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = b.performanceOrder ?? b.itemNumber ?? Number.MAX_SAFE_INTEGER;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.title.localeCompare(b.title);
+      });
+    } else if (sortMode === 'score_asc') {
+      filtered.sort((a, b) => a.totalScore - b.totalScore);
+    } else {
+      filtered.sort((a, b) => b.totalScore - a.totalScore);
+    }
     
     // Recalculate ranks for filtered results
     const rankedFiltered = filtered.map((ranking, index) => ({
@@ -323,6 +354,67 @@ function AdminRankingsPage() {
     setViewMode('all');
     setMasteryFilter('all');
     setEntryTypeFilter('all');
+    setAnnouncementFilter('not_announced');
+    setSortMode('performance_order');
+  };
+
+  const toggleAnnounced = async (performanceId: string, announced: boolean) => {
+    const previousRankings = rankings;
+    setRankings((current) =>
+      current.map((ranking) =>
+        ranking.performanceId === performanceId ? { ...ranking, announced } : ranking
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/performances/${performanceId}/toggle-announced`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ announced })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update announced status');
+      }
+    } catch (err) {
+      setRankings(previousRankings);
+      alert('Failed to update announced status. Please try again.');
+    }
+  };
+
+  const markVisibleAsAnnounced = async () => {
+    const targets = filteredRankings.filter((ranking) => !ranking.announced);
+    if (targets.length === 0) return;
+
+    setIsBulkUpdating(true);
+    const previousRankings = rankings;
+    const targetIds = new Set(targets.map((ranking) => ranking.performanceId));
+
+    setRankings((current) =>
+      current.map((ranking) =>
+        targetIds.has(ranking.performanceId) ? { ...ranking, announced: true } : ranking
+      )
+    );
+
+    try {
+      const updates = targets.map((ranking) =>
+        fetch(`/api/performances/${ranking.performanceId}/toggle-announced`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ announced: true })
+        })
+      );
+      const responses = await Promise.all(updates);
+
+      if (responses.some((response) => !response.ok)) {
+        throw new Error('One or more updates failed');
+      }
+    } catch (err) {
+      setRankings(previousRankings);
+      alert('Bulk announce failed. Please try again.');
+    } finally {
+      setIsBulkUpdating(false);
+    }
   };
 
   const exportToCSV = () => {
@@ -734,6 +826,65 @@ function AdminRankingsPage() {
             </div>
             <h2 className="text-xl font-bold text-white">Filter Rankings</h2>
           </div>
+
+          {isRegionalEventSelected && (
+            <div className="mb-6 p-4 rounded-xl border border-emerald-500/40 bg-emerald-900/20">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <p className="text-white font-semibold">Live Results Announcement</p>
+                  <p className="text-sm text-emerald-200">Operational controls for regional sessions</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setAnnouncementFilter('all')}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      announcementFilter === 'all'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setAnnouncementFilter('not_announced')}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      announcementFilter === 'not_announced'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                    }`}
+                  >
+                    Not Announced
+                  </button>
+                  <button
+                    onClick={() => setAnnouncementFilter('announced')}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      announcementFilter === 'announced'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                    }`}
+                  >
+                    Announced
+                  </button>
+                  <select
+                    value={sortMode}
+                    onChange={(e) => setSortMode(e.target.value as 'performance_order' | 'score_desc' | 'score_asc')}
+                    className="px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white text-sm font-medium"
+                  >
+                    <option value="performance_order">Performance Order</option>
+                    <option value="score_desc">Score High → Low</option>
+                    <option value="score_asc">Score Low → High</option>
+                  </select>
+                  <button
+                    onClick={markVisibleAsAnnounced}
+                    disabled={isBulkUpdating || filteredRankings.length === 0}
+                    className="px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {isBulkUpdating ? 'Marking...' : 'Mark Visible as Announced'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
             <div className="lg:col-span-2">
@@ -878,6 +1029,9 @@ function AdminRankingsPage() {
                   <thead>
                     <tr className="border-b border-gray-600">
                       <th className="text-left py-4 px-6 font-bold text-white">Rank</th>
+                      {isRegionalEventSelected && (
+                        <th className="text-left py-4 px-6 font-bold text-white">Announced</th>
+                      )}
                       <th className="text-left py-4 px-6 font-bold text-white">Item #</th>
                       <th className="text-left py-4 px-6 font-bold text-white">Performance</th>
                       <th className="text-left py-4 px-6 font-bold text-white">Contestant</th>
@@ -903,6 +1057,19 @@ function AdminRankingsPage() {
                               {getRankIcon(displayRank)}
                             </div>
                           </td>
+                          {isRegionalEventSelected && (
+                            <td className="py-4 px-6">
+                              <label className="inline-flex items-center gap-2 text-sm text-white font-medium">
+                                <input
+                                  type="checkbox"
+                                  checked={!!ranking.announced}
+                                  onChange={(e) => toggleAnnounced(ranking.performanceId, e.target.checked)}
+                                  className="h-4 w-4 rounded border-gray-500 text-emerald-500 focus:ring-emerald-400 bg-gray-700"
+                                />
+                                Announced
+                              </label>
+                            </td>
+                          )}
                           <td className="py-4 px-6">
                             {ranking.itemNumber ? (
                               <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-blue-500 to-purple-600 text-white border border-blue-300 shadow-md">

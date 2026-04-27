@@ -61,8 +61,10 @@ export async function PUT(
           // Calculate rounded percentage using centralized function (ensures consistency)
           const averagePercentage = calculateRoundedPercentage(totalPercentage, judgeCount);
 
-          // Get medallion (percentage is already rounded)
-          const medallion = getMedalFromPercentage(averagePercentage);
+          // Get event details to apply the correct scoring band
+          const allEvents = await db.getAllEvents();
+          const event = allEvents.find(e => e.id === performance.eventId);
+          const medallion = getMedalFromPercentage(averagePercentage, event?.eventType || 'NATIONAL_EVENT');
 
           // Get dancer information
           const allDancers = await db.getAllDancers();
@@ -74,9 +76,6 @@ export async function PUT(
             const contestant = allContestants.find(c => c.dancers.some(d => d.id === dancer.id));
 
             if (contestant && contestant.email) {
-              // Get event details for date
-              const allEvents = await db.getAllEvents();
-              const event = allEvents.find(e => e.id === performance.eventId);
 
               if (event) {
                 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';

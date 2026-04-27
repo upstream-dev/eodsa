@@ -3,7 +3,7 @@ export interface CertificateData {
   percentage: number;
   style: string;
   title: string;
-  medallion: 'Gold' | 'Silver' | 'Bronze' | '';
+  medallion: 'Elite' | 'Opus' | 'Legend' | 'Gold' | 'Pro Gold' | 'Silver+' | 'Silver' | 'Bronze' | '';
   date: string;
 }
 
@@ -169,10 +169,23 @@ export function calculateRoundedPercentage(totalScore: number, judgeCount: numbe
  * IMPORTANT: Percentage should already be rounded using calculateRoundedPercentage()
  * before calling this function to ensure consistency.
  */
-export function getMedalFromPercentage(percentage: number): 'Elite' | 'Opus' | 'Legend' | 'Gold' | 'Silver+' | 'Silver' | 'Bronze' | '' {
+type ScoringEventType = 'REGIONAL_EVENT' | 'NATIONAL_EVENT' | 'QUALIFIER_EVENT' | 'INTERNATIONAL_VIRTUAL_EVENT';
+
+export function getMedalFromPercentage(
+  percentage: number,
+  eventType: ScoringEventType = 'NATIONAL_EVENT'
+): 'Elite' | 'Opus' | 'Legend' | 'Gold' | 'Pro Gold' | 'Silver+' | 'Silver' | 'Bronze' | '' {
   // Ensure percentage is rounded (defensive check)
   const roundedPercentage = Math.round(percentage);
-  
+
+  if (eventType === 'REGIONAL_EVENT') {
+    if (roundedPercentage < 65) return 'Bronze';
+    if (roundedPercentage < 75) return 'Silver';
+    if (roundedPercentage < 80) return 'Silver+';
+    if (roundedPercentage < 90) return 'Gold';
+    return 'Pro Gold';
+  }
+
   if (roundedPercentage >= 95) return 'Elite';
   if (roundedPercentage >= 90) return 'Opus';
   if (roundedPercentage >= 85) return 'Legend';
