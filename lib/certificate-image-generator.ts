@@ -28,7 +28,7 @@ export interface CertificateImageData {
   percentage: number;
   style: string;
   title: string;
-  medallion: 'Elite' | 'Opus' | 'Legend' | 'Gold' | 'Silver+' | 'Silver' | 'Bronze' | '';
+  medallion: 'Elite' | 'Opus' | 'Legend' | 'Gold' | 'Pro Gold' | 'Silver+' | 'Silver' | 'Bronze' | '';
   date: string;
   positions?: CertificatePositions;
   templateUrl?: string; // Optional custom template URL from event
