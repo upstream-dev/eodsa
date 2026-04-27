@@ -74,6 +74,25 @@ interface RankingRow {
   medal_awarded: string | null;
 }
 
+type SupportedEventType =
+  | 'REGIONAL_EVENT'
+  | 'NATIONAL_EVENT'
+  | 'QUALIFIER_EVENT'
+  | 'INTERNATIONAL_VIRTUAL_EVENT';
+
+function normalizeEventType(eventType?: string | null): SupportedEventType {
+  if (
+    eventType === 'REGIONAL_EVENT' ||
+    eventType === 'NATIONAL_EVENT' ||
+    eventType === 'QUALIFIER_EVENT' ||
+    eventType === 'INTERNATIONAL_VIRTUAL_EVENT'
+  ) {
+    return eventType;
+  }
+
+  return 'NATIONAL_EVENT';
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eodsaId: string }> }
@@ -307,7 +326,10 @@ export async function GET(
                   // If no medal but we have a score, calculate it
                   let medal = ranking.medal_awarded;
                   if (!medal && ranking.final_score !== null) {
-                    const medalInfo = getMedalFromPercentage(ranking.final_score, performance.event_type || 'NATIONAL_EVENT');
+                    const medalInfo = getMedalFromPercentage(
+                      ranking.final_score,
+                      normalizeEventType(performance.event_type)
+                    );
                     medal = medalInfo.label;
                   }
                   
@@ -328,7 +350,10 @@ export async function GET(
                   
                   if (scoreRows.length > 0 && scoreRows[0].avg_score !== null) {
                     const avgScore = parseFloat(scoreRows[0].avg_score);
-                    const medalInfo = getMedalFromPercentage(avgScore, performance.event_type || 'NATIONAL_EVENT');
+                    const medalInfo = getMedalFromPercentage(
+                      avgScore,
+                      normalizeEventType(performance.event_type)
+                    );
                     rankingData = {
                       rank: null,
                       score: avgScore,
