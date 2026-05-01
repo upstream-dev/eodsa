@@ -714,7 +714,7 @@ export default function JudgeDashboard() {
     );
   }
 
-  const handlePerformanceReorder = (reordered: any[]) => {
+  const handlePerformanceReorder = (reordered: any[], _meta?: { eventId?: string }) => {
     setPerformances(prev => {
       const updateMap = new Map(reordered.map(r => [r.id, r]));
       const updated = prev.map(p => {

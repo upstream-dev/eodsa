@@ -139,10 +139,11 @@ io.on('connection', (socket) => {
   socket.on('performance:reorder', (data) => {
     console.log(`🔄 Performance reorder broadcast for event ${data.eventId}`);
     
-    // Broadcast to all rooms for this event
+    // Broadcast to all rooms for this event (include backstage for multi–backstage clients)
     io.to(`event:${data.eventId}`).emit('performance:reorder', data);
     io.to(`judges:${data.eventId}`).emit('performance:reorder', data);
     io.to(`sound:${data.eventId}`).emit('performance:reorder', data);
+    io.to(`backstage:${data.eventId}`).emit('performance:reorder', data);
     io.to(`announcer:${data.eventId}`).emit('performance:reorder', data);
     io.to(`registration:${data.eventId}`).emit('performance:reorder', data);
     io.to(`media:${data.eventId}`).emit('performance:reorder', data);

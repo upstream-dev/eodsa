@@ -302,8 +302,58 @@ function SoundTechPage() {
     );
   }
 
-  const handleRealtimeReorder = async () => {
-    // Update item numbers and performance order from the latest performances without disrupting filters
+  const handleRealtimeReorder = async (
+    reorderedFromSocket?: any[],
+    meta?: { eventId?: string }
+  ) => {
+    const ev = meta?.eventId;
+    if (
+      reorderedFromSocket?.length &&
+      ev &&
+      selectedEvent !== 'all' &&
+      selectedEvent === ev
+    ) {
+      const orderByEntryId = new Map<
+        string,
+        { itemNumber?: number; performanceOrder?: number }
+      >();
+      for (const r of reorderedFromSocket) {
+        const entryId = r.eventEntryId as string | undefined;
+        if (!entryId) continue;
+        orderByEntryId.set(entryId, {
+          itemNumber: r.itemNumber,
+          performanceOrder: r.performanceOrder ?? r.displayOrder,
+        });
+      }
+      if (orderByEntryId.size > 0) {
+        setEntries((prev) => {
+          const updated = prev.map((e: any) => {
+            if (e.eventId !== ev) return e;
+            const u = orderByEntryId.get(e.id);
+            if (!u) return e;
+            return {
+              ...e,
+              ...(typeof u.itemNumber === 'number' ? { itemNumber: u.itemNumber } : {}),
+              ...(typeof u.performanceOrder === 'number'
+                ? { performanceOrder: u.performanceOrder }
+                : {}),
+            };
+          });
+          return updated.sort((a: any, b: any) => {
+            if (a.performanceOrder && b.performanceOrder) {
+              return a.performanceOrder - b.performanceOrder;
+            }
+            if (a.itemNumber && b.itemNumber) {
+              return a.itemNumber - b.itemNumber;
+            }
+            return a.itemName.localeCompare(b.itemName);
+          });
+        });
+        return;
+      }
+    }
+
+    // Fallback: refetch from API (e.g. "all" events, or payload without entry ids)
     if (!selectedEvent || selectedEvent === 'all') {
       await fetchData();
       return;

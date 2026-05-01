@@ -46,14 +46,32 @@ io.on('connection', (socket) => {
     console.log(`🎭 Backstage joined event ${eventId}`);
   });
 
+  socket.on('join:announcer', (eventId) => {
+    socket.join(`announcer:${eventId}`);
+    console.log(`📢 Announcer joined event ${eventId}`);
+  });
+
+  socket.on('join:registration', (eventId) => {
+    socket.join(`registration:${eventId}`);
+    console.log(`✅ Registration joined event ${eventId}`);
+  });
+
+  socket.on('join:media', (eventId) => {
+    socket.join(`media:${eventId}`);
+    console.log(`📸 Media joined event ${eventId}`);
+  });
+
   // Handle performance reordering from backstage
   socket.on('performance:reorder', (data) => {
     console.log(`🔄 Performance reorder broadcast for event ${data.eventId}`);
     
-    // Broadcast to all rooms for this event
     io.to(`event:${data.eventId}`).emit('performance:reorder', data);
     io.to(`judges:${data.eventId}`).emit('performance:reorder', data);
     io.to(`sound:${data.eventId}`).emit('performance:reorder', data);
+    io.to(`backstage:${data.eventId}`).emit('performance:reorder', data);
+    io.to(`announcer:${data.eventId}`).emit('performance:reorder', data);
+    io.to(`registration:${data.eventId}`).emit('performance:reorder', data);
+    io.to(`media:${data.eventId}`).emit('performance:reorder', data);
   });
 
   // Handle status updates

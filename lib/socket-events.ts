@@ -8,6 +8,9 @@ export interface SocketEvents {
       id: string;
       itemNumber: number;
       displayOrder: number;
+      performanceOrder?: number;
+      /** Lets sound desk map rows without refetching */
+      eventEntryId?: string;
     }>;
   };
 

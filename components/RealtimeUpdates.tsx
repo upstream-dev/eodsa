@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSocket } from '@/hooks/useSocket';
+
+/** Second argument is optional; sound desk uses `eventId` to match the selected event */
+export type PerformanceReorderMeta = { eventId?: string };
 
 interface RealtimeUpdatesProps {
   eventId: string;
   role?: 'judge' | 'sound' | 'backstage' | 'announcer' | 'registration' | 'media' | 'general';
   strictEvent?: boolean; // if true, ignore events from other eventIds even during initial load
-  onPerformanceReorder?: (performances: any[]) => void;
+  onPerformanceReorder?: (performances: any[], meta?: PerformanceReorderMeta) => void;
   onPerformanceStatus?: (data: any) => void;
   onPerformanceAnnounced?: (data: any) => void;
   onPerformanceMusicCue?: (data: { performanceId: string; musicCue: 'onstage' | 'offstage'; eventId?: string }) => void;
@@ -34,6 +37,27 @@ export default function RealtimeUpdates({
 }: RealtimeUpdatesProps) {
   const [notifications, setNotifications] = useState<string[]>([]);
 
+  const callbacksRef = useRef({
+    onPerformanceReorder,
+    onPerformanceStatus,
+    onPerformanceAnnounced,
+    onPerformanceMusicCue,
+    onEventControl,
+    onPresenceUpdate,
+    onMusicUpdated,
+    onVideoUpdated,
+  });
+  callbacksRef.current = {
+    onPerformanceReorder,
+    onPerformanceStatus,
+    onPerformanceAnnounced,
+    onPerformanceMusicCue,
+    onEventControl,
+    onPresenceUpdate,
+    onMusicUpdated,
+    onVideoUpdated,
+  };
+
   // Join event room and wire listeners using the unified socket hook
   const socket = useSocket({ eventId, role });
 
@@ -43,65 +67,80 @@ export default function RealtimeUpdates({
     // If strictEvent is true but eventId is empty (e.g., "All"), treat as wildcard
     const withinScope = (data: any) => (!strictEvent || !eventId) || (data?.eventId === eventId);
 
+    const pushNotification = (message: string) => {
+      setNotifications((prev) => [...prev.slice(-4), message]);
+      setTimeout(() => {
+        setNotifications((prev) => prev.slice(1));
+      }, 5000);
+    };
+
     const handleReorder = (data: any) => {
-      if (withinScope(data) && onPerformanceReorder) {
-        onPerformanceReorder(data.performances);
-        addNotification('🔄 Performance order updated');
+      const cb = callbacksRef.current.onPerformanceReorder;
+      if (withinScope(data) && cb && data?.performances) {
+        cb(data.performances, { eventId: data.eventId });
+        pushNotification('🔄 Performance order updated');
       }
     };
 
     const handleStatus = (data: any) => {
-      if (withinScope(data) && onPerformanceStatus) {
-        onPerformanceStatus(data);
-        addNotification(`📊 Performance status: ${data.status}`);
+      const cb = callbacksRef.current.onPerformanceStatus;
+      if (withinScope(data) && cb) {
+        cb(data);
+        pushNotification(`📊 Performance status: ${data.status}`);
       }
     };
 
     const handleAnnounced = (data: any) => {
-      if (withinScope(data) && onPerformanceAnnounced) {
-        onPerformanceAnnounced(data);
-        addNotification(`📢 Performance announced`);
+      const cb = callbacksRef.current.onPerformanceAnnounced;
+      if (withinScope(data) && cb) {
+        cb(data);
+        pushNotification(`📢 Performance announced`);
       }
     };
 
     const handleMusicCue = (data: any) => {
-      if (withinScope(data) && onPerformanceMusicCue) {
-        onPerformanceMusicCue(data);
-        addNotification(`🎵 Music cue: ${data.musicCue}`);
+      const cb = callbacksRef.current.onPerformanceMusicCue;
+      if (withinScope(data) && cb) {
+        cb(data);
+        pushNotification(`🎵 Music cue: ${data.musicCue}`);
       }
     };
 
     const handleEventControl = (data: any) => {
-      if ((!eventId || data.eventId === eventId) && onEventControl) {
-        onEventControl(data);
-        addNotification(`🎯 Event ${data.action}ed`);
+      const cb = callbacksRef.current.onEventControl;
+      if ((!eventId || data.eventId === eventId) && cb) {
+        cb(data);
+        pushNotification(`🎯 Event ${data.action}ed`);
       }
     };
 
     const handleNotification = (data: any) => {
       if (!strictEvent && (!data.eventId || !eventId || data.eventId === eventId)) {
-        addNotification(data.message);
+        pushNotification(data.message);
       }
     };
 
     const handlePresence = (data: any) => {
-      if (withinScope(data) && onPresenceUpdate) {
-        onPresenceUpdate(data);
-        addNotification(`👥 Presence: ${data.present ? 'Present' : 'Absent'}`);
+      const cb = callbacksRef.current.onPresenceUpdate;
+      if (withinScope(data) && cb) {
+        cb(data);
+        pushNotification(`👥 Presence: ${data.present ? 'Present' : 'Absent'}`);
       }
     };
 
     const handleMusicUpdated = (data: any) => {
-      if ((!eventId || data.eventId === eventId) && onMusicUpdated) {
-        onMusicUpdated(data);
-        addNotification('🎵 Music file updated');
+      const cb = callbacksRef.current.onMusicUpdated;
+      if ((!eventId || data.eventId === eventId) && cb) {
+        cb(data);
+        pushNotification('🎵 Music file updated');
       }
     };
 
     const handleVideoUpdated = (data: any) => {
-      if ((!eventId || data.eventId === eventId) && onVideoUpdated) {
-        onVideoUpdated(data);
-        addNotification('📹 Video link updated');
+      const cb = callbacksRef.current.onVideoUpdated;
+      if ((!eventId || data.eventId === eventId) && cb) {
+        cb(data);
+        pushNotification('📹 Video link updated');
       }
     };
 
@@ -126,7 +165,7 @@ export default function RealtimeUpdates({
       socket.off('entry:music_updated' as any, handleMusicUpdated as any);
       socket.off('entry:video_updated' as any, handleVideoUpdated as any);
     };
-  }, [socket.connected, eventId, onPerformanceReorder, onPerformanceStatus, onPerformanceAnnounced, onEventControl, onPresenceUpdate]);
+  }, [socket.connected, eventId, strictEvent, role]);
 
   // Heartbeat quick sync: every 15s and on window focus, trigger a lightweight refresh via custom event
   useEffect(() => {
@@ -151,15 +190,6 @@ export default function RealtimeUpdates({
       if (typeof window !== 'undefined') window.removeEventListener('focus', onFocus);
     };
   }, [eventId]);
-
-  const addNotification = (message: string) => {
-    setNotifications(prev => [...prev.slice(-4), message]); // Keep last 5
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      setNotifications(prev => prev.slice(1));
-    }, 5000);
-  };
 
   return (
     <>

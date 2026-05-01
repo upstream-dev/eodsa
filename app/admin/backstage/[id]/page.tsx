@@ -37,6 +37,23 @@ interface Performance {
   musicFileUrl?: string;
   videoExternalUrl?: string;
   musicCue?: 'onstage' | 'offstage';
+  /** From API — included in socket payload for sound desk mapping */
+  eventEntryId?: string;
+}
+
+function buildPerformanceReorderSocketPayload(eventId: string, perfs: Performance[]) {
+  return {
+    eventId,
+    performances: perfs.map((p) => ({
+      id: p.id,
+      itemNumber: p.itemNumber!,
+      performanceOrder: p.performanceOrder!,
+      displayOrder: p.performanceOrder!,
+      ...(typeof p.eventEntryId === 'string' && p.eventEntryId
+        ? { eventEntryId: p.eventEntryId }
+        : {}),
+    })),
+  };
 }
 
 interface Event {
@@ -455,33 +472,65 @@ export default function BackstageDashboard() {
   useEffect(() => {
     if (!socket.connected) return;
 
-    // Listen for real-time updates from other interfaces
-    socket.on('performance:status', (data) => {
-      setPerformances(prev => 
-        prev.map(p => 
-          p.id === data.performanceId 
-            ? { ...p, status: data.status }
-            : p
+    const onPerformanceStatus = (data: {
+      performanceId: string;
+      status: Performance['status'];
+    }) => {
+      setPerformances((prev) =>
+        prev.map((p) =>
+          p.id === data.performanceId ? { ...p, status: data.status } : p
         )
       );
-    });
+    };
 
-    socket.on('entry:created', (data) => {
-      if (data.eventId === eventId) {
-        loadEventData(); // Refresh performances list
-      }
-    });
+    const onPerformanceReorder = (data: { eventId: string; performances: any[] }) => {
+      if (data.eventId !== eventId || !data.performances?.length) return;
+      setPerformances((prev) => {
+        const updateMap = new Map(data.performances.map((r: any) => [r.id, r]));
+        const merged = prev.map((p) => {
+          const u = updateMap.get(p.id);
+          if (!u) return p;
+          return {
+            ...p,
+            itemNumber: u.itemNumber ?? p.itemNumber,
+            performanceOrder: u.performanceOrder ?? u.displayOrder ?? p.performanceOrder,
+          };
+        });
+        merged.sort((a, b) => {
+          if (a.performanceOrder && b.performanceOrder) {
+            return a.performanceOrder - b.performanceOrder;
+          }
+          if (a.itemNumber && b.itemNumber) return a.itemNumber - b.itemNumber;
+          if (a.itemNumber && !b.itemNumber) return -1;
+          if (!a.itemNumber && b.itemNumber) return 1;
+          return a.title.localeCompare(b.title);
+        });
+        return merged;
+      });
+    };
 
-    socket.on('entry:updated', (data) => {
+    const onEntryCreated = (data: { eventId: string }) => {
       if (data.eventId === eventId) {
-        loadEventData(); // Refresh to show updates
+        loadEventData();
       }
-    });
+    };
+
+    const onEntryUpdated = (data: { eventId: string }) => {
+      if (data.eventId === eventId) {
+        loadEventData();
+      }
+    };
+
+    socket.on('performance:status', onPerformanceStatus);
+    socket.on('performance:reorder', onPerformanceReorder);
+    socket.on('entry:created', onEntryCreated);
+    socket.on('entry:updated', onEntryUpdated);
 
     return () => {
-      socket.off('performance:status');
-      socket.off('entry:created');
-      socket.off('entry:updated');
+      socket.off('performance:status', onPerformanceStatus);
+      socket.off('performance:reorder', onPerformanceReorder);
+      socket.off('entry:created', onEntryCreated);
+      socket.off('entry:updated', onEntryUpdated);
     };
   }, [socket.connected, eventId]);
 
@@ -578,6 +627,8 @@ export default function BackstageDashboard() {
 
     console.log(`🎭 REORDERING: Moving "${draggedPerformance.title}" from position ${oldIndex + 1} to ${newIndex + 1}`);
 
+    const previousPerformances = performances;
+
     // Reorder performances array
     const reorderedPerformances = arrayMove(performances, oldIndex, newIndex);
     
@@ -590,6 +641,12 @@ export default function BackstageDashboard() {
 
     // Update local state immediately for instant visual feedback
     setPerformances(updatedPerformances);
+
+    // Broadcast immediately so all dashboards update without waiting on persistence
+    socket.emit(
+      'performance:reorder',
+      buildPerformanceReorderSocketPayload(eventId, updatedPerformances)
+    );
 
     // Show immediate feedback - Gabriel's requirement
     const oldOrder = oldIndex + 1;
@@ -613,31 +670,25 @@ export default function BackstageDashboard() {
       });
 
       if (response.ok) {
-        // Broadcast reorder to all connected clients
-        socket.emit('performance:reorder', {
-          eventId,
-          performances: updatedPerformances.map(p => ({
-            id: p.id,
-            itemNumber: p.itemNumber!, // Keep permanent item number (locked)
-            performanceOrder: p.performanceOrder!, // Send new performance order
-            displayOrder: p.performanceOrder! // For backward compatibility with existing handlers
-          }))
-        });
-
-        console.log('🔄 Reorder synchronized to all clients');
-        
-        // Additional success message
+        console.log('🔄 Reorder persisted; clients already updated via socket');
         setTimeout(() => {
           success('✅ Order synchronized across all dashboards!');
         }, 1000);
       } else {
-        // Revert on error
-        loadEventData();
+        setPerformances(previousPerformances);
+        socket.emit(
+          'performance:reorder',
+          buildPerformanceReorderSocketPayload(eventId, previousPerformances)
+        );
         error('❌ Failed to save new order - reverted to original');
       }
     } catch (err) {
       console.error('Error reordering performances:', err);
-      loadEventData();
+      setPerformances(previousPerformances);
+      socket.emit(
+        'performance:reorder',
+        buildPerformanceReorderSocketPayload(eventId, previousPerformances)
+      );
       error('❌ Network error - reverted to original order');
     }
   };
@@ -756,6 +807,8 @@ export default function BackstageDashboard() {
   };
 
   const updatePerformanceOrder = async (reorderedPerformances: Performance[]) => {
+    const previousPerformances = performances;
+
     // Update performance order only (Gabriel's requirement)
     const updatedPerformances = reorderedPerformances.map((performance, index) => ({
       ...performance,
@@ -763,6 +816,11 @@ export default function BackstageDashboard() {
     }));
 
     setPerformances(updatedPerformances);
+
+    socket.emit(
+      'performance:reorder',
+      buildPerformanceReorderSocketPayload(eventId, updatedPerformances)
+    );
 
     try {
       const response = await fetch('/api/admin/reorder-performances', {
@@ -779,19 +837,22 @@ export default function BackstageDashboard() {
       });
 
       if (response.ok) {
-        socket.emit('performance:reorder', {
-          eventId,
-          performances: updatedPerformances.map(p => ({
-            id: p.id,
-            itemNumber: p.itemNumber!,
-            performanceOrder: p.performanceOrder!,
-            displayOrder: p.performanceOrder!
-          }))
-        });
         success('Order updated');
+      } else {
+        setPerformances(previousPerformances);
+        socket.emit(
+          'performance:reorder',
+          buildPerformanceReorderSocketPayload(eventId, previousPerformances)
+        );
+        error('Failed to save order');
       }
     } catch (err) {
       console.error('Error updating order:', err);
+      setPerformances(previousPerformances);
+      socket.emit(
+        'performance:reorder',
+        buildPerformanceReorderSocketPayload(eventId, previousPerformances)
+      );
       error('Failed to update order');
     }
   };
