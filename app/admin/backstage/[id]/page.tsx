@@ -99,73 +99,93 @@ function SortablePerformanceItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  /** One drag handle for all breakpoints (dnd-kit: never attach listeners twice in the DOM). */
+  const dragHandle = (
+    <button
+      type="button"
+      aria-label="Drag to reorder performance"
+      {...listeners}
+      className="touch-none select-none shrink-0 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing active:bg-gray-500 [-webkit-tap-highlight-color:transparent] w-[52px] min-h-[108px] sm:min-h-[100px] rounded-l-[10px] border-r-2 border-gray-500/80 bg-gray-600/95 text-gray-100 lg:w-12 lg:min-h-[5.25rem] lg:rounded-xl lg:border-2 lg:border-gray-600 lg:border-r-2 lg:mr-1"
+    >
+      <span className="text-lg font-bold leading-none tracking-tighter" aria-hidden>
+        ⋮
+        <br />
+        ⋮
+      </span>
+      <span className="mt-1.5 text-[8px] sm:text-[9px] font-semibold uppercase tracking-wide text-gray-300 leading-tight text-center px-0.5 lg:hidden">
+        Hold &amp; drag
+      </span>
+    </button>
+  );
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className={`relative rounded-xl border-2 transition-all duration-150 select-none cursor-grab active:cursor-grabbing
-        ${isDragging ? 'z-50 shadow-2xl scale-105' : ''}
+      className={`relative rounded-xl border-2 overflow-hidden transition-all duration-150
+        ${isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-400 ring-offset-2 ring-offset-gray-900' : ''}
         ${performance.status === 'completed' ? 'bg-green-700 border-green-500' 
         : performance.status === 'in_progress' ? 'bg-blue-700 border-blue-500'
         : 'bg-gray-700 border-gray-600'}
         ${selectedForMove === performance.id ? 'ring-4 ring-yellow-400' : ''}
       `}
     >
-      
-      {/* Mobile/Desktop responsive content */}
-      <div className="p-3 md:p-4">
-        {/* Mobile Layout */}
-        <div className="md:hidden">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-3">
+      <div className="flex items-stretch min-h-0">
+        {dragHandle}
+
+        <div className="min-w-0 flex-1 flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:p-4">
+        {/* Compact layout: phones & tablets below lg breakpoint */}
+        <div className="lg:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
               {/* Compact item number */}
-              <div className={`w-16 h-16 rounded-lg flex flex-col items-center justify-center font-bold border-2 ${
+              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-lg flex flex-col items-center justify-center font-bold border-2 shrink-0 ${
                 performance.status === 'completed' ? 'bg-green-500 border-green-400 text-white'
                 : performance.status === 'in_progress' ? 'bg-blue-500 border-blue-400 text-white'
                 : 'bg-purple-500 border-purple-400 text-white'
               }`}>
-                <div className="text-sm leading-none">#{performance.itemNumber || '?'}</div>
-                <div className="text-xs opacity-75 leading-none">P{performance.performanceOrder || '?'}</div>
+                <div className="text-xs sm:text-sm leading-none">#{performance.itemNumber || '?'}</div>
+                <div className="text-[10px] sm:text-xs opacity-75 leading-none">P{performance.performanceOrder || '?'}</div>
               </div>
               
-              {/* Mobile select button */}
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedForMove(selectedForMove === performance.id ? null : performance.id);
                 }}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                className={`touch-manipulation px-3 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 min-h-[44px] ${
                   selectedForMove === performance.id 
-                    ? 'bg-yellow-400 text-white' 
-                    : 'bg-gray-600 text-white hover:bg-gray-9000'
+                    ? 'bg-yellow-500 text-gray-900' 
+                    : 'bg-gray-600 text-white active:bg-gray-500'
                 }`}
               >
-                {selectedForMove === performance.id ? 'Selected' : 'Select'}
+                {selectedForMove === performance.id ? 'Selected' : 'Nudge'}
               </button>
             </div>
 
-            {/* Mobile reorder buttons */}
             {selectedForMove === performance.id && (
-              <div className="flex space-x-2">
+              <div className="flex gap-2 shrink-0">
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     movePerformanceUp(performance.id);
                   }}
                   disabled={performances.findIndex(p => p.id === performance.id) === 0}
-                  className="w-10 h-10 rounded-lg bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="touch-manipulation min-h-[44px] min-w-[44px] rounded-lg bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold"
                 >
                   ↑
                 </button>
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     movePerformanceDown(performance.id);
                   }}
                   disabled={performances.findIndex(p => p.id === performance.id) === performances.length - 1}
-                  className="w-10 h-10 rounded-lg bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="touch-manipulation min-h-[44px] min-w-[44px] rounded-lg bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold"
                 >
                   ↓
                 </button>
@@ -173,21 +193,20 @@ function SortablePerformanceItem({
             )}
           </div>
 
-          {/* Mobile title and info */}
-          <div className="mb-3">
-            <h3 className="font-semibold text-lg text-white leading-tight truncate">{performance.title}</h3>
+          <div className="mb-3 min-w-0">
+            <h3 className="font-semibold text-base sm:text-lg text-white leading-snug break-words">{performance.title}</h3>
             <p className="text-sm text-gray-300 truncate">by {performance.contestantName}</p>
-            <p className="text-xs text-gray-400 truncate">{performance.participantNames.join(', ')}</p>
+            <p className="text-xs text-gray-400 line-clamp-2">{performance.participantNames.join(', ')}</p>
           </div>
 
-          {/* Mobile action buttons */}
           <div className="flex flex-wrap gap-2">
-            <button 
+            <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onUpdateMusicCue(performance.id, performance.musicCue === 'onstage' ? 'offstage' : 'onstage');
               }}
-              className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              className={`touch-manipulation min-h-[44px] px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 performance.musicCue === 'onstage' ? 'bg-green-600 text-white' : 'bg-gray-600 text-white'
               }`}
             >
@@ -196,12 +215,13 @@ function SortablePerformanceItem({
 
             {/* Mobile Status Controls */}
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 updatePerformanceStatus(performance.id, 'in_progress');
               }}
               disabled={performance.status === 'in_progress'}
-              className={`px-2 py-1 rounded text-sm font-bold ${
+              className={`touch-manipulation min-h-[44px] min-w-[44px] px-2 rounded-lg text-base font-bold ${
                 performance.status === 'in_progress' 
                   ? 'bg-blue-600 text-white cursor-not-allowed' 
                   : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -211,12 +231,13 @@ function SortablePerformanceItem({
               ▶️
             </button>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 updatePerformanceStatus(performance.id, 'hold');
               }}
               disabled={performance.status !== 'in_progress'}
-              className={`px-2 py-1 rounded text-sm font-bold ${
+              className={`touch-manipulation min-h-[44px] min-w-[44px] px-2 rounded-lg text-base font-bold ${
                 performance.status !== 'in_progress'
                   ? 'bg-gray-600 text-gray-600 cursor-not-allowed'
                   : 'bg-yellow-500 hover:bg-yellow-600 text-white'
@@ -226,12 +247,13 @@ function SortablePerformanceItem({
               ⏸️
             </button>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 updatePerformanceStatus(performance.id, 'completed');
               }}
               disabled={performance.status === 'completed'}
-              className={`px-2 py-1 rounded text-sm font-bold ${
+              className={`touch-manipulation min-h-[44px] min-w-[44px] px-2 rounded-lg text-base font-bold ${
                 performance.status === 'completed'
                   ? 'bg-green-600 text-white cursor-not-allowed'
                   : 'bg-green-500 hover:bg-green-600 text-white'
@@ -252,18 +274,9 @@ function SortablePerformanceItem({
           </div>
         </div>
 
-        {/* Desktop Layout */}
-        <div className="hidden md:flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            {/* Desktop drag handle */}
-            <button
-              aria-label="Drag to reorder"
-              {...listeners}
-              className="hidden md:flex w-10 h-20 rounded-lg bg-gray-600 text-white flex-col items-center justify-center active:cursor-grabbing cursor-grab select-none"
-            >
-              <span className="text-lg leading-none">⋮</span>
-              <span className="text-lg leading-none -mt-1">⋮</span>
-            </button>
+        {/* Wide screens: horizontal row (drag handle is shared column on the left) */}
+        <div className="hidden lg:flex flex-1 justify-between items-center min-w-0 gap-4">
+          <div className="flex items-center space-x-4 min-w-0">
             {/* Item Number + Performance Order Display */}
             <div className={`relative ${isDragging ? 'animate-pulse' : ''}`}>
               <div className={`w-20 h-20 rounded-xl flex flex-col items-center justify-center font-bold border-4 transition-all duration-150 ${
@@ -396,8 +409,8 @@ function SortablePerformanceItem({
               {performance.status.toUpperCase()}
             </div>
 
-            {/* No drag indicator; selection + arrows used on all devices */}
           </div>
+        </div>
         </div>
       </div>
       
@@ -432,22 +445,17 @@ export default function BackstageDashboard() {
   // Socket connection for real-time updates
   const socket = useBackstageSocket(eventId);
 
-  // @dnd-kit sensors for drag interactions - iPad-optimized touch handling
+  // Drag handle uses touch-none; small distance + no touch delay so tablet/phone drags start quickly
   const sensors = useSensors(
-    // Mouse/Desktop sensor with minimal activation distance
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // Slightly higher to prevent accidental drags on iPad
-      },
+      activationConstraint: { distance: 5 },
     }),
-    // Touch sensor specifically tuned for iPad drag & drop
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 100, // iPad needs slightly more delay to distinguish tap vs drag
-        tolerance: 15, // Higher tolerance for finger size on iPad
+        delay: 0,
+        tolerance: 12,
       },
     }),
-    // Keyboard accessibility
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -868,18 +876,18 @@ export default function BackstageDashboard() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-purple-400">🎭 Backstage Control</h1>
-            <p className="text-gray-300 mt-1">
+      <div className="bg-gray-800 border-b border-gray-700 p-4 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400 break-words">🎭 Backstage Control</h1>
+            <p className="text-sm sm:text-base text-gray-300 mt-1 break-words">
               {event?.name} | {event?.eventDate} | {event?.venue}
             </p>
           </div>
           
           {/* Event Controls */}
-          <div className="flex items-center space-x-4">
-            <div className={`px-4 py-2 rounded-lg font-semibold ${
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:space-x-4 shrink-0">
+            <div className={`px-3 py-2 sm:px-4 rounded-lg font-semibold text-sm sm:text-base ${
               eventStatus === 'active' ? 'bg-green-600' :
               eventStatus === 'paused' ? 'bg-yellow-600' :
               eventStatus === 'completed' ? 'bg-blue-600' :
@@ -974,29 +982,28 @@ export default function BackstageDashboard() {
       </div>
 
       {/* Performance List */}
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold">Performance Order</h2>
-            <p className="text-sm text-gray-400 mt-1">
-              <span className="md:hidden">Drag anywhere on a card to reorder, or use Select + ↑↓ buttons</span><span className="hidden md:inline">Drag anywhere on a card to reorder</span>. Item numbers stay locked, only performance order changes!
+      <div className="p-4 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start mb-6">
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold">Performance Order</h2>
+            <p className="text-sm text-gray-400 mt-1 max-w-2xl">
+              <span className="lg:hidden">Use the <strong className="text-gray-200">left grip</strong> — hold and drag to reorder. <strong className="text-gray-200">Nudge</strong> + arrows still work.</span>
+              <span className="hidden lg:inline">Use the <strong className="text-gray-200">grip column</strong> on the left to drag. Item numbers stay locked; only performance order changes.</span>
             </p>
           </div>
-          <div className="text-right">
+          <div className="w-full lg:w-auto lg:text-right shrink-0 space-y-2">
             <div className="text-gray-400 text-sm">
               {performances.length} performances | Socket: {socket.connected ? '🟢 Connected' : '🔴 Disconnected'}
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-500">
               Last updated: {new Date().toLocaleTimeString()}
             </div>
-            <div className="mt-3">
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by title, studio, dancer, or item #"
-                className="px-3 py-2 rounded bg-gray-700 border border-gray-600 placeholder-gray-400 text-white w-72"
-              />
-            </div>
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search title, studio, dancer, item #"
+              className="w-full max-w-full lg:w-72 px-3 py-2.5 rounded-lg bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-base"
+            />
           </div>
         </div>
 
@@ -1019,8 +1026,7 @@ export default function BackstageDashboard() {
         {performances.length > 0 && (
           <div className="bg-purple-600/10 border border-purple-600/50 rounded-lg p-4 mb-6">
             <p className="text-purple-300 text-sm">
-              <span className="font-semibold">💡 How to use:</span> Drag anywhere on a performance card to reorder (works on iPad, mouse, touch). Select + ↑↓ buttons also available. 
-              Item numbers stay locked (for judges), only the performance order changes and syncs across dashboards!
+              <span className="font-semibold">💡 How to use:</span> Hold the <strong>left grip (⋮⋮)</strong> and drag to reorder — works on phones, tablets, and desktop. Nudge + ↑↓ is optional. Item numbers stay locked; order syncs live to all dashboards.
             </p>
             <p className="text-purple-300 text-sm mt-2">
               <span className="font-semibold">🎭 Backstage Control:</span> Use On-stage/Off-stage toggles and status buttons (▶️ Start, ⏸️ Pause, ✅ Complete) to manage performances.
