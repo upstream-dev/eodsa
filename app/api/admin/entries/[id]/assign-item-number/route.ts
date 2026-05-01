@@ -18,10 +18,21 @@ export async function PUT(
       );
     }
 
-    // Check if item number is already assigned to another entry
     const allEntries = await db.getAllEventEntries();
-    const existingEntry = allEntries.find(entry => 
-      entry.itemNumber === itemNumber && entry.id !== entryId
+    const currentEntry = allEntries.find(entry => entry.id === entryId);
+
+    if (!currentEntry) {
+      return NextResponse.json(
+        { error: 'Entry not found' },
+        { status: 404 }
+      );
+    }
+
+    // Item numbers are unique per event, not globally across all events.
+    const existingEntry = allEntries.find(entry =>
+      entry.eventId === currentEntry.eventId &&
+      entry.itemNumber === itemNumber &&
+      entry.id !== entryId
     );
 
     if (existingEntry) {
