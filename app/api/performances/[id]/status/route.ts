@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
 import { emailService } from '@/lib/email';
 import { getMedalFromPercentage, formatCertificateDate, calculateRoundedPercentage } from '@/lib/certificate-generator';
+import { resolveScoringEventType } from '@/lib/types';
 
 export async function PUT(
   request: NextRequest,
@@ -64,7 +65,10 @@ export async function PUT(
           // Get event details to apply the correct scoring band
           const allEvents = await db.getAllEvents();
           const event = allEvents.find(e => e.id === performance.eventId);
-          const medallion = getMedalFromPercentage(averagePercentage, event?.eventType || 'NATIONAL_EVENT');
+          const medallion = getMedalFromPercentage(
+            averagePercentage,
+            resolveScoringEventType({ eventType: event?.eventType, region: event?.region })
+          );
 
           // Get dancer information
           const allDancers = await db.getAllDancers();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMedalFromPercentage } from '@/lib/types';
+import { getMedalFromPercentage, resolveScoringEventType } from '@/lib/types';
 import { calculateRoundedPercentage } from '@/lib/certificate-generator';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 
@@ -360,7 +360,10 @@ function RankingsPage() {
 
   const calculatePercentageAndRanking = (ranking: RankingData) => {
     const percentage = ranking.roundedPercentage ?? calculateRoundedPercentage(ranking.totalScore, ranking.judgeCount);
-    const medalInfo = getMedalFromPercentage(percentage);
+    const medalInfo = getMedalFromPercentage(
+      percentage,
+      resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })
+    );
     let rankingColor = '';
     
     switch (medalInfo.type) {

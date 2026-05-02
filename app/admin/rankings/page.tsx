@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getMedalFromPercentage } from '@/lib/types';
+import { getMedalFromPercentage, resolveScoringEventType } from '@/lib/types';
 import { calculateRoundedPercentage } from '@/lib/certificate-generator';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -446,7 +446,12 @@ function AdminRankingsPage() {
 
     // Convert data to CSV rows
     const rows = filteredRankings.map((ranking, index) => {
-      const { percentage, rankingLevel } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount, ranking.eventType);
+      const { percentage, rankingLevel } = calculatePercentageAndRanking(
+        ranking.totalScore,
+        ranking.judgeCount,
+        ranking.eventType,
+        ranking.region
+      );
       
       return [
         index + 1, // Rank
@@ -513,12 +518,20 @@ function AdminRankingsPage() {
     return `#${rank}`;
   };
 
-  const calculatePercentageAndRanking = (totalScore: number, judgeCount: number, eventType: RankingData['eventType']) => {
+  const calculatePercentageAndRanking = (
+    totalScore: number,
+    judgeCount: number,
+    eventType: RankingData['eventType'],
+    region: RankingData['region']
+  ) => {
     // Calculate rounded percentage using centralized function (ensures consistency)
     const percentage = calculateRoundedPercentage(totalScore, judgeCount);
     
     // Get medal info using rounded percentage
-    const medalInfo = getMedalFromPercentage(percentage);
+    const medalInfo = getMedalFromPercentage(
+      percentage,
+      resolveScoringEventType({ eventType, region })
+    );
     let rankingColor = '';
     
     // Use gradient colors for better visual appeal while keeping the new medal structure
@@ -1043,7 +1056,12 @@ function AdminRankingsPage() {
                   </thead>
                   <tbody>
                     {filteredRankings.map((ranking, index) => {
-                      const { percentage, rankingLevel, rankingColor, medalEmoji } = calculatePercentageAndRanking(ranking.totalScore, ranking.judgeCount, ranking.eventType);
+                      const { percentage, rankingLevel, rankingColor, medalEmoji } = calculatePercentageAndRanking(
+                        ranking.totalScore,
+                        ranking.judgeCount,
+                        ranking.eventType,
+                        ranking.region
+                      );
 
                       // Use the recalculated rank from applyFilters
                       // The rank is already correctly calculated in applyFilters()

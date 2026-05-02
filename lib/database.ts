@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import type { Contestant, Performance, Judge, Score, Dancer, EventEntry, Ranking, Event } from './types';
-import { getMedalFromPercentage } from './types';
+import { getMedalFromPercentage, resolveScoringEventType } from './types';
 import { calculateRoundedPercentage, getMedalFromPercentage as getMedalFromPercentageCert } from './certificate-generator';
 
 // Custom fetch for Neon with better error handling and timeout
@@ -2088,7 +2088,10 @@ export const db = {
           performanceId: row.performance_id,
           eventId: row.event_id,
           eventName: row.event_name,
-          eventType: row.event_type || 'REGIONAL_EVENT',
+          eventType: resolveScoringEventType({
+            eventType: row.event_type,
+            region: row.region
+          }),
           region: row.region,
           ageCategory: row.calculated_age_category, // Use calculated age category
           performanceType: row.performance_type,
@@ -2516,6 +2519,7 @@ export const db = {
             e.event_date,
             e.name as event_name,
             e.event_type,
+            e.region as event_region,
             ee.performance_type,
             ee.contestant_id,
             ee.id as event_entry_id,
@@ -2548,7 +2552,10 @@ export const db = {
             const averagePercentage = calculateRoundedPercentage(totalPercentage, judgeCount);
 
             // Get medallion (percentage is already rounded)
-            const medallion = getMedalFromPercentageCert(averagePercentage, perf.event_type || 'NATIONAL_EVENT');
+            const medallion = getMedalFromPercentageCert(
+              averagePercentage,
+              resolveScoringEventType({ eventType: perf.event_type, region: perf.event_region })
+            );
 
             // Parse participant_ids first (needed for both name lookup and dancer ID lookup)
             let participantIds: string[] = [];
@@ -4795,6 +4802,7 @@ export const db = {
               p.title as performance_title,
               p.event_id,
               e.event_type,
+              e.region as event_region,
               p.scores_published,
               COUNT(DISTINCT jea.judge_id) as total_judges,
               COUNT(DISTINCT s.judge_id) as scored_judges
@@ -4803,7 +4811,7 @@ export const db = {
             JOIN judge_event_assignments jea ON jea.event_id = p.event_id
             LEFT JOIN scores s ON s.performance_id = p.id
             WHERE p.id = ${performanceId}
-            GROUP BY p.id, p.title, p.event_id, e.event_type, p.scores_published
+            GROUP BY p.id, p.title, p.event_id, e.event_type, e.region, p.scores_published
           )
           SELECT * FROM performance_judge_counts
           WHERE scored_judges > 0 AND scored_judges = total_judges
@@ -4815,6 +4823,7 @@ export const db = {
               p.title as performance_title,
               p.event_id,
               e.event_type,
+              e.region as event_region,
               p.scores_published,
               COUNT(DISTINCT jea.judge_id) as total_judges,
               COUNT(DISTINCT s.judge_id) as scored_judges
@@ -4822,7 +4831,7 @@ export const db = {
             JOIN events e ON e.id = p.event_id
             JOIN judge_event_assignments jea ON jea.event_id = p.event_id
             LEFT JOIN scores s ON s.performance_id = p.id
-            GROUP BY p.id, p.title, p.event_id, e.event_type, p.scores_published
+            GROUP BY p.id, p.title, p.event_id, e.event_type, e.region, p.scores_published
           )
           SELECT * FROM performance_judge_counts
           WHERE scored_judges > 0 AND scored_judges = total_judges
@@ -4879,7 +4888,10 @@ export const db = {
       const percentage = Math.round(average);
 
       // Get medal from existing function (percentage is already rounded)
-      const medal = getMedalFromPercentage(percentage, perf.event_type || 'NATIONAL_EVENT');
+      const medal = getMedalFromPercentage(
+        percentage,
+        resolveScoringEventType({ eventType: perf.event_type, region: perf.event_region })
+      );
 
       return {
         performanceId: perf.performance_id,

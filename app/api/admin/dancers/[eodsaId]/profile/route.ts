@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/database';
-import { getAgeCategoryFromAge, getMedalFromPercentage } from '@/lib/types';
+import { getAgeCategoryFromAge, getMedalFromPercentage, resolveScoringEventType } from '@/lib/types';
 
 // Types for DB rows
 interface DancerRow {
@@ -65,6 +65,7 @@ interface PerformanceRow {
   title: string | null;
   scores_published: boolean | null;
   event_type?: string | null;
+  event_region?: string | null;
 }
 
 interface RankingRow {
@@ -72,25 +73,6 @@ interface RankingRow {
   rank: number | null;
   final_score: number | null;
   medal_awarded: string | null;
-}
-
-type SupportedEventType =
-  | 'REGIONAL_EVENT'
-  | 'NATIONAL_EVENT'
-  | 'QUALIFIER_EVENT'
-  | 'INTERNATIONAL_VIRTUAL_EVENT';
-
-function normalizeEventType(eventType?: string | null): SupportedEventType {
-  if (
-    eventType === 'REGIONAL_EVENT' ||
-    eventType === 'NATIONAL_EVENT' ||
-    eventType === 'QUALIFIER_EVENT' ||
-    eventType === 'INTERNATIONAL_VIRTUAL_EVENT'
-  ) {
-    return eventType;
-  }
-
-  return 'NATIONAL_EVENT';
 }
 
 export async function GET(
@@ -281,7 +263,7 @@ export async function GET(
           try {
             // Find performance linked to this entry
             const performanceRows = (await sql`
-                SELECT id, event_entry_id, event_id, title, scores_published, event_type
+                SELECT id, event_entry_id, event_id, title, scores_published, events.event_type, events.region as event_region
               FROM performances
                 LEFT JOIN events ON events.id = performances.event_id
               WHERE event_entry_id = ${entry.id}
@@ -291,7 +273,7 @@ export async function GET(
             if (performanceRows.length === 0) {
               // For nationals, try by performance ID matching entry ID
               const performanceRowsById = (await sql`
-                SELECT id, event_entry_id, event_id, title, scores_published, event_type
+                SELECT id, event_entry_id, event_id, title, scores_published, events.event_type, events.region as event_region
                 FROM performances
                 LEFT JOIN events ON events.id = performances.event_id
                 WHERE id = ${entry.id}
@@ -328,7 +310,10 @@ export async function GET(
                   if (!medal && ranking.final_score !== null) {
                     const medalInfo = getMedalFromPercentage(
                       ranking.final_score,
-                      normalizeEventType(performance.event_type)
+                      resolveScoringEventType({
+                        eventType: performance.event_type,
+                        region: performance.event_region
+                      })
                     );
                     medal = medalInfo.label;
                   }
@@ -352,7 +337,10 @@ export async function GET(
                     const avgScore = parseFloat(scoreRows[0].avg_score);
                     const medalInfo = getMedalFromPercentage(
                       avgScore,
-                      normalizeEventType(performance.event_type)
+                      resolveScoringEventType({
+                        eventType: performance.event_type,
+                        region: performance.event_region
+                      })
                     );
                     rankingData = {
                       rank: null,

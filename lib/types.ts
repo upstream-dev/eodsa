@@ -616,7 +616,43 @@ export interface StudioSession {
   registrationNumber: string;
 } 
 
-type ScoringEventType = 'REGIONAL_EVENT' | 'NATIONAL_EVENT' | 'QUALIFIER_EVENT' | 'INTERNATIONAL_VIRTUAL_EVENT';
+export type ScoringEventType =
+  | 'REGIONAL_EVENT'
+  | 'NATIONAL_EVENT'
+  | 'QUALIFIER_EVENT'
+  | 'INTERNATIONAL_VIRTUAL_EVENT';
+
+const SCORING_EVENT_TYPE_SET = new Set<string>([
+  'REGIONAL_EVENT',
+  'NATIONAL_EVENT',
+  'QUALIFIER_EVENT',
+  'INTERNATIONAL_VIRTUAL_EVENT'
+]);
+
+/**
+ * Maps stored event_type (+ region) to the scoring ladder used for medals/rankings/certificates.
+ *
+ * Production fix: geographic competitions (e.g. Western Cape) were sometimes saved as
+ * NATIONAL_EVENT; if region is not "Nationals", use regional scoring bands.
+ */
+export function resolveScoringEventType(input: {
+  eventType?: string | null;
+  region?: string | null;
+}): ScoringEventType {
+  const region = input.region != null ? String(input.region).trim() : '';
+  const raw = input.eventType != null ? String(input.eventType).trim() : '';
+
+  if (raw === 'NATIONAL_EVENT' && region && region !== 'Nationals') {
+    return 'REGIONAL_EVENT';
+  }
+
+  if (raw && SCORING_EVENT_TYPE_SET.has(raw)) {
+    return raw as ScoringEventType;
+  }
+
+  // Matches DB default (events.event_type) and getAllEvents() fallback
+  return 'REGIONAL_EVENT';
+}
 
 export type MedalType = 'bronze' | 'silver' | 'silver_plus' | 'gold' | 'pro_gold' | 'legend' | 'opus' | 'elite';
 
@@ -635,7 +671,10 @@ export interface MedalInfo {
  * before calling this function to ensure consistency.
  * This function includes a defensive rounding check.
  */
-export const getMedalFromPercentage = (percentage: number, eventType: ScoringEventType = 'NATIONAL_EVENT'): MedalInfo => {
+export const getMedalFromPercentage = (
+  percentage: number,
+  eventType: ScoringEventType = resolveScoringEventType({})
+): MedalInfo => {
   // Ensure percentage is rounded (defensive check)
   const roundedPercentage = Math.round(percentage);
 

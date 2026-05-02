@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMedalFromPercentage } from '@/lib/types';
+import { getMedalFromPercentage, resolveScoringEventType } from '@/lib/types';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
@@ -251,7 +251,10 @@ function AdminCertificatesPageContent() {
       percentage: percentage.toString(),
       style: ranking.itemStyle || 'Contemporary',
       title: ranking.title || 'Performance',
-      medallion: getMedalFromPercentage(percentage, ranking.eventType || 'NATIONAL_EVENT').label,
+      medallion: getMedalFromPercentage(
+        percentage,
+        resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })
+      ).label,
       date: eventDate,
       nameTop: nameTop.toString(),
       nameFontSize: nameFontSize.toString(),
@@ -420,7 +423,10 @@ function AdminCertificatesPageContent() {
               percentage: percentage,
               style: winner.itemStyle,
               title: winner.title,
-              medallion: getMedalFromPercentage(percentage, winner.eventType || 'NATIONAL_EVENT').label,
+              medallion: getMedalFromPercentage(
+                percentage,
+                resolveScoringEventType({ eventType: winner.eventType, region: winner.region })
+              ).label,
               eventDate: eventDate,
               createdBy: 'admin'
             })
@@ -730,17 +736,17 @@ function AdminCertificatesPageContent() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label === 'Elite' ? 'bg-yellow-100 text-yellow-900' :
-                              getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label === 'Opus' ? 'bg-yellow-100 text-yellow-800' :
-                              getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label === 'Legend' ? 'bg-yellow-50 text-yellow-700' :
-                              getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label === 'Pro Gold' ? 'bg-yellow-200 text-yellow-900' :
-                              getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
-                              getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label === 'Silver+' ? 'bg-slate-100 text-slate-800' :
-                              getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label === 'Silver' ? 'bg-gray-100 text-gray-800' :
-                              getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label === 'Bronze' ? 'bg-orange-100 text-orange-800' :
+                              getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label === 'Elite' ? 'bg-yellow-100 text-yellow-900' :
+                              getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label === 'Opus' ? 'bg-yellow-100 text-yellow-800' :
+                              getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label === 'Legend' ? 'bg-yellow-50 text-yellow-700' :
+                              getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label === 'Pro Gold' ? 'bg-yellow-200 text-yellow-900' :
+                              getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                              getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label === 'Silver+' ? 'bg-slate-100 text-slate-800' :
+                              getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label === 'Silver' ? 'bg-gray-100 text-gray-800' :
+                              getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label === 'Bronze' ? 'bg-orange-100 text-orange-800' :
                               'bg-blue-100 text-blue-800'
                             }`}>
-                              {getMedalFromPercentage(ranking.averageScore, ranking.eventType || 'NATIONAL_EVENT').label}
+                              {getMedalFromPercentage(ranking.averageScore, resolveScoringEventType({ eventType: ranking.eventType, region: ranking.region })).label}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">

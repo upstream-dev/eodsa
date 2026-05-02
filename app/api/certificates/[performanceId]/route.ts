@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, getSql } from '@/lib/database';
 import { getMedalFromPercentage, formatCertificateDate, calculateRoundedPercentage } from '@/lib/certificate-generator';
+import { resolveScoringEventType } from '@/lib/types';
 
 /**
  * GET /api/certificates/[performanceId]
@@ -75,7 +76,10 @@ export async function GET(
     }
 
     // Get medallion with event-specific scoring bands
-    const medallion = getMedalFromPercentage(averagePercentage, event.eventType || 'NATIONAL_EVENT');
+    const medallion = getMedalFromPercentage(
+      averagePercentage,
+      resolveScoringEventType({ eventType: event.eventType, region: event.region })
+    );
 
     // Get performance type and studio name from event entry
     const sqlClient = getSql();

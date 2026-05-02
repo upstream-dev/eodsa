@@ -1,3 +1,5 @@
+import { resolveScoringEventType, type ScoringEventType } from './types';
+
 export interface CertificateData {
   dancerName: string;
   percentage: number;
@@ -169,11 +171,9 @@ export function calculateRoundedPercentage(totalScore: number, judgeCount: numbe
  * IMPORTANT: Percentage should already be rounded using calculateRoundedPercentage()
  * before calling this function to ensure consistency.
  */
-type ScoringEventType = 'REGIONAL_EVENT' | 'NATIONAL_EVENT' | 'QUALIFIER_EVENT' | 'INTERNATIONAL_VIRTUAL_EVENT';
-
 export function getMedalFromPercentage(
   percentage: number,
-  eventType: ScoringEventType = 'NATIONAL_EVENT'
+  eventType: ScoringEventType = resolveScoringEventType({})
 ): 'Elite' | 'Opus' | 'Legend' | 'Gold' | 'Pro Gold' | 'Silver+' | 'Silver' | 'Bronze' | '' {
   // Ensure percentage is rounded (defensive check)
   const roundedPercentage = Math.round(percentage);
