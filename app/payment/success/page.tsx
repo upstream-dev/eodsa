@@ -91,6 +91,17 @@ function PaymentSuccessContent() {
 
   const processEntriesAfterPayment = async (paymentId: string) => {
     try {
+      const processedKey = `entriesProcessed_${paymentId}`;
+      if (typeof window !== 'undefined' && sessionStorage.getItem(processedKey) === '1') {
+        const checkResponse = await fetch(`/api/payments/process-entries?payment_id=${paymentId}`);
+        const checkData = await checkResponse.json();
+        if (checkData.success) {
+          setCreatedEntries(checkData.entries);
+          setEntriesProcessed(true);
+        }
+        return;
+      }
+
       // First, check if entries were already processed
       const checkResponse = await fetch(`/api/payments/process-entries?payment_id=${paymentId}`);
       const checkData = await checkResponse.json();
@@ -98,6 +109,7 @@ function PaymentSuccessContent() {
       if (checkData.success && checkData.isComplete) {
         setCreatedEntries(checkData.entries);
         setEntriesProcessed(true);
+        sessionStorage.setItem(processedKey, '1');
         console.log('✅ All entries already processed:', checkData.entries);
         return;
       }
@@ -141,6 +153,7 @@ function PaymentSuccessContent() {
       if (processData.success) {
         setCreatedEntries(processData.entries);
         setEntriesProcessed(true);
+        sessionStorage.setItem(processedKey, '1');
         
         // Clear session storage
         sessionStorage.removeItem('pendingEntries');

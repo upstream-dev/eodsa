@@ -5,6 +5,11 @@
 
 import { getSql } from './database';
 import { autoMarkRegistrationForParticipants } from './registration-fee-tracker';
+import {
+  findExistingEntryIdForLine,
+  batchEntryFingerprint,
+  parseParticipantIds,
+} from './entry-dedup';
 import type { Performance } from './types';
 
 export interface PendingBatchEntry {
@@ -32,28 +37,7 @@ export interface BatchEntryCreationResult {
   errors: Array<{ itemName: string; index: number; error: string }>;
 }
 
-function normalizeItemName(name: string): string {
-  return (name || '').trim().toLowerCase();
-}
-
-function parseParticipantIds(raw: unknown): string[] {
-  if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter(Boolean).map(String) : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-/** Stable key to match pending cart line ↔ saved row for the same payment. */
-export function batchEntryFingerprint(itemName: string, participantIds: string[]): string {
-  const ids = [...participantIds].map(String).filter(Boolean).sort();
-  return `${normalizeItemName(itemName)}|${ids.join(',')}`;
-}
+export { batchEntryFingerprint, parseParticipantIds } from './entry-dedup';
 
 async function loadExistingFingerprintsForPayment(paymentId: string): Promise<Map<string, string>> {
   const sql = getSql();
@@ -145,7 +129,20 @@ export async function reconcileBatchEntriesFromPending(
     const entry = entriesData[i];
     const participantIds = parseParticipantIds(entry.participantIds);
     const fingerprint = batchEntryFingerprint(entry.itemName, participantIds);
-    const existingId = existingByFingerprint.get(fingerprint);
+    let existingId = existingByFingerprint.get(fingerprint);
+
+    // Also block duplicates from a second payment / retry (different payment_id)
+    if (!existingId) {
+      const globalExisting = await findExistingEntryIdForLine(
+        entry.eventId,
+        entry.itemName,
+        participantIds
+      );
+      if (globalExisting) {
+        existingId = globalExisting;
+        existingByFingerprint.set(fingerprint, globalExisting);
+      }
+    }
 
     if (existingId) {
       result.skipped.push({
@@ -153,6 +150,16 @@ export async function reconcileBatchEntriesFromPending(
         reason: 'already_exists',
         existingEntryId: existingId,
       });
+      // Link orphaned duplicate row to this payment if it had no payment_id
+      try {
+        await sql`
+          UPDATE event_entries
+          SET payment_id = COALESCE(payment_id, ${paymentId})
+          WHERE id = ${existingId}
+        `;
+      } catch (linkErr) {
+        console.warn(`⚠️ [${source}] Could not link payment to existing entry ${existingId}:`, linkErr);
+      }
       try {
         await ensurePerformanceForEntry({ id: existingId }, { ...entry, participantIds }, unifiedDb, db);
       } catch (perfErr) {

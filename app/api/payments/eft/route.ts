@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/database';
 import { validateBatchEntryFees, createBatchTransactionRecords } from '@/lib/payment-validation';
+import {
+  findExistingEntryIdForLine,
+  countEntriesForEftInvoice,
+  parseParticipantIds,
+} from '@/lib/entry-dedup';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +33,8 @@ export async function POST(request: NextRequest) {
     });
 
     const sqlClient = getSql();
+    const paymentLogId = Date.now().toString();
+    let createdCount = 0;
 
     // SAFETY CHECK: Validate fees before processing
     let computedTotal = amount || 0;
@@ -89,9 +96,38 @@ export async function POST(request: NextRequest) {
     }
 
     if (submitImmediately && entries && entries.length > 0) {
+      // Block duplicate EFT submission (double-click / resubmit same invoice)
+      if (invoiceNumber?.trim()) {
+        const existingForInvoice = await countEntriesForEftInvoice(eventId, invoiceNumber);
+        if (existingForInvoice >= entries.length) {
+          console.warn('⚠️ EFT duplicate submission blocked — entries already exist for invoice:', invoiceNumber);
+          return NextResponse.json({
+            success: true,
+            message: 'Entries already submitted for this invoice reference.',
+            paymentId: paymentLogId,
+            entriesSubmitted: 0,
+            duplicateBlocked: true,
+            computedTotal,
+            clientSentTotal: amount,
+          });
+        }
+      }
+
       // Submit all entries to the database immediately with pending payment status
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
+        const participantIds = parseParticipantIds(entry.participantIds);
+
+        const existingEntryId = await findExistingEntryIdForLine(
+          entry.eventId,
+          entry.itemName,
+          participantIds
+        );
+        if (existingEntryId) {
+          console.warn(`⚠️ Skipping duplicate EFT line: ${entry.itemName} (existing ${existingEntryId})`);
+          continue;
+        }
+
         const entryId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
         
         try {
@@ -125,6 +161,7 @@ export async function POST(request: NextRequest) {
             `;
           }
 
+          createdCount++;
           console.log(`✅ Entry ${entryId} created successfully for EFT payment`);
         } catch (dbError: any) {
           console.error(`❌ Failed to create entry ${entryId}:`, dbError);
@@ -134,7 +171,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the EFT payment attempt
-    const paymentLogId = Date.now().toString();
     try {
       // Determine registration_paid status - for EFT, it's only paid after admin verification
       // But we can check if registration was charged
@@ -164,7 +200,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'EFT payment submitted successfully. Entries are now pending payment verification.',
       paymentId: paymentLogId,
-      entriesSubmitted: entries?.length || 0,
+      entriesSubmitted: createdCount || entries?.length || 0,
       computedTotal: computedTotal, // Return computed total for frontend display
       clientSentTotal: amount // Return original client-sent total for reference
     });

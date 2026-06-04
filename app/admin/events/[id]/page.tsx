@@ -167,6 +167,10 @@ function EventParticipantsPage() {
   const [entryModal, setEntryModal] = useState<EventEntry | null>(null);
   const [entryModalTab, setEntryModalTab] = useState<'overview' | 'dancers' | 'payment'>('overview');
   const [recalculatingFees, setRecalculatingFees] = useState(false);
+  const [duplicateGroups, setDuplicateGroups] = useState<any[]>([]);
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const [loadingDuplicates, setLoadingDuplicates] = useState(false);
+  const [removingDuplicates, setRemovingDuplicates] = useState(false);
 
   // Determine performance type from participant count
   const getPerformanceType = (participantIds: string[]) => {
@@ -1203,6 +1207,87 @@ function EventParticipantsPage() {
     }
   };
 
+  const loadDuplicateGroups = async (): Promise<any[]> => {
+    const session = localStorage.getItem('adminSession');
+    if (!session) {
+      showAlert('Session expired. Please log in again.', 'error');
+      return [];
+    }
+    const adminData = JSON.parse(session);
+    const response = await fetch(
+      `/api/admin/events/${eventId}/duplicates?adminId=${encodeURIComponent(adminData.id)}`
+    );
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Failed to scan for duplicates');
+    }
+    return data.groups || [];
+  };
+
+  const handleFindDuplicates = async () => {
+    setLoadingDuplicates(true);
+    try {
+      const groups = await loadDuplicateGroups();
+      setDuplicateGroups(groups);
+      if (groups.length === 0) {
+        showAlert('No duplicate entries found for this event.', 'success');
+        return;
+      }
+      setShowDuplicatesModal(true);
+    } catch (e) {
+      console.error(e);
+      showAlert(e instanceof Error ? e.message : 'Failed to scan duplicates', 'error');
+    } finally {
+      setLoadingDuplicates(false);
+    }
+  };
+
+  const handleRemoveDuplicates = async () => {
+    const toDelete = duplicateGroups.reduce((n: number, g: any) => n + (g.deleteEntryIds?.length || 0), 0);
+    if (toDelete === 0) {
+      showAlert('No duplicates to remove.', 'warning');
+      return;
+    }
+    const doubleCharge = duplicateGroups.filter((g: any) => g.likelyDoubleCharge).length;
+    const msg =
+      `Remove ${toDelete} duplicate entr${toDelete === 1 ? 'y' : 'ies'} across ${duplicateGroups.length} group(s)?\n\n` +
+      `The best copy of each item is kept (item number, music, earliest submit).\n` +
+      (doubleCharge > 0
+        ? `\n⚠️ ${doubleCharge} group(s) may have been paid twice on PayFast — check refunds after cleanup.`
+        : '');
+    if (!window.confirm(msg)) return;
+
+    setRemovingDuplicates(true);
+    try {
+      const session = localStorage.getItem('adminSession');
+      if (!session) {
+        showAlert('Session expired. Please log in again.', 'error');
+        return;
+      }
+      const adminData = JSON.parse(session);
+      const response = await fetch(`/api/admin/events/${eventId}/duplicates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: adminData.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        showAlert(data.error || `Removed ${data.deletedCount || 0} with ${data.errors?.length || 0} errors`, 'error');
+      } else {
+        showAlert(`Removed ${data.deletedCount} duplicate entries.`, 'success');
+        setShowDuplicatesModal(false);
+        setDuplicateGroups([]);
+        const deleteIds = new Set((data.deleted || []) as string[]);
+        setEntries((prev) => prev.filter((e) => !deleteIds.has(e.id)));
+      }
+    } catch (e) {
+      console.error(e);
+      showAlert('Failed to remove duplicates', 'error');
+    } finally {
+      setRemovingDuplicates(false);
+    }
+  };
+
   if (isLoading) {
     const themeClasses = getThemeClasses(theme);
     return (
@@ -1590,30 +1675,56 @@ function EventParticipantsPage() {
                     </div>
                   )}
                   {entries.length > 0 && (
-                    <button
-                      onClick={handleRecalculateFees}
-                      disabled={recalculatingFees}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        recalculatingFees
-                          ? themeClasses.buttonDisabled
-                          : theme === 'dark'
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                          : 'bg-blue-500 hover:bg-blue-600 text-white'
-                      } flex items-center space-x-2`}
-                      title="Recalculate fees for all entries using current event fee configuration"
-                    >
-                      {recalculatingFees ? (
-                        <>
-                          <div className={`w-4 h-4 border-2 ${theme === 'dark' ? 'border-white/30 border-t-white' : 'border-white/30 border-t-white'} rounded-full animate-spin`}></div>
-                          <span>Recalculating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>💰</span>
-                          <span>Recalculate Fees</span>
-                        </>
-                      )}
-                    </button>
+                    <>
+                      <button
+                        onClick={handleFindDuplicates}
+                        disabled={loadingDuplicates || removingDuplicates}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          loadingDuplicates || removingDuplicates
+                            ? themeClasses.buttonDisabled
+                            : theme === 'dark'
+                            ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                            : 'bg-orange-500 hover:bg-orange-600 text-white'
+                        } flex items-center space-x-2`}
+                        title="Find and remove duplicate entries (same item and dancers)"
+                      >
+                        {loadingDuplicates ? (
+                          <>
+                            <div className={`w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin`}></div>
+                            <span>Scanning...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>🧹</span>
+                            <span>Remove Duplicates</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={handleRecalculateFees}
+                        disabled={recalculatingFees}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          recalculatingFees
+                            ? themeClasses.buttonDisabled
+                            : theme === 'dark'
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
+                        } flex items-center space-x-2`}
+                        title="Recalculate fees for all entries using current event fee configuration"
+                      >
+                        {recalculatingFees ? (
+                          <>
+                            <div className={`w-4 h-4 border-2 ${theme === 'dark' ? 'border-white/30 border-t-white' : 'border-white/30 border-t-white'} rounded-full animate-spin`}></div>
+                            <span>Recalculating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>💰</span>
+                            <span>Recalculate Fees</span>
+                          </>
+                        )}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -2518,6 +2629,68 @@ function EventParticipantsPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showDuplicatesModal && duplicateGroups.length > 0 && (
+      <div className={`fixed inset-0 ${themeClasses.modalOverlay} flex items-center justify-center p-4 z-50`}>
+        <div className={`${themeClasses.modalBg} ${themeClasses.cardRadius} shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto border ${themeClasses.modalBorder}`}>
+          <div className={`p-6 border-b ${themeClasses.modalBorder} flex items-center justify-between`}>
+            <div>
+              <h2 className={themeClasses.heading3}>Duplicate entries</h2>
+              <p className={`${themeClasses.textMuted} text-sm mt-1`}>
+                {duplicateGroups.length} group(s) — keeps the best row per item (item #, music, earliest).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDuplicatesModal(false)}
+              className={`${themeClasses.textMuted} hover:${themeClasses.textPrimary} p-2 rounded-lg`}
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-6 space-y-4">
+            {duplicateGroups.map((group: any) => (
+              <div
+                key={group.fingerprint}
+                className={`rounded-lg border p-4 ${theme === 'dark' ? 'border-orange-800/50 bg-orange-950/20' : 'border-orange-200 bg-orange-50'}`}
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <p className={`font-semibold ${themeClasses.textPrimary}`}>{group.itemName}</p>
+                  {group.likelyDoubleCharge && (
+                    <span className="text-xs font-semibold text-red-600 whitespace-nowrap">May be double-paid</span>
+                  )}
+                </div>
+                <p className={`text-xs ${themeClasses.textMuted} mt-1`}>
+                  Keep: <span className="font-mono">{group.keepEntryId}</span>
+                </p>
+                <p className={`text-xs ${themeClasses.textMuted}`}>
+                  Remove: {group.deleteEntryIds?.join(', ')}
+                </p>
+              </div>
+            ))}
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDuplicatesModal(false)}
+                className={`px-4 py-2 rounded-lg text-sm ${themeClasses.filterButtonInactive}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveDuplicates}
+                disabled={removingDuplicates}
+                className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${
+                  removingDuplicates ? 'bg-gray-500' : 'bg-orange-600 hover:bg-orange-700'
+                }`}
+              >
+                {removingDuplicates ? 'Removing...' : `Remove ${duplicateGroups.reduce((n: number, g: any) => n + (g.deleteEntryIds?.length || 0), 0)} duplicates`}
+              </button>
+            </div>
           </div>
         </div>
       </div>
