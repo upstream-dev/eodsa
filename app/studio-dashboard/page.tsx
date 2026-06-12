@@ -1178,7 +1178,7 @@ export default function StudioDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 pb-safe-bottom">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 pb-safe-bottom overflow-x-hidden">
       <style jsx global>{`
         .pb-safe-bottom {
           padding-bottom: max(env(safe-area-inset-bottom, 24px), 24px);
@@ -1313,11 +1313,11 @@ export default function StudioDashboardPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-800/80 rounded-lg p-1">
+        <div className="mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+          <div className="flex min-w-max sm:min-w-0 sm:w-full gap-1 bg-gray-800/80 rounded-lg p-1">
             <button
               onClick={() => setActiveTab('dancers')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`flex-shrink-0 sm:flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 activeTab === 'dancers'
                   ? 'bg-purple-600 text-white'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700'
@@ -1327,7 +1327,7 @@ export default function StudioDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('entries')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`flex-shrink-0 sm:flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 activeTab === 'entries'
                   ? 'bg-purple-600 text-white'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700'
@@ -1337,7 +1337,7 @@ export default function StudioDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('uploads')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`flex-shrink-0 sm:flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 activeTab === 'uploads'
                   ? 'bg-purple-600 text-white'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700'
@@ -1347,7 +1347,7 @@ export default function StudioDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('scores')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`flex-shrink-0 sm:flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 activeTab === 'scores'
                   ? 'bg-purple-600 text-white'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700'
@@ -1357,7 +1357,7 @@ export default function StudioDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('certificates')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`flex-shrink-0 sm:flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 activeTab === 'certificates'
                   ? 'bg-purple-600 text-white'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700'
@@ -1526,9 +1526,9 @@ export default function StudioDashboardPage() {
               <>
                 <div className="divide-y divide-gray-700">
                   {getPaginatedDancers().dancers.map((dancer) => (
-                    <div key={dancer.id} className="p-6 hover:bg-gray-700/30 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                    <div key={dancer.id} className="p-4 sm:p-6 hover:bg-gray-700/30 transition-colors">
+                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center mb-3">
                             <h4 className="text-lg font-semibold text-white mr-3">{dancer.name}</h4>
                             <span className="px-3 py-1 bg-purple-900/30 text-purple-300 rounded-full text-sm font-medium">
@@ -1566,22 +1566,22 @@ export default function StudioDashboardPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2 ml-4">
+                        <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto lg:flex-shrink-0">
                           <button
                             onClick={() => handleEditDancer(dancer)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDeleteDancer(dancer)}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                            className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
                           >
                             Remove
                           </button>
                           <Link
                             href={`/event-dashboard?eodsaId=${dancer.eodsaId}`}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                            className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm text-center"
                           >
                             Enter Competitions
                           </Link>
@@ -1673,17 +1673,17 @@ export default function StudioDashboardPage() {
         {/* My Entries Tab */}
         {activeTab === 'entries' && (
           <div className="bg-gray-800/80 rounded-2xl border border-gray-700/20 overflow-hidden">
-            <div className="p-6 border-b border-gray-700">
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div className="p-4 sm:p-6 border-b border-gray-700">
+              <div className="flex flex-col gap-4">
                 <div>
                   <h3 className="text-xl font-bold text-white">Competition Entries</h3>
                   <p className="text-gray-400 text-sm mt-1">View and manage competition entries for your dancers</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full">
                   <select
                     value={selectedEventId}
                     onChange={(e) => setSelectedEventId(e.target.value)}
-                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full sm:flex-1 min-w-0 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   >
                     <option value="all">All Events</option>
                     {events.map(event => (
@@ -1692,9 +1692,9 @@ export default function StudioDashboardPage() {
                   </select>
                   <Link
                     href={`/event-dashboard?studioId=${studioSession?.id}`}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                    className="w-full sm:w-auto sm:flex-shrink-0 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 font-medium"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                     <span>Add New Entry</span>
@@ -1715,20 +1715,31 @@ export default function StudioDashboardPage() {
                     ? 'No competition entries yet' 
                     : 'No entries found for selected event'}
                 </p>
-                <p className="text-gray-500 text-sm">
+                <p className="text-gray-500 text-sm mb-6">
                   {competitionEntries.length === 0 
                     ? 'Start entering your dancers into competitions to see entries here'
                     : 'Change the event filter to see entries from other events.'}
                 </p>
+                {competitionEntries.length === 0 && (
+                  <Link
+                    href={`/event-dashboard?studioId=${studioSession?.id}`}
+                    className="inline-flex items-center justify-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <span>Add New Entry</span>
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-gray-700">
                 {getFilteredEntries().map((entry) => (
-                  <div key={entry.id} className="p-6 hover:bg-gray-700/30 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center mb-3">
-                          <h4 className="text-lg font-semibold text-white mr-3">{entry.eventName}</h4>
+                  <div key={entry.id} className="p-4 sm:p-6 hover:bg-gray-700/30 transition-colors">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          <h4 className="text-lg font-semibold text-white">{entry.eventName}</h4>
                           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                             entry.approved 
                               ? 'bg-green-900/30 text-green-300' 
@@ -1737,7 +1748,7 @@ export default function StudioDashboardPage() {
                             {entry.approved ? 'Approved' : 'Pending'}
                           </span>
                           {entry.itemNumber && (
-                            <span className="ml-2 px-2 py-1 bg-purple-900/30 text-purple-300 rounded text-xs">
+                            <span className="px-2 py-1 bg-purple-900/30 text-purple-300 rounded text-xs">
                               #{entry.itemNumber}
                             </span>
                           )}
@@ -1778,14 +1789,14 @@ export default function StudioDashboardPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end space-y-2 ml-4">
+                      <div className="flex flex-col sm:flex-row lg:flex-col gap-2 w-full lg:w-auto lg:flex-shrink-0">
                         {/* View Results for Groups/Trios/Duos */}
                         {(entry.performanceType === 'Duet' || entry.performanceType === 'Trio' || entry.performanceType === 'Group') && entry.hasPerformance && (
                           <button
                             onClick={() => handleViewResults(entry)}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center space-x-2"
+                            className="w-full sm:w-auto lg:w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center justify-center space-x-2"
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
@@ -1794,11 +1805,11 @@ export default function StudioDashboardPage() {
                         )}
                         <button
                           onClick={() => handleEditEntry(entry)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                          className="w-full sm:w-auto lg:w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                         >
                           Edit Entry
                         </button>
-                        <div className="px-3 py-1 text-xs text-gray-400 italic bg-gray-800/50 rounded-lg border border-gray-700">
+                        <div className="px-3 py-1 text-xs text-gray-400 italic bg-gray-800/50 rounded-lg border border-gray-700 text-center sm:text-left">
                           💡 Only admins can remove entries
                         </div>
                       </div>
@@ -1825,18 +1836,18 @@ export default function StudioDashboardPage() {
                       </h3>
                       <p className="text-gray-400 text-sm mt-1">Upload music files for live performance entries</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full lg:w-auto lg:flex-shrink-0">
                       <select
                         value={selectedEventId}
                         onChange={(e) => setSelectedEventId(e.target.value)}
-                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        className="w-full sm:flex-1 min-w-0 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       >
                         <option value="all">All Events</option>
                         {events.map(event => (
                           <option key={event.id} value={event.id}>{event.name}</option>
                         ))}
                       </select>
-                      <span className="px-3 py-1 bg-blue-900/50 text-blue-200 rounded-full text-xs font-medium border border-blue-700/50">
+                      <span className="px-3 py-1 bg-blue-900/50 text-blue-200 rounded-full text-xs font-medium border border-blue-700/50 text-center">
                         {getFilteredMusicEntries().length} {getFilteredMusicEntries().length === 1 ? 'entry' : 'entries'} need music
                       </span>
                     </div>
@@ -1917,18 +1928,18 @@ export default function StudioDashboardPage() {
                       </h3>
                       <p className="text-gray-400 text-sm mt-1">Enter YouTube or Vimeo links for virtual performance entries</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full lg:w-auto lg:flex-shrink-0">
                       <select
                         value={selectedEventId}
                         onChange={(e) => setSelectedEventId(e.target.value)}
-                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        className="w-full sm:flex-1 min-w-0 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       >
                         <option value="all">All Events</option>
                         {events.map(event => (
                           <option key={event.id} value={event.id}>{event.name}</option>
                         ))}
                       </select>
-                      <span className="px-3 py-1 bg-indigo-900/50 text-indigo-200 rounded-full text-xs font-medium border border-indigo-700/50">
+                      <span className="px-3 py-1 bg-indigo-900/50 text-indigo-200 rounded-full text-xs font-medium border border-indigo-700/50 text-center">
                         {getFilteredVideoEntries().length} {getFilteredVideoEntries().length === 1 ? 'entry' : 'entries'} need video
                       </span>
                     </div>
@@ -2029,11 +2040,11 @@ export default function StudioDashboardPage() {
                   <h3 className="text-xl font-bold text-white">🎖️ Certificates</h3>
                   <p className="text-gray-400 text-sm mt-1">View and download certificates for your dancers</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <select
                     value={selectedEventId}
                     onChange={(e) => setSelectedEventId(e.target.value)}
-                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full sm:flex-1 min-w-0 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   >
                     <option value="all">All Events</option>
                     {events.map(event => (
@@ -2153,11 +2164,11 @@ export default function StudioDashboardPage() {
                   <h3 className="text-xl font-bold text-white">🏅 Studio Scores</h3>
                   <p className="text-gray-400 text-sm mt-1">View all published scores for your dancers</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <select
                     value={selectedEventId}
                     onChange={(e) => setSelectedEventId(e.target.value)}
-                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full sm:flex-1 min-w-0 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   >
                     <option value="all">All Events</option>
                     {events.map(event => (
@@ -2166,7 +2177,7 @@ export default function StudioDashboardPage() {
                   </select>
                   <button
                     onClick={() => studioSession && loadData(studioSession.id)}
-                    className="px-3 py-1 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    className="w-full sm:w-auto sm:flex-shrink-0 px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                   >
                     ↻ Refresh
                   </button>

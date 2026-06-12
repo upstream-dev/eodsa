@@ -1118,8 +1118,8 @@ function CompetitionEntriesSection({ dancerSession, selectedEventId, events, onE
 
   return (
     <div className="bg-gray-800/80 rounded-2xl border border-gray-700/20 overflow-hidden">
-      <div className="p-6 border-b border-gray-700">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+      <div className="p-4 sm:p-6 border-b border-gray-700">
+        <div className="flex flex-col gap-4">
           <div>
             <h3 className="text-xl font-bold text-white">
               🏆 My Competition Entries 
@@ -1131,17 +1131,17 @@ function CompetitionEntriesSection({ dancerSession, selectedEventId, events, onE
             </h3>
             <p className="text-gray-400 text-sm mt-1">All your competition entries across different events</p>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full">
             <button
               onClick={() => setIsCollapsed(prev => !prev)}
-              className="px-3 py-1 text-xs bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors"
+              className="w-full sm:w-auto px-3 py-2 text-xs bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors"
             >
               {isCollapsed ? '▸ Show list' : '▾ Hide list'}
             </button>
             <select
               value={selectedEventId}
               onChange={(e) => onEventChange(e.target.value)}
-              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full sm:flex-1 min-w-0 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
               <option value="all">All Events</option>
               {events.map(event => (
@@ -1151,7 +1151,7 @@ function CompetitionEntriesSection({ dancerSession, selectedEventId, events, onE
             <button
               onClick={loadCompetitionEntries}
               disabled={loading}
-              className="px-3 py-1 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto sm:flex-shrink-0 px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
             >
               {loading ? '🔄' : '↻'} Refresh
             </button>
