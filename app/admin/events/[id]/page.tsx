@@ -39,18 +39,6 @@ interface Event {
   registrationFee?: number;
 }
 
-interface PaymentBatchSummary {
-  paymentId: string;
-  amountGross: number;
-  description?: string | null;
-  paidAt?: string | null;
-  expectedEntryCount: number;
-  savedEntryCount: number;
-  performanceFeesOnEntries: number;
-  registrationInPayment: number;
-  isComplete: boolean;
-}
-
 interface EventEntry {
   id: string;
   eventId: string;
@@ -123,7 +111,6 @@ function EventParticipantsPage() {
   
   const [event, setEvent] = useState<Event | null>(null);
   const [entries, setEntries] = useState<EventEntry[]>([]);
-  const [paymentBatches, setPaymentBatches] = useState<PaymentBatchSummary[]>([]);
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [showDancersModal, setShowDancersModal] = useState(false);
   const [dancerModalEntry, setDancerModalEntry] = useState<EventEntry | null>(null);
@@ -166,7 +153,6 @@ function EventParticipantsPage() {
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [entryModal, setEntryModal] = useState<EventEntry | null>(null);
   const [entryModalTab, setEntryModalTab] = useState<'overview' | 'dancers' | 'payment'>('overview');
-  const [recalculatingFees, setRecalculatingFees] = useState(false);
 
   // Determine performance type from participant count
   const getPerformanceType = (participantIds: string[]) => {
@@ -267,7 +253,6 @@ function EventParticipantsPage() {
       if (entriesResponse.ok) {
         const entriesData = await entriesResponse.json();
         setEntries(entriesData.entries || []);
-        setPaymentBatches(entriesData.paymentBatches || []);
       }
 
       // Load performances for this event
@@ -1147,62 +1132,6 @@ function EventParticipantsPage() {
     return entry.paymentStatus === 'paid' ? 0 : entry.calculatedFee;
   };
 
-  const handleRecalculateFees = async () => {
-    if (!eventId) return;
-    
-    const confirmed = window.confirm(
-      'This will recalculate fees for all entries in this event using the current event fee configuration. ' +
-      'This action cannot be undone. Continue?'
-    );
-    
-    if (!confirmed) return;
-    
-    setRecalculatingFees(true);
-    
-    try {
-      const session = localStorage.getItem('adminSession');
-      if (!session) {
-        showAlert('Session expired. Please log in again.', 'error');
-        return;
-      }
-      
-      const adminData = JSON.parse(session);
-      
-      const response = await fetch(`/api/admin/events/${eventId}/recalculate-fees`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          adminId: adminData.id
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        showAlert(
-          `Successfully recalculated fees: ${result.updated} updated, ${result.unchanged} unchanged, ${result.errors} errors`,
-          'success'
-        );
-        
-        // Reload entries to show updated fees
-        const entriesResponse = await fetch(`/api/events/${eventId}/entries`);
-        if (entriesResponse.ok) {
-          const entriesData = await entriesResponse.json();
-          setEntries(entriesData.entries || []);
-        }
-      } else {
-        const error = await response.json();
-        showAlert(`Failed to recalculate fees: ${error.error}`, 'error');
-      }
-    } catch (error) {
-      console.error('Error recalculating fees:', error);
-      showAlert('Failed to recalculate fees', 'error');
-    } finally {
-      setRecalculatingFees(false);
-    }
-  };
-
   if (isLoading) {
     const themeClasses = getThemeClasses(theme);
     return (
@@ -1589,71 +1518,8 @@ function EventParticipantsPage() {
                       {filteredEntries.filter(e => e.qualifiedForNationals).length} qualified
                     </div>
                   )}
-                  {entries.length > 0 && (
-                    <button
-                      onClick={handleRecalculateFees}
-                      disabled={recalculatingFees}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        recalculatingFees
-                          ? themeClasses.buttonDisabled
-                          : theme === 'dark'
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                          : 'bg-blue-500 hover:bg-blue-600 text-white'
-                      } flex items-center space-x-2`}
-                      title="Recalculate fees for all entries using current event fee configuration"
-                    >
-                      {recalculatingFees ? (
-                        <>
-                          <div className={`w-4 h-4 border-2 ${theme === 'dark' ? 'border-white/30 border-t-white' : 'border-white/30 border-t-white'} rounded-full animate-spin`}></div>
-                          <span>Recalculating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>💰</span>
-                          <span>Recalculate Fees</span>
-                        </>
-                      )}
-                    </button>
-                  )}
                 </div>
               </div>
-
-              {paymentBatches.length > 0 && eventUsesFlatPricing(event || {}) && (
-                <div className={`mt-4 p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/60 border-slate-600' : 'bg-amber-50 border-amber-200'}`}>
-                  <p className={`text-sm font-semibold ${themeClasses.textPrimary} mb-2`}>
-                    PayFast batch payments
-                  </p>
-                  <p className={`text-xs ${themeClasses.textMuted} mb-3`}>
-                    Duet and group line totals are rate × dancers on that item. Registration is once per dancer on the batch payment. Stored fees on older rows may differ if pricing was corrected after payment.
-                  </p>
-                  <div className="space-y-2">
-                    {paymentBatches.map((batch) => {
-                      const sym = event?.currency === 'USD' ? '$' : event?.currency === 'EUR' ? '€' : event?.currency === 'GBP' ? '£' : 'R';
-                      return (
-                        <div
-                          key={batch.paymentId}
-                          className={`text-xs rounded-md p-3 ${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white'}`}
-                        >
-                          <div className="flex flex-wrap gap-x-4 gap-y-1">
-                            <span><strong>Payment:</strong> {batch.paymentId}</span>
-                            <span><strong>Paid:</strong> {sym}{batch.amountGross.toFixed(2)}</span>
-                            <span><strong>Items:</strong> {batch.savedEntryCount}/{batch.expectedEntryCount || '?'}</span>
-                            {!batch.isComplete && (
-                              <span className="text-orange-600 font-semibold">Incomplete — missing entries</span>
-                            )}
-                          </div>
-                          <div className={`mt-1 ${themeClasses.textMuted}`}>
-                            Performance on entries: {sym}{batch.performanceFeesOnEntries.toFixed(2)}
-                            {batch.registrationInPayment > 0.5 && (
-                              <> · Registration in payment (est.): {sym}{batch.registrationInPayment.toFixed(2)}</>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
               
               {/* Search and Filters */}
               {entries.length > 0 && (
