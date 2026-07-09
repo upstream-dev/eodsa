@@ -1378,6 +1378,7 @@ export default function CompetitionEntryPage() {
       sessionStorage.setItem('paymentAmount', totalFeeCalculation.total.toString());
       sessionStorage.setItem('paymentEventId', eventId);
       sessionStorage.setItem('paymentEventName', event?.name || 'Competition Entry');
+      sessionStorage.setItem('paymentPayerType', isStudioMode ? 'studio' : 'dancer');
 
       // Create payment request
       const firstEntry = entries[0];
@@ -2765,13 +2766,7 @@ export default function CompetitionEntryPage() {
                     Enter More Events
                   </button>
                   <button
-                    onClick={() => {
-                      if (studioId) {
-                        router.push(`/studio-dashboard?studioId=${studioId}`);
-                      } else {
-                        router.push('/');
-                      }
-                    }}
+                    onClick={() => router.push('/studio-dashboard')}
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-semibold"
                   >
                     Studio Dashboard
@@ -2791,12 +2786,12 @@ export default function CompetitionEntryPage() {
                     Enter More Events
                   </button>
                   <div className="flex space-x-3">
-                    <button
-                      onClick={() => router.push('/studio-portal')}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-semibold"
+                    <Link
+                      href="/studio-login"
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-semibold text-center"
                     >
-                      Studio Portal
-                    </button>
+                      Studio Login
+                    </Link>
                     <button
                       onClick={() => router.push(`/`)}
                       className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-all duration-300 font-semibold"

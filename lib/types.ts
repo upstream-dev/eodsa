@@ -400,12 +400,18 @@ export const DANCE_STYLES = [
   'Speciality Styles'
 ];
 
-// Mastery levels used across Regionals and Nationals
+// All mastery levels — used at regionals (and eisteddfod / special-needs categories)
 export const MASTERY_LEVELS = [
   'Water (Competitive)',
   'Fire (Advanced)',
   'Earth (Eisteddfod)',
   'Air (Special Needs)'
+];
+
+// Nationals only use Water and Fire
+export const NATIONAL_MASTERY_LEVELS = [
+  'Water (Competitive)',
+  'Fire (Advanced)',
 ];
 
 // Updated for client requirements

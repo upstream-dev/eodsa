@@ -27,11 +27,24 @@ function PaymentSuccessContent() {
   const [entriesProcessed, setEntriesProcessed] = useState(false);
   const [processingEntries, setProcessingEntries] = useState(false);
   const [createdEntries, setCreatedEntries] = useState<any[]>([]);
+  const [payerType, setPayerType] = useState<'studio' | 'dancer'>('dancer');
+
+  const resolvePayerType = () => {
+    const storedPayerType = sessionStorage.getItem('paymentPayerType');
+    if (storedPayerType === 'studio') return 'studio';
+    if (typeof window !== 'undefined' && localStorage.getItem('studioSession')) return 'studio';
+    return 'dancer';
+  };
+
+  const dashboardHref = payerType === 'studio' ? '/studio-dashboard' : '/dancer-dashboard';
+  const dashboardLabel = payerType === 'studio' ? 'Studio Dashboard' : 'My Entries';
 
   // Get payment ID from URL parameters or session storage
   const paymentId = searchParams.get('payment_id') || searchParams.get('m_payment_id');
 
   useEffect(() => {
+    setPayerType(resolvePayerType());
+
     if (paymentId) {
       fetchPaymentDetails(paymentId);
     } else {
@@ -59,6 +72,7 @@ function PaymentSuccessContent() {
         sessionStorage.removeItem('paymentEventId');
         sessionStorage.removeItem('paymentEventName');
         sessionStorage.removeItem('pendingEntries');
+        sessionStorage.removeItem('paymentPayerType');
       } else {
         setError('Payment verification in progress. Please check your dashboard for payment status.');
         setIsLoading(false);
@@ -160,6 +174,7 @@ function PaymentSuccessContent() {
         sessionStorage.removeItem('paymentAmount');
         sessionStorage.removeItem('paymentEventId');
         sessionStorage.removeItem('paymentEventName');
+        sessionStorage.removeItem('paymentPayerType');
         
         console.log('✅ Entries processed successfully:', processData.entries);
       } else {
@@ -202,11 +217,19 @@ function PaymentSuccessContent() {
             <p className="text-sm text-gray-500 mb-6">Your payment may still be processing. The webhook notification will update your entry status automatically.</p>
             <div className="space-y-3">
               <Link 
-                href="/admin"
+                href={dashboardHref}
                 className="block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
               >
-                Return to Dashboard
+                {payerType === 'studio' ? 'Go to Studio Dashboard' : 'Return to Dashboard'}
               </Link>
+              {payerType === 'studio' && (
+                <Link
+                  href="/studio-login"
+                  className="block w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition-colors"
+                >
+                  Studio Login
+                </Link>
+              )}
               <button
                 onClick={() => window.location.reload()}
                 className="block w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors"
@@ -336,19 +359,28 @@ function PaymentSuccessContent() {
           {/* Action Buttons */}
           <div className="space-y-3">
             <Link 
-              href="/admin"
+              href={dashboardHref}
               className="block w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
             >
-              🏆 Go to Dashboard
+              🏆 {payerType === 'studio' ? 'Go to Studio Dashboard' : 'Go to Dashboard'}
             </Link>
             
             <div className="flex space-x-3">
-              <Link 
-                href="/dancer-dashboard"
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm transition-colors"
-              >
-                My Entries
-              </Link>
+              {payerType === 'studio' ? (
+                <Link 
+                  href="/studio-login"
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg text-sm transition-colors text-center"
+                >
+                  Studio Login
+                </Link>
+              ) : (
+                <Link 
+                  href="/dancer-dashboard"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm transition-colors text-center"
+                >
+                  {dashboardLabel}
+                </Link>
+              )}
               
               <button
                 onClick={() => window.print()}
