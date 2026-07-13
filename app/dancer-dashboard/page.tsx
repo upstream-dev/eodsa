@@ -1579,7 +1579,7 @@ export default function DancerDashboardPage() {
   const [profileHistory, setProfileHistory] = useState<any | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
-  const [events, setEvents] = useState<Array<{id: string; name: string}>>([]);
+  const [events, setEvents] = useState<Array<{id: string; name: string; isArchived?: boolean}>>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -1604,11 +1604,11 @@ export default function DancerDashboardPage() {
 
   const loadEvents = async () => {
     try {
-      const response = await fetch('/api/events');
+      const response = await fetch('/api/events?scope=all');
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setEvents(data.events.map((e: any) => ({ id: e.id, name: e.name })));
+          setEvents(data.events.map((e: any) => ({ id: e.id, name: e.name, isArchived: !!e.isArchived })));
         }
       }
     } catch (error) {
@@ -1749,7 +1749,7 @@ export default function DancerDashboardPage() {
         <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 rounded-2xl border border-purple-400/50 p-5 sm:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-lg">
           <div>
             <p className="text-xs uppercase tracking-wide text-purple-100/80 font-semibold mb-1">
-              Enter competitions
+              Current Events
             </p>
             <h2 className="text-lg sm:text-xl font-bold text-white">
               Ready to enter events?
@@ -1771,9 +1771,9 @@ export default function DancerDashboardPage() {
           <div className="bg-gray-800/80 rounded-2xl border border-gray-700/20 overflow-hidden">
             <div className="p-6 border-b border-gray-700 flex flex-col md:flex-row md:items-end gap-4">
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-white">Your Competition History</h3>
+                <h3 className="text-xl font-bold text-white">History</h3>
                 <p className="text-gray-400 text-sm mt-1">
-                  Filter by event and year to review performances, scores and certificates
+                  Past performances, scores and certificates — including archived events
                 </p>
               </div>
               <div className="flex gap-3">

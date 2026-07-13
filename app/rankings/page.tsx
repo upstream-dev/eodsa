@@ -59,7 +59,7 @@ function RankingsPage() {
     
     try {
       // Load events list for filter
-      const eventsRes = await fetch('/api/events');
+      const eventsRes = await fetch('/api/events?scope=all');
       if (eventsRes.ok) {
         const eventsData = await eventsRes.json();
         if (eventsData.success) {
