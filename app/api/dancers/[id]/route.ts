@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { unifiedDb } from '@/lib/database';
+import { withCompetitionAges } from '@/lib/competition-age';
 
 export async function GET(
   request: Request,
@@ -7,6 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const eventDate = new URL(request.url).searchParams.get('eventDate');
 
     if (!id) {
       return NextResponse.json(
@@ -15,7 +17,6 @@ export async function GET(
       );
     }
 
-    // Get dancer details including studio affiliations and entries
     const dancer = await unifiedDb.getDancerById(id);
     
     if (!dancer) {
@@ -25,12 +26,13 @@ export async function GET(
       );
     }
 
-    // TODO: Implement getStudioApplicationsByDancer and getEntriesByDancer methods
-    // For now, return basic dancer info
+    const ages = withCompetitionAges(dancer, eventDate ? { eventDate } : {});
     const detailedDancer = {
       ...dancer,
-      studioAffiliations: [], // Placeholder - implement later
-      entries: [] // Placeholder - implement later
+      ...ages,
+      age: ages.competitionAge ?? dancer.age,
+      studioAffiliations: [],
+      entries: []
     };
 
     return NextResponse.json({

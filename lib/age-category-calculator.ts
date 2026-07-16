@@ -1,9 +1,12 @@
-import { getAgeCategoryFromAge, calculateAgeOnDate } from './types';
+import { getAverageCompetitionAgeCategory, getCompetitionAge } from './competition-age';
 import { unifiedDb } from './database';
 
 /**
- * Calculate age category for a performance based on participant ages
- * This is a helper function that can be used anywhere in the application
+ * Calculate age category for an entry from participants' competition ages.
+ *
+ * Official rule: competition age = age on 1 October of the season year
+ * (permanent fixed date). Same category for the whole season
+ * (regionals + nationals).
  */
 export async function calculateAgeCategoryForEntry(
   participantIds: string[],
@@ -15,52 +18,45 @@ export async function calculateAgeCategoryForEntry(
       return 'N/A';
     }
 
-    // Get ages of all participants
-    const participantAges = await Promise.all(
+    const context = { eventDate };
+    const datesOfBirth: Array<string | null> = await Promise.all(
       participantIds.map(async (participantId: string) => {
         try {
-          // Try unified system first
           const dancer = await unifiedDb.getDancerById(participantId);
-          if (dancer && dancer.age) {
-            return dancer.age;
+          if (dancer?.dateOfBirth) {
+            return dancer.dateOfBirth;
           }
 
-          // Try old system
           const result = await sqlClient`
-            SELECT age, date_of_birth FROM dancers
+            SELECT date_of_birth FROM dancers
             WHERE id = ${participantId} OR eodsa_id = ${participantId}
+            LIMIT 1
           ` as any[];
 
-          if (result.length > 0) {
-            if (result[0].age) {
-              return result[0].age;
-            }
-            if (result[0].date_of_birth) {
-              return calculateAgeOnDate(result[0].date_of_birth, new Date(eventDate));
-            }
+          if (result.length > 0 && result[0].date_of_birth) {
+            return result[0].date_of_birth as string;
           }
           return null;
         } catch (error) {
-          console.warn(`Could not get age for participant ${participantId}:`, error);
+          console.warn(`Could not get DOB for participant ${participantId}:`, error);
           return null;
         }
       })
     );
 
-    // Filter out null values and calculate average age
-    const validAges = participantAges.filter(age => age !== null) as number[];
+    const ages = datesOfBirth
+      .filter((d): d is string => !!d)
+      .map((dob) => getCompetitionAge(dob, context));
 
-    if (validAges.length === 0) {
+    if (ages.length === 0) {
       return 'N/A';
     }
 
-    const averageAge = Math.round(
-      validAges.reduce((sum, age) => sum + age, 0) / validAges.length
+    const category = getAverageCompetitionAgeCategory(datesOfBirth, context);
+
+    console.log(
+      `✅ Competition age category: ${category} (ages on Nationals ref: ${ages.join(', ')}; eventDate=${eventDate})`
     );
-
-    const category = getAgeCategoryFromAge(averageAge);
-
-    console.log(`✅ Age category calculated: ${category} (avg age: ${averageAge} from ${validAges.length} dancers: ${validAges.join(', ')})`);
 
     return category;
   } catch (error) {
@@ -71,7 +67,6 @@ export async function calculateAgeCategoryForEntry(
 
 /**
  * Batch calculate age categories for multiple entries
- * More efficient for bulk operations like CSV exports
  */
 export async function calculateAgeCategoriesForEntries(
   entries: Array<{ participantIds: string[]; eventDate: string }>,

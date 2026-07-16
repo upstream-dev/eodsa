@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/database';
-import { getAgeCategoryFromAge, getMedalFromPercentage, resolveScoringEventType } from '@/lib/types';
+import { withCompetitionAges } from '@/lib/competition-age';
+import { getMedalFromPercentage, resolveScoringEventType } from '@/lib/types';
 
 // Types for DB rows
 interface DancerRow {
@@ -400,11 +401,12 @@ export async function GET(
     
     console.log(`[Dancer Profile] Final history array length: ${history.length}`);
 
-    // 5) Calculate age category from dancer age
-    let ageCategory = null;
-    if (dancer.age !== null && dancer.age !== undefined) {
-      ageCategory = getAgeCategoryFromAge(dancer.age);
-    }
+    // 5) Competition age / category from DOB + season Nationals reference date
+    const ages = withCompetitionAges({
+      age: dancer.age,
+      dateOfBirth: dancer.date_of_birth,
+    });
+    const ageCategory = ages.competitionAgeCategory;
 
     // 6) Structure the Response
     try {
@@ -413,9 +415,12 @@ export async function GET(
           id: dancer.id,
           eodsaId: dancer.eodsa_id,
           name: dancer.name,
-          age: dancer.age,
+          age: ages.chronologicalAge ?? dancer.age,
+          competitionAge: ages.competitionAge,
           ageCategory: ageCategory,
           dateOfBirth: dancer.date_of_birth,
+          seasonYear: ages.seasonYear,
+          nationalsReferenceDate: ages.nationalsReferenceDate,
           approved: dancer.approved,
           registrationFeeMasteryLevel: dancer.registration_fee_mastery_level ?? null,
           studioId: dancer.studio_id ?? null,

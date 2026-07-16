@@ -6788,6 +6788,11 @@ export const unifiedDb = {
   },
 
   // Utility function to calculate age
+  /**
+   * Chronological age as of today (legal/guardian checks, registration).
+   * For competition eligibility/categories, use getCompetitionAge() from
+   * lib/competition-age.ts (age on season Nationals reference date).
+   */
   calculateAge(dateOfBirth: string): number {
     const today = new Date();
     const birthDate = new Date(dateOfBirth);

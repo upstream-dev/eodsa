@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db, unifiedDb, getSql } from '@/lib/database';
-import { calculateAgeOnDate, getAgeCategoryFromAge } from '@/lib/types';
+import { getCompetitionAge, getAverageCompetitionAgeCategory } from '@/lib/competition-age';
+import { getAgeCategoryFromAge } from '@/lib/types';
 
 export async function GET(
   request: Request,
@@ -27,35 +28,26 @@ export async function GET(
     const enhancedEntries = await Promise.all(
       eventEntries.map(async (entry) => {
         try {
-          // Compute age category for this entry as of event date
+          // Competition age category = ages on season Nationals reference date
           let computedAgeCategory: string | null = null;
           try {
             const sql = getSql();
-            const refDate = event.eventDate ? new Date(event.eventDate) : new Date();
+            const ageContext = { eventDate: event.eventDate };
             if (Array.isArray(entry.participantIds) && entry.participantIds.length > 0) {
-              const ages = await Promise.all(entry.participantIds.map(async (pid: string) => {
+              const dobs = await Promise.all(entry.participantIds.map(async (pid: string) => {
                 try {
                   const rows = await sql`
-                    SELECT date_of_birth, age FROM dancers
+                    SELECT date_of_birth FROM dancers
                     WHERE id = ${pid} OR eodsa_id = ${pid}
                     LIMIT 1
                   ` as any[];
-                  if (rows.length > 0) {
-                    if (rows[0].date_of_birth) {
-                      return calculateAgeOnDate(rows[0].date_of_birth, refDate);
-                    }
-                    if (typeof rows[0].age === 'number' && !Number.isNaN(rows[0].age)) {
-                      return rows[0].age as number;
-                    }
-                  }
-                } catch {}
-                return null;
+                  return rows[0]?.date_of_birth ?? null;
+                } catch {
+                  return null;
+                }
               }));
-              const valid = ages.filter(a => a !== null) as number[];
-              if (valid.length > 0) {
-                const avg = Math.round(valid.reduce((s, a) => s + a, 0) / valid.length);
-                computedAgeCategory = getAgeCategoryFromAge(avg);
-              }
+              computedAgeCategory = getAverageCompetitionAgeCategory(dobs, ageContext);
+              if (computedAgeCategory === 'N/A') computedAgeCategory = null;
             }
             // If no participant IDs or no valid ages, try contestantId (solo entries)
             if (!computedAgeCategory) {
@@ -66,14 +58,12 @@ export async function GET(
                   LIMIT 1
                 ` as any[];
                 if (rows.length > 0) {
-                  let age: number | null = null;
                   if (rows[0].date_of_birth) {
-                    age = calculateAgeOnDate(rows[0].date_of_birth, refDate);
+                    computedAgeCategory = getAgeCategoryFromAge(
+                      getCompetitionAge(rows[0].date_of_birth, ageContext)
+                    );
                   } else if (typeof rows[0].age === 'number' && !Number.isNaN(rows[0].age)) {
-                    age = rows[0].age as number;
-                  }
-                  if (age !== null) {
-                    computedAgeCategory = getAgeCategoryFromAge(age);
+                    computedAgeCategory = getAgeCategoryFromAge(rows[0].age as number);
                   }
                 }
               } catch {}

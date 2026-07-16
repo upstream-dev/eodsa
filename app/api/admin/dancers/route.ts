@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unifiedDb, initializeDatabase } from '@/lib/database';
 import { emailService } from '@/lib/email';
+import { withCompetitionAges } from '@/lib/competition-age';
 
 // Get all dancers with their approval status
 export async function GET(request: NextRequest) {
@@ -12,10 +13,20 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') as 'pending' | 'approved' | 'rejected' | null;
 
     const dancers = await unifiedDb.getAllDancers(status || undefined);
+    const enriched = dancers.map((dancer: any) => {
+      const ages = withCompetitionAges(dancer);
+      return {
+        ...dancer,
+        ...ages,
+        // Admin list "Age" column should show competition age for the current season
+        age: ages.competitionAge ?? dancer.age,
+        chronologicalAge: ages.chronologicalAge,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      dancers: dancers
+      dancers: enriched
     });
   } catch (error) {
     console.error('Get dancers error:', error);

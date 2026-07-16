@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unifiedDb, initializeDatabase } from '@/lib/database';
+import { unifiedDb } from '@/lib/database';
+import { withCompetitionAges } from '@/lib/competition-age';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eodsaId: string }> }
 ) {
   try {
-    // await initializeDatabase(); // Commented out for performance - initialization happens once on server start
-    
     const { eodsaId } = await params;
+    const eventDate = request.nextUrl.searchParams.get('eventDate');
 
     if (!eodsaId) {
       return NextResponse.json(
@@ -17,7 +17,6 @@ export async function GET(
       );
     }
 
-    // Get dancer by EODSA ID
     const dancer = await unifiedDb.getDancerByEodsaId(eodsaId);
 
     if (!dancer) {
@@ -27,13 +26,15 @@ export async function GET(
       );
     }
 
-    // Get dancer's studio applications to determine studio association
     const applications = await unifiedDb.getDancerApplications(dancer.id);
     const acceptedApplication = applications.find(app => app.status === 'accepted');
+    const ages = withCompetitionAges(dancer, eventDate ? { eventDate } : {});
 
-    // Enhance dancer data with studio information
     const enhancedDancer = {
       ...dancer,
+      ...ages,
+      // Event dashboards historically read `age` for eligibility — use competition age
+      age: ages.competitionAge ?? dancer.age,
       studioAssociation: acceptedApplication ? {
         studioId: acceptedApplication.studioId,
         studioName: acceptedApplication.studio.name,

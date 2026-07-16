@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unifiedDb, db } from '@/lib/database';
+import { unifiedDb, db, getSql } from '@/lib/database';
+import { calculateAgeCategoryForEntry } from '@/lib/age-category-calculator';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +22,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Competition age category from Nationals reference date for the season
+    let ageCategory = body.ageCategory;
+    try {
+      const nationalsEvent = await db.getEventById(body.nationalsEventId);
+      const eventDate = nationalsEvent?.eventDate || new Date().toISOString().slice(0, 10);
+      const calculated = await calculateAgeCategoryForEntry(
+        body.participantIds,
+        eventDate,
+        getSql()
+      );
+      if (calculated && calculated !== 'N/A') {
+        ageCategory = calculated;
+      }
+    } catch (err) {
+      console.warn('Could not calculate nationals competition age category:', err);
+    }
+
     // Create nationals event entry
     const nationalsEntry = await unifiedDb.createNationalsEventEntry({
       nationalsEventId: body.nationalsEventId,
@@ -39,7 +57,7 @@ export async function POST(request: NextRequest) {
       itemStyle: body.itemStyle,
       estimatedDuration: body.estimatedDuration,
       performanceType: body.performanceType,
-      ageCategory: body.ageCategory,
+      ageCategory,
       soloCount: body.soloCount || 1,
       soloDetails: body.soloDetails || null,
       additionalNotes: body.additionalNotes || null

@@ -14,8 +14,11 @@ interface ProfileResponse {
       eodsaId: string;
       name: string;
       age: number | null;
+      competitionAge?: number | null;
       ageCategory: string | null;
       dateOfBirth: string | null;
+      seasonYear?: number | null;
+      nationalsReferenceDate?: string | null;
       approved: boolean | null;
       registrationFeeMasteryLevel: string | null;
     };
@@ -210,9 +213,18 @@ function AdminDancerProfilePageContent({
                   <span className={themeClasses.textMuted}>EODSA ID:</span>
                   <span className={`font-mono ${themeClasses.textSecondary}`}>{dancer.eodsaId}</span>
                 </div>
+                {dancer.competitionAge != null && (
+                  <div className="flex items-center gap-2">
+                    <span className={themeClasses.textMuted}>Competition age:</span>
+                    <span className={`${themeClasses.textSecondary} font-medium`}>{dancer.competitionAge}</span>
+                    {dancer.nationalsReferenceDate && (
+                      <span className={themeClasses.textMuted}>(as of {dancer.nationalsReferenceDate})</span>
+                    )}
+                  </div>
+                )}
                 {dancer.age !== null && (
                   <div className="flex items-center gap-2">
-                    <span className={themeClasses.textMuted}>Age:</span>
+                    <span className={themeClasses.textMuted}>Current age:</span>
                     <span className={`${themeClasses.textSecondary} font-medium`}>{dancer.age}</span>
                   </div>
                 )}

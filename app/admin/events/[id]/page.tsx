@@ -8,7 +8,8 @@ import { calculateEODSAFee } from '@/lib/types';
 import { eventUsesFlatPricing, getFixedEntryPrice, getPerDancerRate } from '@/lib/event-pricing';
 import { getSql } from '@/lib/database';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
-import { calculateAgeOnDate, getAgeCategoryFromAge } from '@/lib/types';
+import { getCompetitionAge } from '@/lib/competition-age';
+import { getAgeCategoryFromAge } from '@/lib/types';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 // Registration fee checking moved to API calls
 
@@ -683,9 +684,10 @@ function EventParticipantsPage() {
                   ` as any[];
                   
                   if (dancerResult.length > 0 && dancerResult[0].date_of_birth) {
-                    // Age should be calculated as of the event date for category grouping
-                    const referenceDate = event?.eventDate ? new Date(event.eventDate) : new Date();
-                    return calculateAgeOnDate(dancerResult[0].date_of_birth, referenceDate);
+                    // Competition age = age on season Nationals reference date
+                    return getCompetitionAge(dancerResult[0].date_of_birth, {
+                      eventDate: event?.eventDate,
+                    });
                   }
                   return null;
                 } catch (error) {

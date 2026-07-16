@@ -156,7 +156,7 @@ export default function NationalsEventsPage() {
       }
 
       // Load studio's dancers
-      const response = await fetch(`/api/studios/dancers-new?studioId=${id}`);
+      const response = await fetch(`/api/studios/dancers-new?studioId=${id}&ageMode=competition`);
       const data = await response.json();
       
       if (data.success) {

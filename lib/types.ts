@@ -336,12 +336,31 @@ export function getAgeCategoryFromAge(age: number): string {
   return '60+';
 }
 
-// Helper: compute age from a birth date relative to a reference date (defaults to today)
+/** Parse YYYY-MM-DD / Date as local calendar date (avoids UTC off-by-one). */
+function toLocalDateOnly(input: Date | string): Date {
+  if (input instanceof Date) {
+    return new Date(input.getFullYear(), input.getMonth(), input.getDate());
+  }
+  const s = String(input).trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) {
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+  const d = new Date(s);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/**
+ * Compute age from a birth date relative to a reference date (defaults to today).
+ * For competition age / categories / eligibility, prefer getCompetitionAge() from
+ * lib/competition-age.ts (age on the season Nationals reference date).
+ */
 export function calculateAgeOnDate(dateOfBirth: Date | string, referenceDate: Date = new Date()): number {
-  const dob = typeof dateOfBirth === 'string' ? new Date(dateOfBirth) : dateOfBirth;
-  let age = referenceDate.getFullYear() - dob.getFullYear();
-  const monthDiff = referenceDate.getMonth() - dob.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && referenceDate.getDate() < dob.getDate())) {
+  const dob = toLocalDateOnly(dateOfBirth);
+  const ref = toLocalDateOnly(referenceDate);
+  let age = ref.getFullYear() - dob.getFullYear();
+  const monthDiff = ref.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && ref.getDate() < dob.getDate())) {
     age--;
   }
   return age;

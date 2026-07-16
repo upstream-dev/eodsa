@@ -6326,6 +6326,9 @@ function DancersTabContent({ dancers, dancerSearchTerm, setDancerSearchTerm, dan
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium">{dancer.age}</div>
+                      <div className={`text-xs ${themeClasses.textMuted}`}>
+                        Competition age{dancer.nationalsReferenceDate ? ` (as of ${dancer.nationalsReferenceDate})` : ''}
+                      </div>
                       <div className={`text-xs ${themeClasses.textMuted}`}>{dancer.dateOfBirth}</div>
                     </td>
                     <td className="px-6 py-4">

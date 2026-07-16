@@ -627,7 +627,7 @@ export default function PerformanceTypeEntryPage() {
       }
 
       // Load studio's dancers
-      const response = await fetch(`/api/studios/dancers-new?studioId=${id}`);
+      const response = await fetch(`/api/studios/dancers-new?studioId=${id}&ageMode=competition`);
       const data = await response.json();
       
       if (data.success) {
@@ -747,7 +747,10 @@ export default function PerformanceTypeEntryPage() {
     
     setIsSearching(true);
     try {
-      const response = await fetch(`/api/dancers/search?q=${encodeURIComponent(query)}`);
+      const eventDateParam = selectedEvent?.eventDate
+        ? `&eventDate=${encodeURIComponent(selectedEvent.eventDate)}`
+        : '';
+      const response = await fetch(`/api/dancers/search?q=${encodeURIComponent(query)}${eventDateParam}`);
       const data = await response.json();
       
       if (data.success) {
@@ -822,7 +825,10 @@ export default function PerformanceTypeEntryPage() {
       
       // If query is long enough, search all dancers
       if (query && query.length >= 2) {
-        const response = await fetch(`/api/dancers/search?q=${encodeURIComponent(query)}`);
+        const eventDateParam = selectedEvent?.eventDate
+          ? `&eventDate=${encodeURIComponent(selectedEvent.eventDate)}`
+          : '';
+        const response = await fetch(`/api/dancers/search?q=${encodeURIComponent(query)}${eventDateParam}`);
         const data = await response.json();
         
         if (data.success) {
