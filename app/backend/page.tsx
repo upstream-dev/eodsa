@@ -1,10 +1,34 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { usePhase2Feature } from '@/hooks/usePhase2Feature';
 
 export default function BackendDashboard() {
+  const router = useRouter();
   const { isEnabled: isPhase2Enabled } = usePhase2Feature();
+  const [authorized, setAuthorized] = useState(false);
+
+  // Client-side belt-and-suspenders — middleware already enforces Admin cookie.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/admin-session', { method: 'GET' });
+        if (!res.ok) {
+          router.replace('/portal/admin?next=/backend');
+          return;
+        }
+        if (!cancelled) setAuthorized(true);
+      } catch {
+        router.replace('/portal/admin?next=/backend');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
   
   // Portal links that should be disabled when Phase 2 is disabled
   const phase2Portals = [
@@ -14,13 +38,12 @@ export default function BackendDashboard() {
     { href: '/portal/media', icon: '📸', label: 'Media Portal', color: 'pink' },
     { href: '/admin/sound-tech', icon: '🎵', label: 'Sound Tech', color: 'indigo' },
     { href: '/admin/notifications', icon: '📧', label: 'Admin Notifications', color: 'emerald' },
-    { href: 'https://www.avalondance.co.za/event-type-manager', icon: '🗂️', label: 'Event Type Manager', color: 'yellow', external: true }
+    { href: '/event-type-manager', icon: '🗂️', label: 'Event Type Manager', color: 'yellow', external: false }
   ];
 
   const PortalLink = ({ href, icon, label, color, external = false }: { href: string; icon: string; label: string; color: string; external?: boolean }) => {
     const isDisabled = !isPhase2Enabled;
     
-    // Map color to Tailwind classes
     const colorClasses: Record<string, { bg: string; hover: string; text: string }> = {
       purple: { bg: 'bg-purple-600/20', hover: 'hover:bg-purple-600/30', text: 'text-purple-400' },
       orange: { bg: 'bg-orange-600/20', hover: 'hover:bg-orange-600/30', text: 'text-orange-400' },
@@ -68,11 +91,18 @@ export default function BackendDashboard() {
     );
   };
 
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center">
+        <p className="text-gray-300 text-sm">Verifying admin access…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-8">
-          {/* EODSA Logo Placeholder */}
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4 shadow-2xl">
             <span className="text-white text-3xl font-bold">EODSA</span>
           </div>
@@ -80,11 +110,10 @@ export default function BackendDashboard() {
             Backend Dashboard
           </h1>
           <p className="text-gray-300 text-lg">Staff & Official Management Portal</p>
+          <p className="text-xs text-amber-300/80 mt-2">Admin access only</p>
         </div>
 
-        {/* Main Content */}
         <div className="max-w-6xl mx-auto">
-          {/* Staff Portals */}
           <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-gray-500/30 p-6 mb-8 shadow-2xl">
             <h3 className="text-xl font-bold text-white mb-4 text-center">Staff & Official Portals</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -114,7 +143,6 @@ export default function BackendDashboard() {
             </div>
           </div>
 
-          {/* Additional Admin Links */}
           <div className="text-center space-y-4">
             <div className="flex flex-wrap justify-center gap-4 text-sm">
               <Link href="/admin/scoring-approval" className="text-indigo-400 hover:text-indigo-300 transition-colors">
@@ -123,7 +151,6 @@ export default function BackendDashboard() {
             </div>
           </div>
 
-          {/* Back to Main */}
           <div className="text-center mt-8">
             <Link 
               href="/"
