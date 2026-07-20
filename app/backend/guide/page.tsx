@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { MASTERY_LEVELS, NATIONAL_MASTERY_LEVELS } from '@/lib/types';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { AdminAccessSplash, useRequireAdminSession } from '@/hooks/useRequireAdminSession';
 
 const REGIONAL_MEDALS = [
   { range: 'Below 65%', medal: 'Bronze', emoji: '🥉' },
@@ -84,6 +85,11 @@ const COMPARISON_ROWS = [
 function BackendGuidePageContent() {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
+  const { authorized, checking } = useRequireAdminSession();
+
+  if (checking || !authorized) {
+    return <AdminAccessSplash />;
+  }
 
   return (
     <div className={`min-h-screen ${themeClasses.mainBg}`}>
