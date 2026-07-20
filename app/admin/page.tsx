@@ -80,6 +80,8 @@ interface Dancer {
   name: string;
   age: number;
   dateOfBirth: string;
+  /** Competition season reference date (YYYY-MM-DD) used for displayed age */
+  nationalsReferenceDate?: string;
   nationalId: string;
   email?: string;
   phone?: string;
