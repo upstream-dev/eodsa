@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db, unifiedDb, getSql } from '@/lib/database';
-import { EODSA_FEES } from '@/lib/types';
+import { resolveEventRegistrationFee } from '@/lib/event-pricing';
 
 export async function GET(
   request: Request,
@@ -119,23 +119,49 @@ export async function GET(
     const soloEntries = enhancedEntries.filter(entry => entry.participationRole === 'solo');
     const groupEntries = enhancedEntries.filter(entry => entry.participationRole !== 'solo');
 
-    // Calculate total outstanding balance
-    const registrationFeeOutstanding = dancer.registrationFeePaid ? 0 : EODSA_FEES.REGISTRATION.Nationals;
+    const registrationFlags = await sqlClient`
+      SELECT event_id, charged_at
+      FROM registration_charged_flags
+      WHERE eodsa_id = ${eodsaId}
+    ` as Array<{ event_id: string; charged_at: string }>;
+
+    const chargedEventIds = new Set(registrationFlags.map((row) => row.event_id));
+    const eventIdsWithEntries = [...new Set(relatedEntries.map((entry) => entry.eventId))];
+
+    const registrationByEvent = eventIdsWithEntries.map((eventId) => {
+      const event = eventMap[eventId];
+      const amount = resolveEventRegistrationFee(event || {});
+      const charged = chargedEventIds.has(eventId);
+      const flag = registrationFlags.find((row) => row.event_id === eventId);
+      return {
+        eventId,
+        eventName: event?.name || 'Unknown Event',
+        amount,
+        charged,
+        chargedAt: flag?.charged_at || null,
+        outstanding: amount > 0 && !charged ? amount : 0,
+      };
+    });
+
+    const registrationFeePaidTotal = registrationByEvent
+      .filter((item) => item.charged)
+      .reduce((sum, item) => sum + item.amount, 0);
+
+    const registrationFeeOutstanding = registrationByEvent
+      .reduce((sum, item) => sum + item.outstanding, 0);
     
-    // For outstanding calculation, we only count unpaid entries
     const unpaidEntries = enhancedEntries.filter(entry => entry.paymentStatus !== 'paid');
     const totalEntryOutstanding = unpaidEntries.reduce((total, entry) => {
-      // If it's a group entry and dancer is not main contestant, they pay a share
       return total + (entry.dancerShare || 0);
     }, 0);
 
     const totalOutstanding = registrationFeeOutstanding + totalEntryOutstanding;
 
-    // Calculate total paid
     const paidEntries = enhancedEntries.filter(entry => entry.paymentStatus === 'paid');
-    const totalPaid = paidEntries.reduce((total, entry) => {
+    const totalEntryPaid = paidEntries.reduce((total, entry) => {
       return total + (entry.dancerShare || 0);
     }, 0);
+    const totalPaid = totalEntryPaid + registrationFeePaidTotal;
 
     return NextResponse.json({
       success: true,
@@ -148,11 +174,14 @@ export async function GET(
         registrationFeeMasteryLevel: dancer.registrationFeeMasteryLevel
       },
       financial: {
-        registrationFeeAmount: EODSA_FEES.REGISTRATION.Nationals,
+        registrationFeeAmount: registrationByEvent.reduce((sum, item) => sum + item.amount, 0),
+        registrationFeePaidTotal,
         registrationFeeOutstanding,
+        registrationByEvent,
         totalEntryOutstanding,
         totalOutstanding,
-        totalPaid
+        totalPaid,
+        totalEntryPaid,
       },
       entries: {
         all: enhancedEntries,

@@ -38,6 +38,18 @@ function toAmount(value: number | string | null | undefined, fallback = 0): numb
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/** Flat pricing uses registration_fee; legacy events may only have registration_fee_per_dancer set. */
+export function resolveEventRegistrationFee(input: {
+  registrationFee?: number | null;
+  registrationFeePerDancer?: number | null;
+  registration_fee?: number | string | null;
+  registration_fee_per_dancer?: number | string | null;
+}): number {
+  const flat = toAmount(input.registrationFee ?? input.registration_fee, 0);
+  if (flat > 0) return flat;
+  return toAmount(input.registrationFeePerDancer ?? input.registration_fee_per_dancer, 0);
+}
+
 /** Primary grouping key: first participant, else eodsaId, else unique per row (no accidental cross-dancer bundling). */
 export function getPricingDancerKey(entry: PricingEntry, index: number): string {
   const ids = Array.isArray(entry.participantIds) ? entry.participantIds.filter(Boolean) : [];

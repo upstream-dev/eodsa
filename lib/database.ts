@@ -677,7 +677,11 @@ function mapEventRow(row: any): Event {
     discountEnabled: row.discount_enabled ?? false,
     discountMinEntries: row.discount_min_entries != null ? parseInt(row.discount_min_entries) : 0,
     discountAmount: row.discount_amount != null ? parseFloat(row.discount_amount) : 0,
-    registrationFee: row.registration_fee != null ? parseFloat(row.registration_fee) : 0,
+    registrationFee: (() => {
+      const flat = row.registration_fee != null ? parseFloat(row.registration_fee) : 0;
+      if (flat > 0) return flat;
+      return row.registration_fee_per_dancer != null ? parseFloat(row.registration_fee_per_dancer) : 0;
+    })(),
     currency: row.currency || 'ZAR',
     participationMode: row.participation_mode || 'hybrid',
     certificateTemplateUrl: row.certificate_template_url || undefined,

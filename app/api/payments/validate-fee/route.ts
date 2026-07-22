@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/database';
-import { calculateEventPricing, getFixedEntryPrice, getParticipantCount } from '@/lib/event-pricing';
+import { calculateEventPricing, getFixedEntryPrice, getParticipantCount, resolveEventRegistrationFee } from '@/lib/event-pricing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,11 +24,14 @@ export async function POST(request: NextRequest) {
     }
     const sql = getSql();
     const [event] = await sql`
-      SELECT solo_price, duet_price, group_price, discount_enabled, discount_min_entries, discount_amount, registration_fee
+      SELECT solo_price, duet_price, group_price, discount_enabled, discount_min_entries, discount_amount,
+             registration_fee, registration_fee_per_dancer
       FROM events
       WHERE id = ${eventId}
     ` as any[];
     if (!event) throw new Error(`Event ${eventId} not found`);
+
+    const registrationFeePerDancer = resolveEventRegistrationFee(event);
 
     const normalizedParticipantIds = Array.isArray(participantIds) ? participantIds : [participantIds];
     const alreadyRegistered: string[] = [];
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
       discountEnabled: event.discount_enabled,
       discountMinEntries: event.discount_min_entries,
       discountAmount: event.discount_amount,
-      registrationFee: event.registration_fee
+      registrationFee: registrationFeePerDancer
     }, alreadyRegistered, existingSoloCountByDancer);
 
     // Check for mismatch

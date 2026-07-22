@@ -11,7 +11,202 @@ import {
   getFixedEntryPrice,
   getParticipantCount,
   getPricingDancerKey,
+  resolveEventRegistrationFee,
 } from './event-pricing';
+import { markRegistrationCharged } from './incremental-fee-calculator';
+
+export interface BatchPricingResult {
+  totalComputedFee: number;
+  registrationTotal: number;
+  registrationFeePerDancer: number;
+  alreadyRegistered: Set<string>;
+  pricing: ReturnType<typeof calculateEventPricing>;
+  validations: EntryFeeValidation[];
+}
+
+function collectParticipantKeys(entry: any): string[] {
+  const keys = new Set<string>();
+  const ids = Array.isArray(entry.participantIds) ? entry.participantIds : [];
+  ids.forEach((id: string) => id && keys.add(String(id)));
+  if (entry.eodsaId) keys.add(String(entry.eodsaId));
+  return Array.from(keys);
+}
+
+/** Add per-event registration fee to the first batch line for each dancer not already registered. */
+export function enrichBatchEntriesWithRegistrationFees(
+  entries: any[],
+  registrationFeePerDancer: number,
+  alreadyRegistered: Set<string>
+): { entries: any[]; newlyCharged: Array<{ eodsaId: string; dancerId: string }> } {
+  if (registrationFeePerDancer <= 0 || !entries.length) {
+    return { entries: entries.map((e) => ({ ...e })), newlyCharged: [] };
+  }
+
+  const chargedInBatch = new Set<string>();
+  const newlyCharged: Array<{ eodsaId: string; dancerId: string }> = [];
+  const result = entries.map((entry) => ({
+    ...entry,
+    calculatedFee: Number(entry.calculatedFee) || 0,
+  }));
+
+  for (const entry of result) {
+    for (const key of collectParticipantKeys(entry)) {
+      if (alreadyRegistered.has(key) || chargedInBatch.has(key)) continue;
+
+      entry.calculatedFee += registrationFeePerDancer;
+      chargedInBatch.add(key);
+
+      const eodsaId = String(entry.eodsaId || key);
+      const dancerId = String(entry.contestantId || entry.eodsaId || key);
+      newlyCharged.push({ eodsaId, dancerId });
+    }
+  }
+
+  return { entries: result, newlyCharged };
+}
+
+export async function markBatchRegistrationCharged(
+  eventId: string,
+  charges: Array<{ eodsaId: string; dancerId: string }>
+): Promise<void> {
+  for (const charge of charges) {
+    if (!charge.eodsaId) continue;
+    await markRegistrationCharged(eventId, charge.dancerId, charge.eodsaId);
+  }
+}
+
+export async function computeBatchEntryPricing(
+  entries: any[],
+  eventId: string
+): Promise<BatchPricingResult> {
+  const sql = getSql();
+  const normalizedEntries = Array.isArray(entries) ? entries : [];
+
+  const eventRows = await sql`
+    SELECT solo_price, duet_price, group_price, discount_enabled, discount_min_entries, discount_amount,
+           registration_fee, registration_fee_per_dancer
+    FROM events
+    WHERE id = ${eventId}
+  ` as any[];
+  if (!eventRows.length) throw new Error(`Event ${eventId} not found`);
+
+  const event = eventRows[0];
+  const registrationFeePerDancer = resolveEventRegistrationFee(event);
+
+  const allParticipantIds = new Set<string>();
+  normalizedEntries.forEach((entry) => {
+    collectParticipantKeys(entry).forEach((id) => allParticipantIds.add(id));
+  });
+
+  const alreadyRegistered = new Set<string>();
+  for (const pid of allParticipantIds) {
+    const existing = await sql`
+      SELECT id FROM event_entries
+      WHERE event_id = ${eventId}
+      AND (
+        eodsa_id = ${pid}
+        OR participant_ids::text LIKE ${`%${pid}%`}
+      )
+      LIMIT 1
+    ` as any[];
+    if (existing.length > 0) alreadyRegistered.add(pid);
+
+    const charged = await sql`
+      SELECT id FROM registration_charged_flags
+      WHERE event_id = ${eventId} AND eodsa_id = ${pid}
+      LIMIT 1
+    ` as any[];
+    if (charged.length > 0) alreadyRegistered.add(pid);
+  }
+
+  const existingSoloCountByDancer: Record<string, number> = {};
+  for (let i = 0; i < normalizedEntries.length; i++) {
+    const key = getPricingDancerKey(normalizedEntries[i], i);
+    if (key.startsWith('__unassigned_')) continue;
+    if (existingSoloCountByDancer[key] !== undefined) continue;
+    const likePattern = `%${key}%`;
+    const [cntRow] = await sql`
+      SELECT COUNT(*)::int AS c
+      FROM event_entries
+      WHERE event_id = ${eventId}
+      AND LOWER(TRIM(COALESCE(performance_type, ''))) = 'solo'
+      AND (
+        eodsa_id = ${key}
+        OR participant_ids::text LIKE ${likePattern}
+      )
+    ` as any[];
+    existingSoloCountByDancer[key] = cntRow?.c ?? 0;
+  }
+
+  const pricing = calculateEventPricing(normalizedEntries, {
+    soloPrice: event.solo_price,
+    duetPrice: event.duet_price,
+    groupPrice: event.group_price,
+    discountEnabled: event.discount_enabled,
+    discountMinEntries: event.discount_min_entries,
+    discountAmount: event.discount_amount,
+    registrationFee: registrationFeePerDancer,
+  }, Array.from(alreadyRegistered), existingSoloCountByDancer);
+
+  const entryDiscounts = pricing.entryDiscounts?.length === normalizedEntries.length
+    ? pricing.entryDiscounts
+    : normalizedEntries.map(() => 0);
+
+  const validations: EntryFeeValidation[] = [];
+  for (let i = 0; i < normalizedEntries.length; i++) {
+    const entry = normalizedEntries[i];
+    const participantCount = getParticipantCount(entry);
+    const basePrice = getFixedEntryPrice(entry.performanceType, {
+      soloPrice: event.solo_price,
+      duetPrice: event.duet_price,
+      groupPrice: event.group_price,
+    }, participantCount);
+    const lineDiscount = entryDiscounts[i] || 0;
+    const computedFee = Math.max(0, basePrice - lineDiscount);
+    const typeLabel = (entry.performanceType || '').toLowerCase();
+    const breakdown =
+      typeLabel === 'solo'
+        ? `Solo ${basePrice}`
+        : `${entry.performanceType} (${participantCount} × rate = ${basePrice})`;
+
+    validations.push({
+      entryIndex: i,
+      entry,
+      computedFee,
+      clientSentFee: entry.calculatedFee || 0,
+      registrationFee: 0,
+      entryFee: basePrice,
+      registrationCharged: false,
+      registrationWasAlreadyCharged: false,
+      entryCount: participantCount,
+      breakdown,
+      warnings: [],
+      isValid: true,
+      mismatchDetected: false,
+    });
+  }
+
+  return {
+    totalComputedFee: pricing.total,
+    registrationTotal: pricing.registrationTotal,
+    registrationFeePerDancer,
+    alreadyRegistered,
+    pricing,
+    validations,
+  };
+}
+
+export async function prepareEntriesForBatchCreation(
+  entries: any[],
+  eventId: string
+): Promise<{ entries: any[]; newlyCharged: Array<{ eodsaId: string; dancerId: string }> }> {
+  const batchPricing = await computeBatchEntryPricing(entries, eventId);
+  return enrichBatchEntriesWithRegistrationFees(
+    entries,
+    batchPricing.registrationFeePerDancer,
+    batchPricing.alreadyRegistered
+  );
+}
 
 export interface EntryFeeValidation {
   entryIndex: number;
@@ -47,117 +242,20 @@ export async function validateBatchEntryFees(
   eventId: string,
   clientSentTotal: number
 ): Promise<BatchValidationResult> {
-  const sql = getSql();
-  const validations: EntryFeeValidation[] = [];
-  const normalizedEntries = Array.isArray(entries) ? entries : [];
+  const batchPricing = await computeBatchEntryPricing(entries, eventId);
+  const totalComputedFee = batchPricing.totalComputedFee;
+  const validations = batchPricing.validations;
 
-  const eventRows = await sql`
-    SELECT solo_price, duet_price, group_price, discount_enabled, discount_min_entries, discount_amount, registration_fee
-    FROM events
-    WHERE id = ${eventId}
-  ` as any[];
-  if (!eventRows.length) throw new Error(`Event ${eventId} not found`);
-
-  const event = eventRows[0];
-  const allParticipantIds = new Set<string>();
-  normalizedEntries.forEach((entry) => {
-    const ids = Array.isArray(entry.participantIds) ? entry.participantIds : [];
-    ids.forEach((id: string) => id && allParticipantIds.add(id));
-    if (!ids.length && entry.eodsaId) allParticipantIds.add(entry.eodsaId);
-  });
-
-  const alreadyRegistered = new Set<string>();
-  for (const pid of allParticipantIds) {
-    const existing = await sql`
-      SELECT id FROM event_entries
-      WHERE event_id = ${eventId}
-      AND (
-        eodsa_id = ${pid}
-        OR participant_ids::text LIKE ${`%${pid}%`}
-      )
-      LIMIT 1
-    ` as any[];
-    if (existing.length > 0) alreadyRegistered.add(pid);
-  }
-
-  const existingSoloCountByDancer: Record<string, number> = {};
-  for (let i = 0; i < normalizedEntries.length; i++) {
-    const key = getPricingDancerKey(normalizedEntries[i], i);
-    if (key.startsWith('__unassigned_')) continue;
-    if (existingSoloCountByDancer[key] !== undefined) continue;
-    const likePattern = `%${key}%`;
-    const [cntRow] = await sql`
-      SELECT COUNT(*)::int AS c
-      FROM event_entries
-      WHERE event_id = ${eventId}
-      AND LOWER(TRIM(COALESCE(performance_type, ''))) = 'solo'
-      AND (
-        eodsa_id = ${key}
-        OR participant_ids::text LIKE ${likePattern}
-      )
-    ` as any[];
-    existingSoloCountByDancer[key] = cntRow?.c ?? 0;
-  }
-
-  const pricing = calculateEventPricing(normalizedEntries, {
-    soloPrice: event.solo_price,
-    duetPrice: event.duet_price,
-    groupPrice: event.group_price,
-    discountEnabled: event.discount_enabled,
-    discountMinEntries: event.discount_min_entries,
-    discountAmount: event.discount_amount,
-    registrationFee: event.registration_fee
-  }, Array.from(alreadyRegistered), existingSoloCountByDancer);
-
-  const entryDiscounts = pricing.entryDiscounts?.length === normalizedEntries.length
-    ? pricing.entryDiscounts
-    : normalizedEntries.map(() => 0);
-
-  for (let i = 0; i < normalizedEntries.length; i++) {
-    const entry = normalizedEntries[i];
-    const participantCount = getParticipantCount(entry);
-    const basePrice = getFixedEntryPrice(entry.performanceType, {
-      soloPrice: event.solo_price,
-      duetPrice: event.duet_price,
-      groupPrice: event.group_price,
-    }, participantCount);
-    const lineDiscount = entryDiscounts[i] || 0;
-    const computedFee = Math.max(0, basePrice - lineDiscount);
-    const typeLabel = (entry.performanceType || '').toLowerCase();
-    const breakdown =
-      typeLabel === 'solo'
-        ? `Solo ${basePrice}`
-        : `${entry.performanceType} (${participantCount} × rate = ${basePrice})`;
-    validations.push({
-      entryIndex: i,
-      entry,
-      computedFee,
-      clientSentFee: entry.calculatedFee || 0,
-      registrationFee: 0,
-      entryFee: basePrice,
-      registrationCharged: false,
-      registrationWasAlreadyCharged: false,
-      entryCount: participantCount,
-      breakdown,
-      warnings: [],
-      isValid: true,
-      mismatchDetected: false
-    });
-  }
-
-  const totalComputedFee = pricing.total;
-
-  // Check total mismatch
   const totalMismatchDetected = Math.abs(clientSentTotal - totalComputedFee) > 0.01;
   const totalMismatchReason = totalMismatchDetected
     ? `Total mismatch: Client sent ${clientSentTotal}, computed ${totalComputedFee}, difference: ${Math.abs(clientSentTotal - totalComputedFee)}`
     : undefined;
-  
-  // Debug logging for total
+
   console.log(`📊 Batch validation summary:`, {
     entriesCount: entries.length,
     clientSentTotal,
     totalComputedFee,
+    registrationTotal: batchPricing.registrationTotal,
     mismatchDetected: totalMismatchDetected,
     mismatchReason: totalMismatchReason,
     validations: validations.map(v => ({
@@ -169,15 +267,13 @@ export async function validateBatchEntryFees(
     }))
   });
 
-  // Only check total mismatch - ignore per-entry mismatches
-  // The frontend sends entryFee without registrationFee, so per-entry comparison is not valid
   return {
     totalComputedFee,
     totalClientSentFee: clientSentTotal,
     validations,
-    allValid: !totalMismatchDetected, // Only check total, not per-entry
-    mismatchDetected: totalMismatchDetected, // Only total mismatch matters
-    mismatchReason: totalMismatchReason // Only total mismatch reason
+    allValid: !totalMismatchDetected,
+    mismatchDetected: totalMismatchDetected,
+    mismatchReason: totalMismatchReason
   };
 }
 

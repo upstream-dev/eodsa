@@ -8,7 +8,7 @@ import CountdownTimer from '@/app/components/CountdownTimer';
 import EventPricingPanel from '@/app/components/EventPricingPanel';
 import { useToast } from '@/components/ui/simple-toast';
 import MusicUpload from '@/components/MusicUpload';
-import { calculateEventPricing, getFixedEntryPrice, getNetPerformanceLineParts } from '@/lib/event-pricing';
+import { calculateEventPricing, getFixedEntryPrice, getNetPerformanceLineParts, resolveEventRegistrationFee } from '@/lib/event-pricing';
 // Registration fee checking moved to API calls
 /** Solo counts per dancer already on file for this event (every-Nth-solo sequence). */
 function buildExistingSoloCountsFromDb(dbEntries: any[]): Record<string, number> {
@@ -729,7 +729,7 @@ export default function CompetitionEntryPage() {
     
     const currency = event.currency || 'ZAR';
     const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : 'R';
-    const regFee = event.registrationFee || 0;
+    const regFee = resolveEventRegistrationFee(event as any);
     const base = getStartingFee(performanceType);
     if (performanceType === 'Duet' || performanceType === 'Trio') {
       return `${symbol}${base} per entry. Registration ${symbol}${regFee} per dancer (once per event).`;
@@ -799,7 +799,7 @@ export default function CompetitionEntryPage() {
         discountEnabled: (event as any).discountEnabled,
         discountMinEntries: (event as any).discountMinEntries,
         discountAmount: (event as any).discountAmount,
-        registrationFee: (event as any).registrationFee
+        registrationFee: resolveEventRegistrationFee(event as any)
       };
       if ((performanceType || '').toLowerCase() === 'solo' && participantIds.length >= 1) {
         const pid = participantIds[0];
@@ -1252,7 +1252,7 @@ export default function CompetitionEntryPage() {
       discountEnabled: (event as any)?.discountEnabled,
       discountMinEntries: (event as any)?.discountMinEntries,
       discountAmount: (event as any)?.discountAmount,
-      registrationFee: (event as any)?.registrationFee
+      registrationFee: resolveEventRegistrationFee(event as any)
     }, Array.from(existingParticipantIds), existingSoloCountByDancer);
 
     const regUi = getRegistrationUiBreakdown(entries, existingParticipantIds, availableDancers);
@@ -2572,7 +2572,7 @@ export default function CompetitionEntryPage() {
                        <div className="text-xs text-slate-400">
                          ({registrationUi.participantsNeedingReg} new dancer
                          {registrationUi.participantsNeedingReg !== 1 ? 's' : ''} × {getCurrencySymbol()}
-                         {event?.registrationFee || 0} — once per event)
+                         {resolveEventRegistrationFee(event || {})} — once per event)
                        </div>
                        {registrationUi.participantsAlreadyRegistered > 0 && (
                          <div className="text-xs text-emerald-400/80">

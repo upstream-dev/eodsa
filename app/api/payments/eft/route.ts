@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/database';
-import { validateBatchEntryFees, createBatchTransactionRecords } from '@/lib/payment-validation';
+import { validateBatchEntryFees, createBatchTransactionRecords, prepareEntriesForBatchCreation, markBatchRegistrationCharged } from '@/lib/payment-validation';
 import {
   findExistingEntryIdForLine,
   countEntriesForEftInvoice,
@@ -113,9 +113,19 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      let entriesToInsert = entries;
+      let registrationCharges: Array<{ eodsaId: string; dancerId: string }> = [];
+      try {
+        const prepared = await prepareEntriesForBatchCreation(entries, eventId);
+        entriesToInsert = prepared.entries;
+        registrationCharges = prepared.newlyCharged;
+      } catch (prepError) {
+        console.warn('⚠️ Could not enrich EFT entries with registration fees:', prepError);
+      }
+
       // Submit all entries to the database immediately with pending payment status
-      for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
+      for (let i = 0; i < entriesToInsert.length; i++) {
+        const entry = entriesToInsert[i];
         const participantIds = parseParticipantIds(entry.participantIds);
 
         const existingEntryId = await findExistingEntryIdForLine(
@@ -166,6 +176,14 @@ export async function POST(request: NextRequest) {
         } catch (dbError: any) {
           console.error(`❌ Failed to create entry ${entryId}:`, dbError);
           throw new Error(`Failed to submit entry: ${entry.itemName}`);
+        }
+      }
+
+      if (registrationCharges.length > 0) {
+        try {
+          await markBatchRegistrationCharged(eventId, registrationCharges);
+        } catch (regError) {
+          console.warn('⚠️ Failed to mark registration charged for EFT batch:', regError);
         }
       }
     }

@@ -5,6 +5,7 @@
 
 import { getSql } from './database';
 import { autoMarkRegistrationForParticipants } from './registration-fee-tracker';
+import { markBatchRegistrationCharged, prepareEntriesForBatchCreation } from './payment-validation';
 import {
   findExistingEntryIdForLine,
   batchEntryFingerprint,
@@ -125,8 +126,22 @@ export async function reconcileBatchEntriesFromPending(
   const { db, unifiedDb } = await import('./database');
   const existingByFingerprint = await loadExistingFingerprintsForPayment(paymentId);
 
-  for (let i = 0; i < entriesData.length; i++) {
-    const entry = entriesData[i];
+  const eventId = entriesData[0]?.eventId;
+  let entriesToProcess = entriesData;
+  let registrationCharges: Array<{ eodsaId: string; dancerId: string }> = [];
+
+  if (eventId) {
+    try {
+      const prepared = await prepareEntriesForBatchCreation(entriesData, eventId);
+      entriesToProcess = prepared.entries;
+      registrationCharges = prepared.newlyCharged;
+    } catch (prepError) {
+      console.warn(`⚠️ [${source}] Could not enrich batch entries with registration fees:`, prepError);
+    }
+  }
+
+  for (let i = 0; i < entriesToProcess.length; i++) {
+    const entry = entriesToProcess[i];
     const participantIds = parseParticipantIds(entry.participantIds);
     const fingerprint = batchEntryFingerprint(entry.itemName, participantIds);
     let existingId = existingByFingerprint.get(fingerprint);
@@ -227,6 +242,14 @@ export async function reconcileBatchEntriesFromPending(
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error(`❌ [${source}] Entry ${i + 1} (${entry.itemName}):`, error);
       result.errors.push({ itemName: entry.itemName, index: i, error: message });
+    }
+  }
+
+  if (eventId && registrationCharges.length > 0) {
+    try {
+      await markBatchRegistrationCharged(eventId, registrationCharges);
+    } catch (regFlagError) {
+      console.warn(`⚠️ [${source}] Failed to mark registration charged flags:`, regFlagError);
     }
   }
 

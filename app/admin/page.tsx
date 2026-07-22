@@ -4511,53 +4511,37 @@ function AdminDashboard() {
                 </div>
               ) : (
                 <>
-                  {/* Registration Fee Section */}
+                  {/* Registration Fee Section — per event */}
                   <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} p-4 border ${themeClasses.metricCardBorder}`}>
                     <h3 className={`${themeClasses.heading3} mb-3 flex items-center`}>
                       <span className="mr-2">📝</span>
-                      Registration Fee
+                      Registration Fees (per event)
                     </h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm ${themeClasses.textSecondary}`}>Status:</span>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          selectedDancerFinances.registrationFeePaid
-                            ? theme === 'dark' ? 'bg-green-900/80 text-green-200 border border-green-700' : 'bg-green-100 text-green-800 border border-green-200'
-                            : theme === 'dark' ? 'bg-red-900/80 text-red-200 border border-red-700' : 'bg-red-100 text-red-800 border border-red-200'
-                        }`}>
-                          {selectedDancerFinances.registrationFeePaid ? '✅ Paid' : '❌ Not Paid'}
-                        </span>
-                      </div>
-                      
-                      {selectedDancerFinances.registrationFeePaid && selectedDancerFinances.registrationFeePaidAt && (
-                        <div className="flex justify-between items-center">
-                          <span className={`text-sm ${themeClasses.textSecondary}`}>Paid Date:</span>
-                          <span className={`text-sm ${themeClasses.textPrimary}`}>
-                            {new Date(selectedDancerFinances.registrationFeePaidAt).toLocaleDateString()}
+                    {selectedDancerFinances.financial?.registrationByEvent?.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedDancerFinances.financial.registrationByEvent.map((reg: any) => (
+                          <div key={reg.eventId} className={`flex justify-between items-center py-2 border-b ${themeClasses.cardBorder} last:border-b-0`}>
+                            <div>
+                              <div className={`text-sm font-medium ${themeClasses.textPrimary}`}>{reg.eventName}</div>
+                              <div className={`text-xs ${themeClasses.textMuted}`}>
+                                {reg.charged ? `Paid${reg.chargedAt ? ` · ${new Date(reg.chargedAt).toLocaleDateString()}` : ''}` : 'Outstanding'}
+                              </div>
+                            </div>
+                            <span className={`text-sm font-bold ${reg.charged ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
+                              {reg.charged ? `R${reg.amount.toFixed(2)}` : `R${reg.outstanding.toFixed(2)} due`}
+                            </span>
+                          </div>
+                        ))}
+                        <div className={`flex justify-between items-center pt-2 border-t ${themeClasses.cardBorder}`}>
+                          <span className={`text-sm font-medium ${themeClasses.textSecondary}`}>Registration outstanding:</span>
+                          <span className={`text-sm font-bold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                            R{selectedDancerFinances.financial?.registrationFeeOutstanding?.toFixed(2) || '0.00'}
                           </span>
                         </div>
-                      )}
-                      
-                      {selectedDancerFinances.registrationFeeMasteryLevel && (
-                        <div className="flex justify-between items-center">
-                          <span className={`text-sm ${themeClasses.textSecondary}`}>Mastery Level:</span>
-                          <span className={`text-sm ${themeClasses.textPrimary}`}>
-                            {selectedDancerFinances.registrationFeeMasteryLevel}
-                          </span>
-                        </div>
-                      )}
-                      
-                      <div className={`flex justify-between items-center pt-2 border-t ${themeClasses.cardBorder}`}>
-                        <span className={`text-sm font-medium ${themeClasses.textSecondary}`}>Registration Fee Amount:</span>
-                        <span className={`text-sm font-bold ${
-                          selectedDancerFinances.registrationFeePaid 
-                            ? theme === 'dark' ? 'text-green-400' : 'text-green-600'
-                            : theme === 'dark' ? 'text-red-400' : 'text-red-600'
-                        }`}>
-                          {selectedDancerFinances.registrationFeePaid ? 'R0.00' : `R${EODSA_FEES.REGISTRATION.Nationals.toFixed(2)}`}
-                        </span>
                       </div>
-                    </div>
+                    ) : (
+                      <p className={`text-sm ${themeClasses.textSecondary}`}>No registration fees recorded yet.</p>
+                    )}
                   </div>
 
                   {/* Enhanced Balance Overview */}
