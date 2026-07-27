@@ -1794,20 +1794,26 @@ export default function CompetitionEntryPage() {
  key={type}
  onClick={() => !isDisabled && handleAddPerformanceType(type)}
  disabled={isDisabled}
- className={`p-4 sm:p-5 text-white rounded-xl transition-all duration-300 transform min-h-[120px] sm:min-h-[140px] border ${
+ aria-pressed={isActive}
+ className={`avalon-option relative p-4 sm:p-5 text-white rounded-xl transition-all duration-300 transform min-h-[120px] sm:min-h-[140px] border ${
  isDisabled 
  ? 'bg-gray-700/40 border-gray-600 cursor-not-allowed opacity-50' 
  : isActive 
- ? 'bg-[rgba(192,192,192,0.12)] border-[rgba(192,192,192,0.5)] ring-2 ring-[rgba(192,192,192,0.35)] hover:scale-[1.02]' 
- : 'bg-[rgba(17,17,17,0.72)] border-[rgba(192,192,192,0.22)] hover:border-[rgba(192,192,192,0.45)] hover:bg-[rgba(192,192,192,0.08)] hover:scale-[1.02]'
+ ? 'avalon-option-selected hover:scale-[1.02]' 
+ : 'bg-[rgba(17,17,17,0.72)] border-[rgba(192,192,192,0.22)] hover:border-[rgba(0,230,255,0.35)] hover:bg-[rgba(0,230,255,0.05)] hover:scale-[1.02]'
  }`}
  >
  <div className="text-center">
- <h4 className="text-lg font-semibold mb-2"> Add {type}
- {isDisabled && <span className="block text-xs mt-1 opacity-75">Requires studio membership</span>}</h4> {/* Flat pricing */}
+ {isActive && !isDisabled && (
+ <div className="mb-2 flex justify-center">
+ <span className="avalon-option-selected-badge">Selected</span>
+ </div>
+ )}
+ <h4 className={`text-lg font-semibold mb-2 ${isActive && !isDisabled ? 'brand-duo-text' : ''}`}> Add {type}
+ {isDisabled && <span className="block text-xs mt-1 opacity-75 text-white">Requires studio membership</span>}</h4> {/* Flat pricing */}
  {type === 'Solo' && (
  <div className="text-sm mb-2">
- <div className="font-semibold text-emerald-200"> Next: {currencySymbol}{nextSoloFee}
+ <div className={`font-semibold ${isActive ? 'text-[var(--electric-cyan)]' : 'text-emerald-200'}`}> Next: {currencySymbol}{nextSoloFee}
  </div>
  <div className="text-xs opacity-75">Fixed per solo entry</div>
  </div> )}
@@ -1815,7 +1821,7 @@ export default function CompetitionEntryPage() {
  {/* Dynamic pricing for others */}
  {type !== 'Solo' && (
  <div className="text-sm mb-2">
- <div className="font-semibold text-emerald-200"> From {currencySymbol}{getStartingFee(type)}
+ <div className={`font-semibold ${isActive ? 'text-[var(--electric-cyan)]' : 'text-emerald-200'}`}> From {currencySymbol}{getStartingFee(type)}
  </div>
  </div> )}
  
@@ -1980,34 +1986,40 @@ export default function CompetitionEntryPage() {
  <button
  type="button" onClick={() => setCurrentForm({...currentForm, entryType: 'live', videoExternalUrl: '', musicFileUrl: currentForm.entryType === 'virtual' ? '' : currentForm.musicFileUrl})}
  disabled={event?.participationMode === 'virtual'}
- className={`p-4 sm:p-6 rounded-xl border-2 transition-all duration-300 transform hover:scale-[1.02] min-h-[100px] sm:min-h-[120px] ${
+ aria-pressed={currentForm.entryType === 'live'}
+ className={`avalon-option p-4 sm:p-6 rounded-xl border-2 transition-all duration-300 transform hover:scale-[1.02] min-h-[100px] sm:min-h-[120px] ${
  currentForm.entryType === 'live'
- ? 'border-[rgba(192,192,192,0.5)] bg-[rgba(192,192,192,0.08)] text-[var(--chrome-light)] ring-2 ring-[rgba(192,192,192,0.35)]'
+ ? 'avalon-option-selected'
  : event?.participationMode === 'virtual'
  ? 'border-slate-700 bg-slate-800/50 text-slate-600 cursor-not-allowed opacity-50'
- : 'border-slate-600 bg-slate-700/30 text-slate-400 hover:border-[rgba(192,192,192,0.45)] hover:bg-[rgba(192,192,192,0.08)]'
+ : 'border-slate-600 bg-slate-700/30 text-slate-400 hover:border-[rgba(0,230,255,0.35)] hover:bg-[rgba(0,230,255,0.05)]'
  }`}
  >
  <div className="flex flex-col items-center justify-center space-y-2 h-full">
- <span className="text-3xl"></span>
- <span className="font-semibold text-base">Live Performance</span>
+ {currentForm.entryType === 'live' && event?.participationMode !== 'virtual' && (
+ <span className="avalon-option-selected-badge">Selected</span>
+ )}
+ <span className={`font-semibold text-base ${currentForm.entryType === 'live' ? 'brand-duo-text' : ''}`}>Live Performance</span>
  <span className="text-xs text-center opacity-90 leading-relaxed"> {event?.participationMode === 'virtual' ? 'Not available for this event' : 'Upload music file for in-person performance'}
  </span>
  </div>
  </button>  <button
  type="button" onClick={() => setCurrentForm({...currentForm, entryType: 'virtual', musicFileUrl: '', musicFileName: ''})}
  disabled={event?.participationMode === 'live'}
- className={`p-4 sm:p-6 rounded-xl border-2 transition-all duration-300 transform hover:scale-[1.02] min-h-[100px] sm:min-h-[120px] ${
+ aria-pressed={currentForm.entryType === 'virtual'}
+ className={`avalon-option p-4 sm:p-6 rounded-xl border-2 transition-all duration-300 transform hover:scale-[1.02] min-h-[100px] sm:min-h-[120px] ${
  currentForm.entryType === 'virtual'
- ? 'border-[rgba(192,192,192,0.5)] bg-[rgba(192,192,192,0.08)] text-[var(--chrome-light)] ring-2 ring-[rgba(192,192,192,0.35)]'
+ ? 'avalon-option-selected'
  : event?.participationMode === 'live'
  ? 'border-slate-700 bg-slate-800/50 text-slate-600 cursor-not-allowed opacity-50'
- : 'border-slate-600 bg-slate-700/30 text-slate-400 hover:border-[rgba(192,192,192,0.45)] hover:bg-[rgba(192,192,192,0.08)]'
+ : 'border-slate-600 bg-slate-700/30 text-slate-400 hover:border-[rgba(255,45,161,0.35)] hover:bg-[rgba(255,45,161,0.05)]'
  }`}
  >
  <div className="flex flex-col items-center justify-center space-y-2 h-full">
- <span className="text-3xl"></span>
- <span className="font-semibold text-base">Virtual Performance</span>
+ {currentForm.entryType === 'virtual' && event?.participationMode !== 'live' && (
+ <span className="avalon-option-selected-badge">Selected</span>
+ )}
+ <span className={`font-semibold text-base ${currentForm.entryType === 'virtual' ? 'brand-duo-text' : ''}`}>Virtual Performance</span>
  <span className="text-xs text-center opacity-90 leading-relaxed"> {event?.participationMode === 'live' ? 'Not available for this event' : 'Submit video URL (YouTube/Vimeo)'}
  </span>
  </div>
@@ -2200,14 +2212,14 @@ export default function CompetitionEntryPage() {
  return (
  <label 
  key={dancer.id} 
- className={`flex items-center space-x-2 p-2 rounded transition-all duration-200 ${
+ className={`flex items-center space-x-2 p-2 rounded transition-all duration-200 border ${
  isSelected 
  ? currentForm.participantIds.length > getParticipantLimits(showAddForm).max
- ? 'bg-red-500/20 text-red-300' 
- : 'bg-emerald-500/20 text-[var(--chrome-mid)]'
+ ? 'bg-red-500/20 text-red-300 border-red-500/40' 
+ : 'avalon-option-selected text-white'
  : isOverLimit && !isSelected
- ? 'text-slate-500 opacity-50 cursor-not-allowed'
- : 'text-slate-300 hover:bg-slate-600/30 cursor-pointer'
+ ? 'text-slate-500 opacity-50 cursor-not-allowed border-transparent'
+ : 'text-slate-300 hover:bg-[rgba(0,230,255,0.06)] hover:border-[rgba(0,230,255,0.25)] cursor-pointer border-transparent'
  }`}
  >
  <input

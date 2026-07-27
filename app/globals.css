@@ -93,7 +93,7 @@ body {
  background: linear-gradient(90deg, #00e6ff 0%, #ff2da1 100%);
  -webkit-background-clip: text;
  background-clip: text;
- color: transparent;
+ color: transparent !important;
  }
 
   .btn-chrome {
@@ -232,6 +232,40 @@ body {
  width: 120px;
  background: linear-gradient(90deg, #00e6ff, #ff2da1);
  opacity: 0.5;
+ }
+
+ /* Clear selected option — cyan + magenta signature */
+ .avalon-option {
+ transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease, transform 140ms ease !important;
+ }
+
+ .avalon-option-selected {
+ background: linear-gradient(
+ 135deg,
+ rgba(0, 230, 255, 0.14) 0%,
+ rgba(17, 17, 17, 0.85) 45%,
+ rgba(255, 45, 161, 0.12) 100%
+ ) !important;
+ border-color: #00e6ff !important;
+ box-shadow:
+ 0 0 0 2px rgba(0, 230, 255, 0.4),
+ 0 0 28px rgba(0, 230, 255, 0.18),
+ 0 0 36px rgba(255, 45, 161, 0.12) !important;
+ color: #ffffff !important;
+ }
+
+ .avalon-option-selected-badge {
+ display: inline-flex !important;
+ align-items: center !important;
+ justify-content: center !important;
+ padding: 4px 10px !important;
+ border-radius: 9999px !important;
+ font-size: 10px !important;
+ font-weight: 700 !important;
+ letter-spacing: 0.14em !important;
+ text-transform: uppercase !important;
+ background: linear-gradient(90deg, #00e6ff 0%, #ff2da1 100%) !important;
+ color: #050505 !important;
  }
 
  .line-clamp-1 {
