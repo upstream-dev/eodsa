@@ -375,7 +375,8 @@ export async function POST(request: NextRequest) {
     }
 
     // CRITICAL FIX: Get actual dancer ID and EODSA ID for solo performances
-    // This ensures the certificate shows up in "My Certificates" let actualDancerId: string | null = contestantId || null;
+    // This ensures the certificate shows up in "My Certificates"
+    let actualDancerId: string | null = contestantId || null;
     let actualEodsaId: string | null = perf.eodsa_id || null;
     
     if (!isGroupPerformance && participantIds.length > 0) {
