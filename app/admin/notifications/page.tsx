@@ -194,14 +194,11 @@ function AdminNotificationsPageContent() {
 
  const showEventSelector = recipientGroup === 'event_participants';
 
- const isLight = theme === 'light';
 
  return (
- <div className={`min-h-screen ${isLight ? 'bg-slate-50' : themeClasses.mainBg}`}>
+ <div className={`min-h-screen ${themeClasses.mainBg}`}>
  <header
- className={`border-b backdrop-blur sticky top-0 z-20 ${
- isLight ? 'bg-white/90 border-slate-200' : 'bg-slate-950/80 border-slate-800/60'
- }`}
+ className="border-b backdrop-blur sticky top-0 z-20 bg-slate-950/80 border-slate-800/60"
  >
  <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
  <div>
@@ -212,20 +209,14 @@ function AdminNotificationsPageContent() {
  <div className="flex items-center gap-3">
  <button
  type="button" onClick={() => router.push('/admin')}
- className={`hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg border text-xs transition-colors ${
- isLight
- ? 'border-slate-300 text-slate-700 hover:bg-slate-100'
- : 'border-slate-700/70 text-slate-200 hover:bg-slate-800/80'
- }`}
+ className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg border text-xs transition-colors border-slate-700/70 text-slate-200 hover:bg-slate-800/80"
  > Back to Dashboard
  </button>
  </div>
  </div>
  </header>  <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6"> {/* Recipients & filters */}
  <section
- className={`${themeClasses.cardBg} rounded-2xl shadow-lg border ${
- isLight ? 'border-slate-200' : 'border-slate-800/70'
- } p-4 sm:p-6 space-y-5`}
+ className={`${themeClasses.cardBg} rounded-2xl shadow-lg border border-slate-800/70 p-4 sm:p-6 space-y-5`}
  >
  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
  <div>
@@ -325,9 +316,7 @@ function AdminNotificationsPageContent() {
  </div> )}
  </section> {/* Subject and body */}
  <section
- className={`${themeClasses.cardBg} rounded-2xl shadow-lg border ${
- isLight ? 'border-slate-200' : 'border-slate-800/70'
- } p-4 sm:p-6 space-y-5`}
+ className={`${themeClasses.cardBg} rounded-2xl shadow-lg border border-slate-800/70 p-4 sm:p-6 space-y-5`}
  >
  <div className="space-y-2">
  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-slate-400"> Subject
@@ -382,9 +371,7 @@ function AdminNotificationsPageContent() {
  </section> {/* Preview */}
  {isPreviewing && (
  <section
- className={`${themeClasses.cardBg} rounded-2xl shadow-lg border ${
- isLight ? 'border-slate-200' : 'border-slate-800/70'
- } p-4 sm:p-6 space-y-4`}
+ className={`${themeClasses.cardBg} rounded-2xl shadow-lg border border-slate-800/70 p-4 sm:p-6 space-y-4`}
  >
  <div className="flex items-center justify-between gap-3">
  <div>
@@ -421,9 +408,7 @@ function AdminNotificationsPageContent() {
  {/* Audit of last send */}
  {lastResults && lastResults.length > 0 && (
  <section
- className={`${themeClasses.cardBg} rounded-2xl shadow-lg border ${
- isLight ? 'border-slate-200' : 'border-slate-800/70'
- } p-4 sm:p-6 space-y-4`}
+ className={`${themeClasses.cardBg} rounded-2xl shadow-lg border border-slate-800/70 p-4 sm:p-6 space-y-4`}
  >
  <div className="flex items-center justify-between gap-3">
  <div>
@@ -434,7 +419,7 @@ function AdminNotificationsPageContent() {
  </div>
  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
  <table className="min-w-full text-xs sm:text-sm">
- <thead className={isLight ? 'bg-slate-50' : 'bg-slate-900'}>
+ <thead className="bg-slate-900">
  <tr>
  <th className="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300"> Email
  </th>
