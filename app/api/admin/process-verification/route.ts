@@ -32,15 +32,13 @@ export async function POST(request: NextRequest) {
     const allStudios = await unifiedDb.getAllStudios();
     
     // Find accounts older than 48 hours that are still pending (not approved, not rejected)
-    const expiredDancers = allDancers.filter(dancer => 
-      dancer.createdAt && 
+    const expiredDancers = allDancers.filter(dancer => dancer.createdAt && 
       dancer.createdAt < fortyEightHoursAgo && 
       !dancer.approved && 
       !dancer.rejectionReason
     );
     
-    const expiredStudios = allStudios.filter(studio => 
-      studio.createdAt && 
+    const expiredStudios = allStudios.filter(studio => studio.createdAt && 
       studio.createdAt < fortyEightHoursAgo && 
       !studio.approved && 
       !studio.rejectionReason

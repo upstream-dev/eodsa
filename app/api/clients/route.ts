@@ -109,7 +109,7 @@ export async function POST(request: Request) {
       )
     `;
 
-    console.log('✅ Client created successfully:', { id: clientId, email, allowedDashboards });
+    console.log(' Client created successfully:', { id: clientId, email, allowedDashboards });
 
     return NextResponse.json({
       success: true,
@@ -183,7 +183,7 @@ export async function PUT(request: Request) {
       WHERE id = ${id}
     `;
 
-    console.log('✅ Client updated successfully:', { id, email: email || currentClient.email });
+    console.log(' Client updated successfully:', { id, email: email || currentClient.email });
 
     return NextResponse.json({
       success: true,
@@ -215,7 +215,7 @@ export async function DELETE(request: Request) {
     
     await sqlClient`DELETE FROM clients WHERE id = ${clientId}`;
 
-    console.log('✅ Client deleted successfully:', { id: clientId });
+    console.log(' Client deleted successfully:', { id: clientId });
 
     return NextResponse.json({
       success: true,

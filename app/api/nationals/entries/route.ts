@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       performances.push(performance);
     }
 
-    console.log(`✅ Nationals entry created successfully for ${body.performanceType} with ${body.soloCount || 1} solo(s) and ${performances.length} performance record(s)`);
+    console.log(` Nationals entry created successfully for ${body.performanceType} with ${body.soloCount || 1} solo(s) and ${performances.length} performance record(s)`);
 
     return NextResponse.json({
       ...nationalsEntry,

@@ -100,7 +100,7 @@ export async function DELETE(
       }, { status: 400 });
     }
 
-    console.log(`🗑️ Deleting event: ${event.name} (ID: ${eventId})`);
+    console.log(` Deleting event: ${event.name} (ID: ${eventId})`);
     console.log(`   - Entries: ${entryCount.count}`);
     console.log(`   - Payments: ${paymentCount.count}`);
 
@@ -114,29 +114,29 @@ export async function DELETE(
           SELECT payment_id FROM payments WHERE event_id = ${eventId}
         )
       `;
-      console.log('✅ Deleted payment logs');
+      console.log(' Deleted payment logs');
     }
 
     // 2. Delete payments
     if (hasPayments) {
       await sql`DELETE FROM payments WHERE event_id = ${eventId}`;
-      console.log('✅ Deleted payments');
+      console.log(' Deleted payments');
     }
 
     // 3. Delete performances (if any)
     await sql`DELETE FROM performances WHERE event_id = ${eventId}`;
-    console.log('✅ Deleted performances');
+    console.log(' Deleted performances');
 
     // 4. Delete event entries
     if (hasEntries) {
       await sql`DELETE FROM event_entries WHERE event_id = ${eventId}`;
-      console.log('✅ Deleted event entries');
+      console.log(' Deleted event entries');
     }
 
     // 5. Delete event judges (if table exists)
     try {
       await sql`DELETE FROM event_judges WHERE event_id = ${eventId}`;
-      console.log('✅ Deleted event judges');
+      console.log(' Deleted event judges');
     } catch (judgeError: any) {
       if (judgeError.code === '42P01') {
         console.log('ℹ️ event_judges table does not exist - skipping');
@@ -147,10 +147,10 @@ export async function DELETE(
 
     // 6. Finally, delete the event itself
     await sql`DELETE FROM events WHERE id = ${eventId}`;
-    console.log('✅ Deleted event');
+    console.log(' Deleted event');
 
     // Log the deletion
-    console.log(`🗑️ Event "${event.name}" (${eventId}) deleted successfully`);
+    console.log(` Event "${event.name}" (${eventId}) deleted successfully`);
 
     return NextResponse.json({
       success: true,

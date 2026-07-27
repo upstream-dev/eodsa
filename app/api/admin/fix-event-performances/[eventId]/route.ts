@@ -13,7 +13,7 @@ export async function POST(
     const { eventId } = await params;
     const sqlClient = getSql();
 
-    console.log(`🔧 Fixing performances for event: ${eventId}`);
+    console.log(` Fixing performances for event: ${eventId}`);
 
     // Get all approved entries for this event that don't have performances
     const missingPerformances = await sqlClient`
@@ -87,7 +87,7 @@ export async function POST(
       });
     }
 
-    console.log(`📊 Found ${missingPerformances.length} approved entries without performances`);
+    console.log(` Found ${missingPerformances.length} approved entries without performances`);
     
     let created = 0;
     let failed = 0;
@@ -95,7 +95,7 @@ export async function POST(
 
     for (const entry of missingPerformances) {
       try {
-        console.log(`🎭 Creating performance for entry: ${entry.item_name} (ID: ${entry.entry_id})`);
+        console.log(` Creating performance for entry: ${entry.item_name} (ID: ${entry.entry_id})`);
         
         // Parse participant IDs
         let participantIds: string[] = [];
@@ -132,7 +132,7 @@ export async function POST(
           ` as any[];
           
           if (contestantCheck.length === 0) {
-            console.warn(`  ⚠️  Contestant ${entry.contestant_id} doesn't exist, trying first participant...`);
+            console.warn(`    Contestant ${entry.contestant_id} doesn't exist, trying first participant...`);
             
             if (participantIds.length > 0) {
               const firstParticipant = participantIds[0];
@@ -142,14 +142,14 @@ export async function POST(
               
               if (dancerCheck.length > 0) {
                 validContestantId = dancerCheck[0].id;
-                console.log(`  ✅ Using dancer ID as contestant: ${validContestantId}`);
+                console.log(`   Using dancer ID as contestant: ${validContestantId}`);
               } else {
                 throw new Error(`No valid contestant found for entry ${entry.entry_id}`);
               }
             }
           }
         } catch (checkErr: any) {
-          console.error(`  ❌ Error validating contestant: ${checkErr.message}`);
+          console.error(`   Error validating contestant: ${checkErr.message}`);
           throw checkErr;
         }
 
@@ -185,14 +185,14 @@ export async function POST(
         ` as any[];
 
         if (verifyPerformance.length > 0) {
-          console.log(`  ✅ Performance created successfully! (Performance ID: ${verifyPerformance[0].id}, Event ID: ${verifyPerformance[0].event_id})`);
+          console.log(`   Performance created successfully! (Performance ID: ${verifyPerformance[0].id}, Event ID: ${verifyPerformance[0].event_id})`);
           created++;
         } else {
           throw new Error('Performance creation reported success but performance not found in database');
         }
 
       } catch (error: any) {
-        console.error(`  ❌ Failed to create performance for entry ${entry.entry_id}:`, error.message);
+        console.error(`   Failed to create performance for entry ${entry.entry_id}:`, error.message);
         failed++;
         errors.push({
           entryId: entry.entry_id,
@@ -236,7 +236,7 @@ export async function POST(
     });
 
   } catch (error: any) {
-    console.error('❌ Error fixing event performances:', error);
+    console.error(' Error fixing event performances:', error);
     return NextResponse.json(
       { 
         success: false, 

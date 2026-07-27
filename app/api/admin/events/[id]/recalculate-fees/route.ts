@@ -57,8 +57,7 @@ export async function POST(
     let errorCount = 0;
 
     // Sort entries by submitted date to determine solo order
-    const sortedEntries = [...eventEntries].sort((a, b) => 
-      new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
+    const sortedEntries = [...eventEntries].sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
     );
 
     // Track solo counts per dancer using comprehensive matching (eodsaId, contestantId, participantIds)
@@ -100,7 +99,7 @@ export async function POST(
             .length;
           
           soloCount = existingSolosForDancer + 1;
-          console.log(`📊 Entry ${entry.id} (${entry.itemName}): Found ${existingSolosForDancer} existing solos, this is solo #${soloCount}`);
+          console.log(` Entry ${entry.id} (${entry.itemName}): Found ${existingSolosForDancer} existing solos, this is solo #${soloCount}`);
         }
 
         // Recalculate fee using event's actual configuration

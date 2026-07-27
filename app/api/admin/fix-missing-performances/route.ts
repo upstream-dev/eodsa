@@ -8,7 +8,7 @@ import { unifiedDb } from '@/lib/database';
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔍 Admin: Searching for approved entries without performances...\n');
+    console.log(' Admin: Searching for approved entries without performances...\n');
     
     const sqlClient = getSql();
     
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`📊 Found ${missingPerformances.length} approved entries without performances`);
+    console.log(` Found ${missingPerformances.length} approved entries without performances`);
     
     let created = 0;
     let failed = 0;
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     for (const entry of missingPerformances) {
       try {
-        console.log(`🎭 Processing entry: ${entry.item_name} (ID: ${entry.entry_id})`);
+        console.log(` Processing entry: ${entry.item_name} (ID: ${entry.entry_id})`);
         
         // Parse participant IDs
         let participantIds: string[] = [];
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           ` as any[];
           
           if (contestantCheck.length === 0) {
-            console.warn(`  ⚠️  Contestant ${entry.contestant_id} doesn't exist, trying first participant...`);
+            console.warn(`    Contestant ${entry.contestant_id} doesn't exist, trying first participant...`);
             
             if (participantIds.length > 0) {
               const firstParticipant = participantIds[0];
@@ -109,15 +109,15 @@ export async function POST(request: NextRequest) {
               
               if (dancerCheck.length > 0) {
                 validContestantId = dancerCheck[0].id;
-                console.log(`  ✅ Using dancer ID as contestant: ${validContestantId}`);
+                console.log(`   Using dancer ID as contestant: ${validContestantId}`);
               } else {
-                console.error(`  ❌ Cannot find valid contestant for entry ${entry.entry_id}`);
+                console.error(`   Cannot find valid contestant for entry ${entry.entry_id}`);
                 throw new Error(`No valid contestant found for entry ${entry.entry_id}`);
               }
             }
           }
         } catch (checkErr: any) {
-          console.error(`  ❌ Error validating contestant: ${checkErr.message}`);
+          console.error(`   Error validating contestant: ${checkErr.message}`);
           throw checkErr;
         }
 
@@ -154,14 +154,14 @@ export async function POST(request: NextRequest) {
         ` as any[];
 
         if (verifyPerformance.length > 0) {
-          console.log(`  ✅ Performance created successfully! (Performance ID: ${verifyPerformance[0].id})`);
+          console.log(`   Performance created successfully! (Performance ID: ${verifyPerformance[0].id})`);
           created++;
         } else {
           throw new Error('Performance creation reported success but performance not found in database');
         }
 
       } catch (error: any) {
-        console.error(`  ❌ Failed to create performance for entry ${entry.entry_id}:`, error.message);
+        console.error(`   Failed to create performance for entry ${entry.entry_id}:`, error.message);
         failed++;
         errors.push({
           entryId: entry.entry_id,
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Fatal error:', error);
+    console.error(' Fatal error:', error);
     return NextResponse.json(
       { 
         success: false, 

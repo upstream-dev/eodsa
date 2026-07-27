@@ -157,8 +157,7 @@ export async function GET(
               contestantName: dancer.name,
               contestantEmail: dancer.email || '',
               participantNames: participantDetails.map(p => p.name),
-              // Use participant's studio if available, otherwise contestant's studio, otherwise "Independent"
-              studioName: studioInfo?.studioName || 'Independent',
+              // Use participant's studio if available, otherwise contestant's studio, otherwise "Independent" studioName: studioInfo?.studioName || 'Independent',
               studioId: studioInfo?.studioId || null,
               studioEmail: studioInfo?.studioEmail || null,
               participantStudios: participantDetails.map(p => p.studioName || 'Independent'),
@@ -224,8 +223,7 @@ export async function GET(
                 contestantName: contestant.name,
                 contestantEmail: contestant.email || '',
                 participantNames: participantDetails.map(p => p.name),
-                // Use studio from participants if available, otherwise "Independent"
-                studioName: studioInfo?.studioName || 'Independent',
+                // Use studio from participants if available, otherwise "Independent" studioName: studioInfo?.studioName || 'Independent',
                 studioId: studioInfo?.studioId || null,
                 studioEmail: studioInfo?.studioEmail || null,
                 participantStudios: participantDetails.map(p => p.studioName || 'Independent'),

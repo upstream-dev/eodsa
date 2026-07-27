@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 
       // REFUSE PAYMENT if mismatch detected
       if (validationResult.mismatchDetected) {
-        console.error('⚠️ PAYMENT REFUSED - Fee mismatch detected:', {
+        console.error(' PAYMENT REFUSED - Fee mismatch detected:', {
           clientSentTotal: amount,
           computedTotal: validationResult.totalComputedFee,
           mismatchReason: validationResult.mismatchReason,
@@ -180,9 +180,9 @@ export async function POST(request: NextRequest) {
           amount || 0,
           computedTotal
         );
-        console.log(`✅ Created ${transactionIds.length} transaction records for batch payment ${paymentId}`);
+        console.log(` Created ${transactionIds.length} transaction records for batch payment ${paymentId}`);
       } catch (error) {
-        console.error('⚠️ Failed to create transaction records, but continuing with payment:', error);
+        console.error(' Failed to create transaction records, but continuing with payment:', error);
       }
     }
 

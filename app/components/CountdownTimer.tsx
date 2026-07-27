@@ -4,67 +4,64 @@ import { useState, useEffect } from 'react';
 import React from 'react';
 
 interface CountdownTimerProps {
-  deadline: string;
+ deadline: string;
 }
 
 interface TimeLeft {
-  days?: number;
-  hours?: number;
-  minutes?: number;
-  seconds?: number;
+ days?: number;
+ hours?: number;
+ minutes?: number;
+ seconds?: number;
 }
 
 const CountdownTimer = ({ deadline }: CountdownTimerProps) => {
-  const calculateTimeLeft = (): TimeLeft => {
-    const difference = +new Date(deadline) - +new Date();
-    let timeLeft: TimeLeft = {};
+ const calculateTimeLeft = (): TimeLeft => {
+ const difference = +new Date(deadline) - +new Date();
+ let timeLeft: TimeLeft = {};
 
-    if (difference > 0) {
-      timeLeft = {
-        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((difference / 1000 / 60) % 60),
-        seconds: Math.floor((difference / 1000) % 60),
-      };
-    }
+ if (difference > 0) {
+ timeLeft = {
+ days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+ hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+ minutes: Math.floor((difference / 1000 / 60) % 60),
+ seconds: Math.floor((difference / 1000) % 60),
+ };
+ }
 
-    return timeLeft;
-  };
+ return timeLeft;
+ };
 
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft());
+ const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft());
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
+ useEffect(() => {
+ const timer = setTimeout(() => {
+ setTimeLeft(calculateTimeLeft());
+ }, 1000);
 
-    return () => clearTimeout(timer);
-  });
+ return () => clearTimeout(timer);
+ });
 
-  const timerComponents: React.ReactElement[] = [];
+ const timerComponents: React.ReactElement[] = [];
 
-  (Object.keys(timeLeft) as Array<keyof TimeLeft>).forEach((interval) => {
-    if (!timeLeft[interval]) {
-      return;
-    }
+ (Object.keys(timeLeft) as Array<keyof TimeLeft>).forEach((interval) => {
+ if (!timeLeft[interval]) {
+ return;
+ }
 
-    timerComponents.push(
-      <div key={interval} className="text-center">
-        <div className="text-2xl font-bold">{timeLeft[interval]}</div>
-        <div className="text-xs uppercase">{interval}</div>
-      </div>
-    );
-  });
+ timerComponents.push(
+ <div key={interval} className="text-center">
+ <div className="text-2xl font-bold">{timeLeft[interval]}</div>
+ <div className="text-xs uppercase">{interval}</div>
+ </div> );
+ });
 
-  if (!timerComponents.length) {
-    return <div className="text-center text-red-500 font-bold">Registration Closed</div>;
-  }
+ if (!timerComponents.length) {
+ return <div className="text-center text-red-500 font-bold">Registration Closed</div>;
+ }
 
-  return (
-    <div className="grid grid-cols-4 gap-2 text-white font-mono">
-      {timerComponents}
-    </div>
-  );
+ return (
+ <div className="grid grid-cols-4 gap-2 text-white font-mono"> {timerComponents}
+ </div> );
 };
 
 export default CountdownTimer;

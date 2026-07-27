@@ -48,7 +48,7 @@ export async function PATCH(
       const alreadyExists = existingPerformanceCheck.length > 0;
       
       if (!alreadyExists) {
-        console.log(`🎭 Creating performance for approved entry: ${entryId} (${entry.itemName})`);
+        console.log(` Creating performance for approved entry: ${entryId} (${entry.itemName})`);
         
         // Build participant names using unified dancer records when available
         const participantNames: string[] = [];
@@ -77,7 +77,7 @@ export async function PATCH(
           ` as any[];
           
           if (contestantCheck.length === 0) {
-            console.warn(`⚠️  Contestant ${entry.contestantId} doesn't exist, using first participant as contestant`);
+            console.warn(`  Contestant ${entry.contestantId} doesn't exist, using first participant as contestant`);
             
             // Try to use first participant as contestant
             if (entry.participantIds && entry.participantIds.length > 0) {
@@ -90,10 +90,10 @@ export async function PATCH(
               
               if (dancerCheck.length > 0) {
                 validContestantId = dancerCheck[0].id;
-                console.log(`✅ Using dancer ID as contestant: ${validContestantId}`);
+                console.log(` Using dancer ID as contestant: ${validContestantId}`);
               } else {
                 // Use entry contestant_id anyway and let it fail with proper error
-                console.error(`❌ Cannot find valid contestant for entry ${entryId}`);
+                console.error(` Cannot find valid contestant for entry ${entryId}`);
               }
             }
           }
@@ -126,15 +126,15 @@ export async function PATCH(
         ` as any[];
         
         if (verifyPerformance.length > 0) {
-          console.log(`✅ Performance created successfully for entry: ${entryId} (Performance ID: ${verifyPerformance[0].id})`);
+          console.log(` Performance created successfully for entry: ${entryId} (Performance ID: ${verifyPerformance[0].id})`);
         } else {
-          console.error(`❌ CRITICAL: Performance creation reported success but performance not found in database for entry: ${entryId}`);
+          console.error(` CRITICAL: Performance creation reported success but performance not found in database for entry: ${entryId}`);
         }
       } else {
         console.log(`ℹ️  Performance already exists for entry: ${entryId} (Performance ID: ${existingPerformanceCheck[0].id})`);
       }
     } catch (perfErr) {
-      console.error('⚠️  CRITICAL: Failed to auto-create performance for entry', entryId);
+      console.error('  CRITICAL: Failed to auto-create performance for entry', entryId);
       console.error('Error details:', perfErr);
       // Log the full error stack for debugging
       if (perfErr instanceof Error) {
@@ -172,7 +172,7 @@ export async function PATCH(
             console.warn(`Could not find dancer with ID: ${participantId} to mark registration fee as paid.`);
           }
         }
-        console.log('✅ Registration fees marked as paid for approved entry participants');
+        console.log(' Registration fees marked as paid for approved entry participants');
       } catch (error) {
         console.warn('Failed to update registration status after approval:', error);
         // Don't fail the approval if registration status update fails

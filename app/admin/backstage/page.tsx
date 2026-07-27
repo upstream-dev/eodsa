@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { MapPin, Globe, Calendar } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -57,17 +58,19 @@ export default function BackstageEventSelector() {
           try {
             const entriesRes = await fetch(`/api/events/${event.id}/entries`);
             const entriesData = await entriesRes.json();
-            
+
             if (entriesData.success) {
               const entries = entriesData.entries || [];
               const liveEntries = entries.filter((e: any) => e.entryType === 'live').length;
               const virtualEntries = entries.filter((e: any) => e.entryType === 'virtual').length;
-              
+
               // Get performance stats
               const performancesRes = await fetch(`/api/events/${event.id}/performances`);
               const performancesData = await performancesRes.json();
-              const completedPerformances = performancesData.success 
-                ? (performancesData.performances || []).filter((p: any) => p.status === 'completed').length 
+              const completedPerformances = performancesData.success
+                ? (performancesData.performances || []).filter(
+                    (p: any) => p.status === 'completed'
+                  ).length
                 : 0;
 
               return {
@@ -76,29 +79,29 @@ export default function BackstageEventSelector() {
                   totalEntries: entries.length,
                   liveEntries,
                   virtualEntries,
-                  completedPerformances
-                }
+                  completedPerformances,
+                },
               };
             }
           } catch (error) {
             console.error(`Error loading stats for event ${event.id}:`, error);
           }
-          
+
           return {
             eventId: event.id,
             stats: {
               totalEntries: 0,
               liveEntries: 0,
               virtualEntries: 0,
-              completedPerformances: 0
-            }
+              completedPerformances: 0,
+            },
           };
         });
 
         const statsResults = await Promise.all(statsPromises);
         const statsMap: Record<string, EventStats> = {};
-        
-        statsResults.forEach(result => {
+
+        statsResults.forEach((result) => {
           if (result) {
             statsMap[result.eventId] = result.stats;
           }
@@ -117,13 +120,13 @@ export default function BackstageEventSelector() {
     const now = new Date();
     const eventDate = new Date(event.eventDate);
     const endDate = new Date(event.eventEndDate || event.eventDate);
-    
+
     if (now < eventDate) {
-      return 'bg-blue-600'; // Upcoming
+      return 'bg-[rgba(192,192,192,0.2)] text-[var(--chrome-mid)] border border-[rgba(192,192,192,0.35)]'; // Upcoming
     } else if (now >= eventDate && now <= endDate) {
-      return 'bg-green-600'; // Live/Active
+      return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'; // Live/Active
     } else {
-      return 'bg-gray-600'; // Completed
+      return 'bg-black/40 text-[#c0c0c0] border border-[rgba(192,192,192,0.22)]'; // Completed
     }
   };
 
@@ -131,7 +134,7 @@ export default function BackstageEventSelector() {
     const now = new Date();
     const eventDate = new Date(event.eventDate);
     const endDate = new Date(event.eventEndDate || event.eventDate);
-    
+
     if (now < eventDate) {
       return 'Upcoming';
     } else if (now >= eventDate && now <= endDate) {
@@ -147,58 +150,54 @@ export default function BackstageEventSelector() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-900 text-xl">Loading events...</div>
+      <div className="min-h-screen avalon-mesh flex items-center justify-center">
+        <div className="text-[#c0c0c0] text-xl">Loading events...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="min-h-screen avalon-mesh avalon-shell text-[#e8e8e8]">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-purple-600">🎭 Backstage Control Center</h1>
-            <p className="text-gray-700 mt-1">
-              Select an event to manage live performances and program order
-            </p>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <Link
-              href="/admin"
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
-            >
-              ← Back to Admin
+      <div className="glass-panel border-b border-[rgba(192,192,192,0.15)]">
+        <div className="avalon-container py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-3xl font-bold chrome-text">Backstage Control Center</h1>
+              <p className="text-[#c0c0c0] mt-1 text-sm sm:text-base">
+                Select an event to manage live performances and program order
+              </p>
+            </div>
+            <Link href="/admin" className="btn-outline-chrome !px-4 !py-2 avalon-tap self-start sm:self-auto justify-center">
+              Back to Admin
             </Link>
           </div>
         </div>
       </div>
 
       {/* Events Grid */}
-      <div className="p-6">
+      <div className="avalon-container avalon-section">
         {events.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-gray-500 text-xl mb-4">No events found</div>
-            <p className="text-gray-600">Create events in the admin dashboard to manage them here.</p>
+            <div className="text-[#c0c0c0] text-xl mb-4">No events found</div>
+            <p className="text-[#c0c0c0]">Create events in the admin dashboard to manage them here.</p>
           </div>
         ) : (
           <>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Select Event to Manage</h2>
-              <div className="text-gray-600">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-2xl font-bold text-[#e8e8e8]">Select Event to Manage</h2>
+              <div className="text-[#c0c0c0] text-sm sm:text-base">
                 {events.length} event{events.length !== 1 ? 's' : ''} available
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {events.map((event) => {
                 const stats = eventStats[event.id] || {
                   totalEntries: 0,
                   liveEntries: 0,
                   virtualEntries: 0,
-                  completedPerformances: 0
+                  completedPerformances: 0,
                 };
 
                 return (
@@ -206,10 +205,11 @@ export default function BackstageEventSelector() {
                     key={event.id}
                     onClick={() => handleEventClick(event.id)}
                     className={`
-                      p-6 rounded-lg border-2 cursor-pointer transition-all duration-300 transform hover:scale-105
-                      ${selectedEvent === event.id 
-                        ? 'border-purple-400 bg-purple-50' 
-                        : 'border-gray-200 bg-white hover:border-purple-400 hover:bg-purple-50'
+                      glass-panel p-4 sm:p-6 rounded-lg border cursor-pointer transition-all duration-300
+                      ${
+                        selectedEvent === event.id
+                          ? 'border-[rgba(192,192,192,0.5)] bg-black/50'
+                          : 'border-[rgba(192,192,192,0.22)] bg-black/40 hover:border-[rgba(192,192,192,0.4)]'
                       }
                     `}
                     onMouseEnter={() => setSelectedEvent(event.id)}
@@ -217,67 +217,75 @@ export default function BackstageEventSelector() {
                   >
                     {/* Event Status Badge */}
                     <div className="flex justify-between items-start mb-4">
-                      <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getEventStatusColor(event)}`}>
+                      <div
+                        className={`px-3 py-1 rounded-full text-sm font-semibold ${getEventStatusColor(event)}`}
+                      >
                         {getEventStatusText(event)}
                       </div>
-                      <div className="text-gray-600 text-sm">
-                        {event.performanceType}
-                      </div>
+                      <div className="text-[#c0c0c0] text-sm">{event.performanceType}</div>
                     </div>
 
                     {/* Event Info */}
-                    <h3 className="text-xl font-bold mb-2 text-gray-900">{event.name}</h3>
-                    <div className="space-y-2 text-sm text-gray-700 mb-4">
-                      <div className="flex items-center">
-                        <span className="w-16">📅 Date:</span>
+                    <h3 className="text-xl font-bold mb-2 text-[#e8e8e8]">{event.name}</h3>
+                    <div className="space-y-2 text-sm text-[#c0c0c0] mb-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-[var(--chrome-mid)] shrink-0" strokeWidth={1.75} />
                         <span>{new Date(event.eventDate).toLocaleDateString()}</span>
                       </div>
-                      <div className="flex items-center">
-                        <span className="w-16">📍 Venue:</span>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[var(--chrome-mid)] shrink-0" strokeWidth={1.75} />
                         <span className="truncate">{event.venue}</span>
                       </div>
-                      <div className="flex items-center">
-                        <span className="w-16">🌍 Region:</span>
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-[var(--chrome-mid)] shrink-0" strokeWidth={1.75} />
                         <span>{event.region}</span>
                       </div>
                     </div>
 
                     {/* Performance Stats */}
-                    <div className="border-t border-gray-200 pt-4">
+                    <div className="border-t border-[rgba(192,192,192,0.22)] pt-4">
                       <div className="grid grid-cols-2 gap-4 text-center">
                         <div>
-                          <div className="text-2xl font-bold text-blue-400">{stats.totalEntries}</div>
-                          <div className="text-xs text-gray-400">Total Entries</div>
+                          <div className="text-2xl font-bold text-[var(--chrome-mid)]">
+                            {stats.totalEntries}
+                          </div>
+                          <div className="text-xs text-[#c0c0c0]">Total Entries</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-green-400">{stats.completedPerformances}</div>
-                          <div className="text-xs text-gray-400">Completed</div>
+                          <div className="text-2xl font-bold text-[var(--chrome-mid)]">
+                            {stats.completedPerformances}
+                          </div>
+                          <div className="text-xs text-[#c0c0c0]">Completed</div>
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4 text-center mt-3">
                         <div>
-                          <div className="text-lg font-semibold text-purple-400">{stats.liveEntries}</div>
-                          <div className="text-xs text-gray-400">🎵 Live</div>
+                          <div className="text-lg font-semibold text-[#e8e8e8]">{stats.liveEntries}</div>
+                          <div className="text-xs text-[#c0c0c0]">Live</div>
                         </div>
                         <div>
-                          <div className="text-lg font-semibold text-yellow-400">{stats.virtualEntries}</div>
-                          <div className="text-xs text-gray-400">📹 Virtual</div>
+                          <div className="text-lg font-semibold text-[#e8e8e8]">
+                            {stats.virtualEntries}
+                          </div>
+                          <div className="text-xs text-[#c0c0c0]">Virtual</div>
                         </div>
                       </div>
                     </div>
 
                     {/* Action Indicator */}
                     <div className="mt-4 text-center">
-                      <div className={`
-                        inline-flex items-center px-4 py-2 rounded-lg font-semibold transition-all
-                        ${selectedEvent === event.id 
-                          ? 'bg-purple-600 text-white' 
-                          : 'bg-gray-600 text-gray-200 group-hover:bg-purple-600 group-hover:text-white'
-                        }
-                      `}>
-                        🎭 Open Backstage Control
-                        <span className="ml-2">→</span>
+                      <div
+                        className={`
+                          inline-flex items-center px-4 py-2 rounded-lg font-semibold transition-all
+                          ${
+                            selectedEvent === event.id
+                              ? 'btn-chrome'
+                              : 'btn-outline-chrome'
+                          }
+                        `}
+                      >
+                        Open Backstage Control
                       </div>
                     </div>
                   </div>
@@ -289,28 +297,31 @@ export default function BackstageEventSelector() {
 
         {/* Quick Stats Summary */}
         {events.length > 0 && (
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-gray-800 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-blue-400">{events.length}</div>
-              <div className="text-gray-400">Total Events</div>
+          <div className="mt-6 sm:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="glass-panel bg-black/40 border border-[rgba(192,192,192,0.22)] p-3 sm:p-4 rounded-lg text-center">
+              <div className="text-xl sm:text-2xl font-bold text-[var(--chrome-mid)]">{events.length}</div>
+              <div className="text-[#c0c0c0] text-xs sm:text-sm">Total Events</div>
             </div>
-            <div className="bg-gray-800 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-green-400">
-                {events.filter(e => getEventStatusText(e) === 'Live').length}
+            <div className="glass-panel bg-black/40 border border-[rgba(192,192,192,0.22)] p-3 sm:p-4 rounded-lg text-center">
+              <div className="text-xl sm:text-2xl font-bold text-[var(--chrome-mid)]">
+                {events.filter((e) => getEventStatusText(e) === 'Live').length}
               </div>
-              <div className="text-gray-400">Live Events</div>
+              <div className="text-[#c0c0c0] text-xs sm:text-sm">Live Events</div>
             </div>
-            <div className="bg-gray-800 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-purple-400">
+            <div className="glass-panel bg-black/40 border border-[rgba(192,192,192,0.22)] p-3 sm:p-4 rounded-lg text-center">
+              <div className="text-xl sm:text-2xl font-bold text-[var(--chrome-mid)]">
                 {Object.values(eventStats).reduce((sum, stats) => sum + stats.totalEntries, 0)}
               </div>
-              <div className="text-gray-400">Total Entries</div>
+              <div className="text-[#c0c0c0] text-xs sm:text-sm">Total Entries</div>
             </div>
-            <div className="bg-gray-800 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-yellow-400">
-                {Object.values(eventStats).reduce((sum, stats) => sum + stats.completedPerformances, 0)}
+            <div className="glass-panel bg-black/40 border border-[rgba(192,192,192,0.22)] p-3 sm:p-4 rounded-lg text-center">
+              <div className="text-xl sm:text-2xl font-bold text-[var(--chrome-mid)]">
+                {Object.values(eventStats).reduce(
+                  (sum, stats) => sum + stats.completedPerformances,
+                  0
+                )}
               </div>
-              <div className="text-gray-400">Completed</div>
+              <div className="text-[#c0c0c0]">Completed</div>
             </div>
           </div>
         )}

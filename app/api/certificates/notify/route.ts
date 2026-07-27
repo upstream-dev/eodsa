@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const emailData = emailResult[0];
     const results = [];
 
-    console.log(`📧 Certificate notification request for performance ${performanceId}:`);
+    console.log(` Certificate notification request for performance ${performanceId}:`);
     console.log(`   - Event Entry ID: ${eventEntryId}`);
     console.log(`   - Dancer Email: ${emailData.dancer_email || 'NOT FOUND'}`);
     console.log(`   - Studio Email: ${emailData.studio_email || 'NOT FOUND'}`);
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
           );
 
           if (dancerEmailResult.success) {
-            console.log(`✅ Email sent successfully to dancer: ${emailData.dancer_email}`);
+            console.log(` Email sent successfully to dancer: ${emailData.dancer_email}`);
             results.push({ type: 'dancer', email: emailData.dancer_email, success: true });
             
             // Update certificate sent_at if certificate exists
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
           } else {
             retryCount++;
             if (retryCount >= maxRetries) {
-              console.error(`❌ Failed to send email to dancer after ${maxRetries} attempts: ${dancerEmailResult.error}`);
+              console.error(` Failed to send email to dancer after ${maxRetries} attempts: ${dancerEmailResult.error}`);
               results.push({ type: 'dancer', email: emailData.dancer_email, success: false, error: dancerEmailResult.error });
             }
           }
@@ -146,13 +146,13 @@ export async function POST(request: NextRequest) {
           );
 
           if (studioEmailResult.success) {
-            console.log(`✅ Email sent successfully to studio: ${emailData.studio_email}`);
+            console.log(` Email sent successfully to studio: ${emailData.studio_email}`);
             results.push({ type: 'studio', email: emailData.studio_email, success: true });
             break;
           } else {
             retryCount++;
             if (retryCount >= maxRetries) {
-              console.error(`❌ Failed to send email to studio after ${maxRetries} attempts: ${studioEmailResult.error}`);
+              console.error(` Failed to send email to studio after ${maxRetries} attempts: ${studioEmailResult.error}`);
               results.push({ type: 'studio', email: emailData.studio_email, success: false, error: studioEmailResult.error });
             }
           }
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     const hasEmails = results.length > 0;
     
     if (!hasEmails) {
-      console.log(`⚠️ No email addresses found for event entry ${eventEntryId}`);
+      console.log(` No email addresses found for event entry ${eventEntryId}`);
       return NextResponse.json({
         success: false,
         message: 'No email addresses found for this event entry',
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`📧 Email notification summary: ${results.filter(r => r.success).length}/${results.length} sent successfully`);
+    console.log(` Email notification summary: ${results.filter(r => r.success).length}/${results.length} sent successfully`);
     
     return NextResponse.json({
       success: allSuccessful,

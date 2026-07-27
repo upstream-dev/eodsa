@@ -34,7 +34,7 @@ export async function DELETE(request: NextRequest) {
         `;
         deletedCount = certs.length;
         deletedCertificates = certs;
-        console.log(`🗑️ Deleted ${deletedCount} certificate(s) for performance ${performanceId}`);
+        console.log(` Deleted ${deletedCount} certificate(s) for performance ${performanceId}`);
       }
     } else if (title) {
       // Delete certificates by title (case-insensitive)
@@ -50,7 +50,7 @@ export async function DELETE(request: NextRequest) {
         `;
         deletedCount = certs.length;
         deletedCertificates = certs;
-        console.log(`🗑️ Deleted ${deletedCount} certificate(s) for title "${title}"`);
+        console.log(` Deleted ${deletedCount} certificate(s) for title "${title}"`);
       }
     } else if (deleteAll) {
       // Delete all certificates (use with caution!)
@@ -63,7 +63,7 @@ export async function DELETE(request: NextRequest) {
         await sqlClient`DELETE FROM certificates`;
         deletedCount = certs.length;
         deletedCertificates = certs;
-        console.log(`🗑️ Deleted ALL ${deletedCount} certificate(s)`);
+        console.log(` Deleted ALL ${deletedCount} certificate(s)`);
       }
     }
 

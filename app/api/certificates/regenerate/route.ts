@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     const { calculateRoundedPercentage } = await import('@/lib/certificate-generator');
     const averagePercentage = judgeCount > 0 ? calculateRoundedPercentage(totalPercentage, judgeCount) : 0;
 
-    console.log(`📊 Certificate regeneration - Score calculation:`, {
+    console.log(` Certificate regeneration - Score calculation:`, {
       totalPercentage,
       judgeCount,
       totalJudgesAssigned,
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     
     // Ensure medallion is never empty (fallback to Bronze)
     if (!medallion || medallion.trim() === '') {
-      console.warn(`⚠️ Medallion was empty for percentage ${averagePercentage}, defaulting to Bronze`);
+      console.warn(` Medallion was empty for percentage ${averagePercentage}, defaulting to Bronze`);
       medallion = 'Bronze';
     }
 
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       participantNames.some(name => name === 'Participant 1' || name.startsWith('Participant ') || name === 'Unknown Dancer');
     
     if (hasInvalidNames && participantIds.length > 0) {
-      console.log(`🔍 Participant names are invalid/missing, looking up from participant_ids: ${JSON.stringify(participantIds)}`);
+      console.log(` Participant names are invalid/missing, looking up from participant_ids: ${JSON.stringify(participantIds)}`);
       participantNames = [];
       for (const participantId of participantIds) {
         try {
@@ -207,13 +207,13 @@ export async function POST(request: NextRequest) {
           if (dancerResultByEodsa.length > 0 && dancerResultByEodsa[0].name) {
             participantNames.push(dancerResultByEodsa[0].name);
           } else {
-            console.warn(`⚠️ Could not find dancer for participant ID: ${participantId}`);
+            console.warn(` Could not find dancer for participant ID: ${participantId}`);
           }
         } catch (error) {
-          console.error(`❌ Error looking up dancer for participant ID ${participantId}:`, error);
+          console.error(` Error looking up dancer for participant ID ${participantId}:`, error);
         }
       }
-      console.log(`✅ Resolved participant names: ${JSON.stringify(participantNames)}`);
+      console.log(` Resolved participant names: ${JSON.stringify(participantNames)}`);
     }
 
     // Determine display name
@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
       } else if (participantNames.length >= 4) {
         inferredPerformanceType = 'Group';
       }
-      console.log(`📝 Inferred performance type from participant count (${participantNames.length}): ${inferredPerformanceType}`);
+      console.log(` Inferred performance type from participant count (${participantNames.length}): ${inferredPerformanceType}`);
     } else if (!inferredPerformanceType && participantIds.length > 0) {
       // Try to infer from participant_ids if participantNames not available
       if (participantIds.length === 1) {
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
       } else if (participantIds.length >= 4) {
         inferredPerformanceType = 'Group';
       }
-      console.log(`📝 Inferred performance type from participant_ids count (${participantIds.length}): ${inferredPerformanceType}`);
+      console.log(` Inferred performance type from participant_ids count (${participantIds.length}): ${inferredPerformanceType}`);
     }
     
     const isGroupPerformance = inferredPerformanceType && ['Duet', 'Trio', 'Group'].includes(inferredPerformanceType);
@@ -271,8 +271,8 @@ export async function POST(request: NextRequest) {
         }
         
         if (participantIds.length > 0) {
-          console.log(`🔍 Looking up studio for participant IDs: ${JSON.stringify(participantIds)}`);
-          console.log(`🔍 Participant IDs type: ${typeof participantIds[0]}, length: ${participantIds.length}`);
+          console.log(` Looking up studio for participant IDs: ${JSON.stringify(participantIds)}`);
+          console.log(` Participant IDs type: ${typeof participantIds[0]}, length: ${participantIds.length}`);
           
           // Use SAME query pattern as dancers page: studio_applications -> studios
           // Handle both dancer IDs and EODSA IDs - try each participant individually if needed
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
           for (const participantId of participantIds) {
             if (foundStudio) break;
             
-            console.log(`🔍 Trying participant ID: ${participantId} (type: ${typeof participantId})`);
+            console.log(` Trying participant ID: ${participantId} (type: ${typeof participantId})`);
             
             // Try by dancer ID first
             const studioResultById = await sqlClient`
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
             if (studioResultById.length > 0 && studioResultById[0].studio_name) {
               studioName = studioResultById[0].studio_name;
               foundStudio = true;
-              console.log(`✅ Found studio name by dancer ID: ${studioName}`);
+              console.log(` Found studio name by dancer ID: ${studioName}`);
               break;
             }
             
@@ -317,20 +317,20 @@ export async function POST(request: NextRequest) {
             if (studioResultByEodsa.length > 0 && studioResultByEodsa[0].studio_name) {
               studioName = studioResultByEodsa[0].studio_name;
               foundStudio = true;
-              console.log(`✅ Found studio name by EODSA ID: ${studioName}`);
+              console.log(` Found studio name by EODSA ID: ${studioName}`);
               break;
             }
           }
           
           if (!foundStudio) {
-            console.warn(`⚠️ No studio found for any participant. Tried ${participantIds.length} participants.`);
-            console.warn(`⚠️ Participant IDs were: ${JSON.stringify(participantIds)}`);
+            console.warn(` No studio found for any participant. Tried ${participantIds.length} participants.`);
+            console.warn(` Participant IDs were: ${JSON.stringify(participantIds)}`);
           }
         } else {
-          console.warn(`⚠️ No participant IDs found for group performance`);
+          console.warn(` No participant IDs found for group performance`);
         }
       } catch (error) {
-        console.error('❌ Error fetching studio name from participants:', error);
+        console.error(' Error fetching studio name from participants:', error);
       }
     }
     
@@ -340,22 +340,22 @@ export async function POST(request: NextRequest) {
       // ABSOLUTE PRIORITY: Studio name for groups/duos/trios
       if (studioName && studioName.trim() !== '') {
         displayName = studioName;
-        console.log(`📝 Group performance - Using studio name: ${displayName}`);
+        console.log(` Group performance - Using studio name: ${displayName}`);
       } else {
         // Last resort fallback - but NEVER use participant names
         displayName = 'Studio Name';
-        console.error(`❌ Group performance - Studio name not found! Using fallback.`);
-        console.error(`❌ Performance ID: ${performanceId}, Event Entry ID: ${perf.event_entry_id}`);
-        console.error(`❌ Tried: event_entries.studio_name and participants via studio_applications`);
+        console.error(` Group performance - Studio name not found! Using fallback.`);
+        console.error(` Performance ID: ${performanceId}, Event Entry ID: ${perf.event_entry_id}`);
+        console.error(` Tried: event_entries.studio_name and participants via studio_applications`);
       }
     } else {
       // For solo performances ONLY, use participant names
       if (participantNames.length > 0) {
         displayName = participantNames.join(', ');
-        console.log(`📝 Solo performance - Using participant names: ${displayName}`);
+        console.log(` Solo performance - Using participant names: ${displayName}`);
       } else {
         displayName = perf.contestant_name || 'Participant';
-        console.warn(`⚠️ No participant names found, using fallback: ${displayName}`);
+        console.warn(` No participant names found, using fallback: ${displayName}`);
       }
     }
 
@@ -375,8 +375,7 @@ export async function POST(request: NextRequest) {
     }
 
     // CRITICAL FIX: Get actual dancer ID and EODSA ID for solo performances
-    // This ensures the certificate shows up in "My Certificates"
-    let actualDancerId: string | null = contestantId || null;
+    // This ensures the certificate shows up in "My Certificates" let actualDancerId: string | null = contestantId || null;
     let actualEodsaId: string | null = perf.eodsa_id || null;
     
     if (!isGroupPerformance && participantIds.length > 0) {
@@ -402,7 +401,7 @@ export async function POST(request: NextRequest) {
             actualEodsaId = dancerResultByEodsa[0].eodsa_id || null;
           }
         }
-        console.log(`✅ Resolved dancer ID: ${actualDancerId}, EODSA ID: ${actualEodsaId}`);
+        console.log(` Resolved dancer ID: ${actualDancerId}, EODSA ID: ${actualEodsaId}`);
       } catch (error) {
         console.error('Error looking up dancer ID/EODSA ID:', error);
       }
@@ -474,7 +473,7 @@ export async function POST(request: NextRequest) {
       await sqlClient`
         DELETE FROM certificates WHERE performance_id = ${performanceId}
       `;
-      console.log(`🗑️ Deleted existing certificate for performance ${performanceId} (force regenerate)`);
+      console.log(` Deleted existing certificate for performance ${performanceId} (force regenerate)`);
     }
 
     // Generate certificate via API
@@ -485,7 +484,7 @@ export async function POST(request: NextRequest) {
       baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
     } catch (urlError) {
       // Fallback to environment variables if URL parsing fails
-      console.warn('⚠️ Could not parse request URL, using environment variables:', urlError);
+      console.warn(' Could not parse request URL, using environment variables:', urlError);
       baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     }
     
@@ -496,7 +495,7 @@ export async function POST(request: NextRequest) {
     const finalDancerName = displayName; // displayName is already correct (studio name for groups, dancer name for solo)
     const finalStudioName = isGroupPerformance ? studioName : undefined;
     
-    console.log(`📝 Final names for certificate generation:`);
+    console.log(` Final names for certificate generation:`);
     console.log(`   - isGroupPerformance: ${isGroupPerformance}`);
     console.log(`   - finalDancerName: ${finalDancerName} (from event_entries.studio_name for groups, participant names for solo)`);
     console.log(`   - finalStudioName: ${finalStudioName || 'N/A'}`);
@@ -537,7 +536,7 @@ export async function POST(request: NextRequest) {
         errorText = 'Unknown error';
       }
 
-      console.error(`❌ Certificate generation failed:`, errorData || errorText);
+      console.error(` Certificate generation failed:`, errorData || errorText);
       
       return NextResponse.json(
         { 
@@ -564,7 +563,7 @@ export async function POST(request: NextRequest) {
     // NOTE: Email notifications are NOT sent when regenerating certificates
     // This is intentional - notifications are only sent during initial certificate generation
     // when scores are published, not during manual regeneration
-    console.log(`✅ Certificate regenerated successfully (no notifications sent for regeneration)`);
+    console.log(` Certificate regenerated successfully (no notifications sent for regeneration)`);
 
     return NextResponse.json({
       success: true,

@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     
     // Log incoming request for debugging
-    console.log('🔍 [Event Creation] Incoming request body:', {
+    console.log(' [Event Creation] Incoming request body:', {
       name: body.name,
       numberOfJudges: body.numberOfJudges,
       participationMode: body.participationMode,
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
     } as any);
 
     // Log the event object returned from DB
-    console.log('✅ [Event Creation] Event created:', {
+    console.log(' [Event Creation] Event created:', {
       id: event.id,
       name: event.name,
       numberOfJudges: (event as any).numberOfJudges,

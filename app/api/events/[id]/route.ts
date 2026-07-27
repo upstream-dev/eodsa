@@ -160,9 +160,9 @@ export async function PUT(
       updates[dbField] = value;
     });
 
-    console.log('📝 Update data received:', updateData);
+    console.log(' Update data received:', updateData);
     console.log('🔄 Converted to DB fields:', updates);
-    console.log('🔍 Fee fields specifically:');
+    console.log(' Fee fields specifically:');
     console.log('  - solo1Fee (received):', updateData.solo1Fee, 'type:', typeof updateData.solo1Fee);
     console.log('  - solo_1_fee (converted):', updates.solo_1_fee, 'type:', typeof updates.solo_1_fee);
 
@@ -213,7 +213,7 @@ export async function PUT(
     `;
 
     const eventRecord = updatedEvent[0];
-    console.log(`✅ Event updated: ${eventRecord.name} (ID: ${eventId})`);
+    console.log(` Event updated: ${eventRecord.name} (ID: ${eventId})`);
 
     return NextResponse.json({
       success: true,

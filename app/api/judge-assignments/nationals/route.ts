@@ -15,8 +15,7 @@ export async function POST(request: Request) {
 
     // Get all events in the specified region
     const events = await db.getAllEvents();
-    const regionEvents = events.filter(event => 
-      event.region.toLowerCase() === region.toLowerCase()
+    const regionEvents = events.filter(event => event.region.toLowerCase() === region.toLowerCase()
     );
 
     if (regionEvents.length === 0) {
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log(`✅ Judge assigned to ${createdAssignments.length} nationals events in ${region}`);
+    console.log(` Judge assigned to ${createdAssignments.length} nationals events in ${region}`);
 
     return NextResponse.json({
       success: true,

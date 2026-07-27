@@ -3,153 +3,112 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ForgotPasswordLink from '@/app/components/ForgotPasswordLink';
+import { AuthPortalLayout, authFieldClass, authErrorClass } from '@/components/brand/AuthPortalLayout';
 
 function AdminPortalLogin() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+ const router = useRouter();
+ const searchParams = useSearchParams();
+ const [formData, setFormData] = useState({
+ email: '',
+ password: ''
+ });
+ const [showPassword, setShowPassword] = useState(false);
+ const [isLoading, setIsLoading] = useState(false);
+ const [error, setError] = useState('');
 
-  const nextParam = searchParams.get('next');
-  const nextPath =
-    nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
-      ? nextParam
-      : '/admin';
+ const nextParam = searchParams.get('next');
+ const nextPath =
+ nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+ ? nextParam
+ : '/admin';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+ const handleSubmit = async (e: React.FormEvent) => {
+ e.preventDefault();
+ setIsLoading(true);
+ setError('');
 
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+ try {
+ const response = await fetch('/api/auth/login', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify(formData)
+ });
 
-      const result = await response.json();
-      if (response.ok && result.success && result.judge?.isAdmin) {
-        localStorage.setItem('adminSession', JSON.stringify(result.judge));
-        router.push(nextPath);
-      } else if (result.success && result.judge && !result.judge.isAdmin) {
-        setError('Admin access required. Judges should use the Judge Portal.');
-      } else {
-        setError(result.error || 'Authentication failed');
-      }
-    } catch {
-      setError('Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+ const result = await response.json();
+ if (response.ok && result.success && result.judge?.isAdmin) {
+ localStorage.setItem('adminSession', JSON.stringify(result.judge));
+ router.push(nextPath);
+ } else if (result.success && result.judge && !result.judge.isAdmin) {
+ setError('Admin access required. Judges should use the Judge Portal.');
+ } else {
+ setError(result.error || 'Authentication failed');
+ }
+ } catch {
+ setError('Login failed. Please try again.');
+ } finally {
+ setIsLoading(false);
+ }
+ };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
+ const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+ setFormData((prev) => ({
+ ...prev,
+ [e.target.name]: e.target.value
+ }));
+ };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 relative overflow-hidden">
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/4 w-48 h-48 sm:w-64 sm:h-64 bg-emerald-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" />
-        <div className="absolute top-3/4 right-1/4 w-48 h-48 sm:w-64 sm:h-64 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" />
-      </div>
+ return (
+ <AuthPortalLayout title="Admin Control" subtitle="Avalon Competition Management">
+ <div className="p-8"> {nextParam && (
+ <p className="text-[var(--chrome-mid)] text-xs mb-4 text-center"> Enter your Admin email and password to continue
+ </p> )}
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-8">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8 sm:mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-xl mb-4 sm:mb-6 shadow-2xl shadow-emerald-500/20">
-              <span className="text-white text-2xl">👑</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Admin Control</h1>
-            <p className="text-emerald-300 text-sm sm:text-base px-4">System Administration Portal</p>
-            {nextParam && (
-              <p className="text-amber-200 text-xs mt-2 px-4">
-                Enter your Admin email and password to continue
-              </p>
-            )}
-          </div>
+ <form onSubmit={handleSubmit} className="space-y-5"> {error && <div className={authErrorClass}>{error}</div>}
 
-          <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-6 sm:p-8 shadow-2xl">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="bg-red-500/20 border border-red-400/40 text-red-100 text-sm rounded-lg px-3 py-2">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-emerald-100 mb-1.5">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  autoComplete="username"
-                  className="w-full px-4 py-2.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                  placeholder="admin@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-emerald-100 mb-1.5">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required
-                    autoComplete="current-password"
-                    className="w-full px-4 py-2.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400 pr-12"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-200 text-xs"
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-
-              <ForgotPasswordLink userType="admin" />
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 disabled:opacity-60 transition-all"
-              >
-                {isLoading ? 'Signing in…' : 'Sign in as Admin'}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+ <div>
+ <label htmlFor="email" className="label-caps text-[var(--sidebar-muted)] block mb-2"> Email
+ </label>
+ <input
+ type="email" id="email" name="email" value={formData.email}
+ onChange={handleInputChange}
+ required
+ autoComplete="username" className={authFieldClass}
+ placeholder="admin@example.com" />
+ </div>  <div>
+ <label htmlFor="password" className="label-caps text-[var(--sidebar-muted)] block mb-2"> Password
+ </label>
+ <div className="relative">
+ <input
+ type={showPassword ? 'text' : 'password'}
+ id="password" name="password" value={formData.password}
+ onChange={handleInputChange}
+ required
+ autoComplete="current-password" className={`${authFieldClass} pr-16`}
+ placeholder="••••••••" />
+ <button
+ type="button" onClick={() => setShowPassword((v) => !v)}
+ className="absolute inset-y-0 right-2 my-1 px-3 rounded-lg text-[var(--muted-foreground)] hover:text-white hover:bg-white/10 text-xs tracking-wide uppercase" aria-label="Toggle password visibility" >
+ {showPassword ? 'Hide' : 'Show'}
+ </button>
+ </div>
+ </div>  <ForgotPasswordLink userType="admin" />  <button
+ type="submit" disabled={isLoading}
+ className="btn-chrome w-full justify-center disabled:opacity-50" >
+ {isLoading ? 'Signing in…' : 'Sign in as Admin'}
+ </button>
+ </form>
+ </div>
+ </AuthPortalLayout> );
 }
 
 export default function AdminPortalPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 flex items-center justify-center">
-          <p className="text-emerald-100 text-sm">Loading…</p>
-        </div>
-      }
-    >
-      <AdminPortalLogin />
-    </Suspense>
-  );
+ return (
+ <Suspense
+ fallback={
+ <div className="min-h-screen avalon-mesh flex items-center justify-center">
+ <p className="text-[var(--chrome-mid)] text-sm">Loading…</p>
+ </div> }
+ >
+ <AdminPortalLogin />
+ </Suspense> );
 }

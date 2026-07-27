@@ -21,11 +21,11 @@ export async function POST(request: NextRequest) {
                     request.headers.get('x-real-ip') || 
                     'unknown';
 
-    console.log(`🔔 PayFast webhook received from IP: ${clientIP}`);
+    console.log(` PayFast webhook received from IP: ${clientIP}`);
 
     // Validate PayFast host (security check)
     if (!await validatePayFastHost(clientIP)) {
-      console.warn(`⚠️ Invalid PayFast host: ${clientIP}`);
+      console.warn(` Invalid PayFast host: ${clientIP}`);
       return NextResponse.json({ error: 'Invalid host' }, { status: 403 });
     }
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Early reject if signature doesn't match
     if (calculatedSignature !== receivedSignature) {
-      console.error('❌ Invalid PayFast signature');
+      console.error(' Invalid PayFast signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }
 
@@ -120,11 +120,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log('📝 PayFast webhook data:', webhookData);
+    console.log(' PayFast webhook data:', webhookData);
 
     // Validate required fields
     if (!webhookData.m_payment_id || !webhookData.payment_status || !webhookData.signature) {
-      console.error('❌ Missing required webhook fields');
+      console.error(' Missing required webhook fields');
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     `;
 
     if (!payment) {
-      console.error(`❌ Payment not found: ${webhookData.m_payment_id}`);
+      console.error(` Payment not found: ${webhookData.m_payment_id}`);
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
     }
 
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     const amountDifference = Math.abs(payfastAmountGross - expectedAmount);
     
     if (amountDifference > 0.01) {
-      console.error(`⚠️ PAYFAST AMOUNT MISMATCH for payment ${webhookData.m_payment_id}:`, {
+      console.error(` PAYFAST AMOUNT MISMATCH for payment ${webhookData.m_payment_id}:`, {
         expectedAmount,
         payfastAmountGross,
         difference: amountDifference,
@@ -255,8 +255,8 @@ export async function POST(request: NextRequest) {
 
     // Handle successful payment
     if (updatedStatus === 'completed') {
-      console.log(`✅ Payment completed: ${webhookData.m_payment_id}`);
-      console.log(`🎯 Reconciling batch entries for payment: ${webhookData.m_payment_id}`);
+      console.log(` Payment completed: ${webhookData.m_payment_id}`);
+      console.log(` Reconciling batch entries for payment: ${webhookData.m_payment_id}`);
 
       const pendingRows = await sql`
         SELECT pending_entries_data FROM payments
@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
           `;
 
           console.log(
-            `🎉 Reconcile ${webhookData.m_payment_id}: +${reconcileResult.created.length} created, ` +
+            ` Reconcile ${webhookData.m_payment_id}: +${reconcileResult.created.length} created, ` +
               `${reconcileResult.skipped.length} skipped, ${reconcileResult.errors.length} errors ` +
               `(${existingCount[0]?.c ?? 0}/${entriesData.length} in DB)`
           );
@@ -337,7 +337,7 @@ export async function POST(request: NextRequest) {
       `;
 
     } else if (updatedStatus === 'failed' || updatedStatus === 'cancelled') {
-      console.log(`❌ Payment ${updatedStatus}: ${webhookData.m_payment_id}`);
+      console.log(` Payment ${updatedStatus}: ${webhookData.m_payment_id}`);
       
       // Log failure/cancellation
       await sql`
@@ -389,7 +389,7 @@ export async function POST(request: NextRequest) {
 
 // PayFast also sends GET requests to validate the webhook URL
 export async function GET(request: NextRequest) {
-  console.log('🔍 PayFast webhook validation GET request received');
+  console.log(' PayFast webhook validation GET request received');
   
   // Return simple success response for validation
   return NextResponse.json({

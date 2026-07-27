@@ -101,9 +101,9 @@ export async function PUT(
                     percentage: averagePercentage,
                     medallion
                   };
-                  console.log(`✅ Certificate sent to ${contestant.email}`);
+                  console.log(` Certificate sent to ${contestant.email}`);
                 } else {
-                  console.error(`❌ Failed to send certificate: ${emailResult.error}`);
+                  console.error(` Failed to send certificate: ${emailResult.error}`);
                   certificateResult = {
                     sent: false,
                     error: emailResult.error

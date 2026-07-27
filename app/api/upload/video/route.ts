@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('🔐 Generating video signature with params:', paramsToSign);
-    console.log('🔑 API Key:', process.env.CLOUDINARY_API_KEY);
+    console.log(' API Key:', process.env.CLOUDINARY_API_KEY);
     console.log('☁️ Cloud Name:', process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME);
 
     const signature = cloudinary.utils.api_sign_request(

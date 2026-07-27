@@ -60,15 +60,15 @@ export async function GET(request: NextRequest) {
                 const lastPart = filtered[filtered.length - 1];
                 filtered[filtered.length - 1] = lastPart.replace(/\.(pdf|png|jpg|jpeg)$/i, '');
                 templatePublicId = filtered.join('/');
-                console.log('✅ Using custom template:', templatePublicId);
+                console.log(' Using custom template:', templatePublicId);
               }
             }
           } catch (urlError) {
-            console.warn('⚠️ Could not parse template URL, using default:', urlError);
+            console.warn(' Could not parse template URL, using default:', urlError);
           }
         }
       } catch (err) {
-        console.warn('⚠️ Could not fetch event for custom template:', err);
+        console.warn(' Could not fetch event for custom template:', err);
       }
     }
 

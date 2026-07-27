@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         assignedBy
       });
 
-      console.log(`✅ Judge ${judge.name} assigned to event "${event.name}"`);
+      console.log(` Judge ${judge.name} assigned to event "${event.name}"`);
 
       return NextResponse.json({
         success: true,

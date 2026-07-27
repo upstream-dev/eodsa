@@ -18,8 +18,7 @@ export async function GET(request: NextRequest) {
     const allEntries = await unifiedDb.getStudioEntries(studioId);
     
     // Filter for live entries that don't have music yet
-    const entriesNeedingMusic = allEntries.filter(entry => 
-      entry.entryType === 'live' && !entry.musicFileUrl
+    const entriesNeedingMusic = allEntries.filter(entry => entry.entryType === 'live' && !entry.musicFileUrl
     );
 
     // Enhance entries with additional details

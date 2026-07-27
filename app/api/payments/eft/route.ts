@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
       // Check for mismatch - log warning but use backend's computed total (source of truth)
       if (validationResult.mismatchDetected) {
-        console.warn('⚠️ Fee mismatch detected - using backend computed total:', {
+        console.warn(' Fee mismatch detected - using backend computed total:', {
           clientSentTotal: amount,
           computedTotal: validationResult.totalComputedFee,
           mismatchReason: validationResult.mismatchReason,
@@ -89,9 +89,9 @@ export async function POST(request: NextRequest) {
           amount || 0,
           computedTotal
         );
-        console.log(`✅ Created ${transactionIds.length} transaction records for EFT payment`);
+        console.log(` Created ${transactionIds.length} transaction records for EFT payment`);
       } catch (error) {
-        console.error('⚠️ Failed to create transaction records, but continuing with EFT submission:', error);
+        console.error(' Failed to create transaction records, but continuing with EFT submission:', error);
       }
     }
 
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       if (invoiceNumber?.trim()) {
         const existingForInvoice = await countEntriesForEftInvoice(eventId, invoiceNumber);
         if (existingForInvoice >= entries.length) {
-          console.warn('⚠️ EFT duplicate submission blocked — entries already exist for invoice:', invoiceNumber);
+          console.warn(' EFT duplicate submission blocked — entries already exist for invoice:', invoiceNumber);
           return NextResponse.json({
             success: true,
             message: 'Entries already submitted for this invoice reference.',
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         entriesToInsert = prepared.entries;
         registrationCharges = prepared.newlyCharged;
       } catch (prepError) {
-        console.warn('⚠️ Could not enrich EFT entries with registration fees:', prepError);
+        console.warn(' Could not enrich EFT entries with registration fees:', prepError);
       }
 
       // Submit all entries to the database immediately with pending payment status
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           participantIds
         );
         if (existingEntryId) {
-          console.warn(`⚠️ Skipping duplicate EFT line: ${entry.itemName} (existing ${existingEntryId})`);
+          console.warn(` Skipping duplicate EFT line: ${entry.itemName} (existing ${existingEntryId})`);
           continue;
         }
 
@@ -172,9 +172,9 @@ export async function POST(request: NextRequest) {
           }
 
           createdCount++;
-          console.log(`✅ Entry ${entryId} created successfully for EFT payment`);
+          console.log(` Entry ${entryId} created successfully for EFT payment`);
         } catch (dbError: any) {
-          console.error(`❌ Failed to create entry ${entryId}:`, dbError);
+          console.error(` Failed to create entry ${entryId}:`, dbError);
           throw new Error(`Failed to submit entry: ${entry.itemName}`);
         }
       }
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
         try {
           await markBatchRegistrationCharged(eventId, registrationCharges);
         } catch (regError) {
-          console.warn('⚠️ Failed to mark registration charged for EFT batch:', regError);
+          console.warn(' Failed to mark registration charged for EFT batch:', regError);
         }
       }
     }
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       // Don't fail the main process if logging fails
     }
 
-    console.log('✅ EFT payment processed successfully');
+    console.log(' EFT payment processed successfully');
 
     return NextResponse.json({
       success: true,
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ EFT payment processing error:', error);
+    console.error(' EFT payment processing error:', error);
     return NextResponse.json(
       { 
         success: false, 

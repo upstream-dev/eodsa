@@ -6,14 +6,14 @@ export async function POST(request: NextRequest) {
   try {
     // // // await initializeDatabase() // Commented out for performance - initialization happens once on server start; // Commented out for performance - initialization happens once on server start // Commented out for performance - initialization happens once on server start
     
-    console.log('🗑️ Starting studio data cleanup...');
+    console.log(' Starting studio data cleanup...');
     
     // Get database connection
     const sql = neon(process.env.DATABASE_URL!);
     
     // Get all studios first to see what we're deleting
     const studios = await sql`SELECT id, name, email, registration_number FROM studios`;
-    console.log(`📊 Found ${studios.length} studios to delete`);
+    console.log(` Found ${studios.length} studios to delete`);
     
     if (studios.length === 0) {
       return NextResponse.json({
@@ -31,13 +31,13 @@ export async function POST(request: NextRequest) {
     }));
     
     for (const studio of studios) {
-      console.log(`🗑️ Deleting studio: "${studio.name}" (${studio.email})`);
+      console.log(` Deleting studio: "${studio.name}" (${studio.email})`);
     }
     
     // Delete all studios (CASCADE will handle related data)
     await sql`DELETE FROM studios`;
     
-    console.log(`✅ Successfully deleted ${deletedStudios.length} studios!`);
+    console.log(` Successfully deleted ${deletedStudios.length} studios!`);
     
     return NextResponse.json({
       success: true,
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error: any) {
-    console.error('❌ Error cleaning studio data:', error);
+    console.error(' Error cleaning studio data:', error);
     return NextResponse.json(
       { 
         success: false, 

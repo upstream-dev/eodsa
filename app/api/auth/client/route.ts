@@ -26,10 +26,10 @@ export async function POST(request: Request) {
             ` as any[];
             
             const client = clients && clients.length > 0 ? clients[0] : null;
-    console.log('🔍 Client login attempt:', { email, foundClient: !!client });
+    console.log(' Client login attempt:', { email, foundClient: !!client });
     
     if (!client) {
-      console.log('❌ Client not found or not approved:', email);
+      console.log(' Client not found or not approved:', email);
       return NextResponse.json(
         { success: false, error: 'Invalid email or password, or account not approved' },
         { status: 401 }
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     console.log('🔐 Client password check:', { email, isValid: isValidPassword });
     
     if (!isValidPassword) {
-      console.log('❌ Invalid password for client:', email);
+      console.log(' Invalid password for client:', email);
       return NextResponse.json(
         { success: false, error: 'Invalid email or password' },
         { status: 401 }
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       userType: 'client'
     };
 
-    console.log('✅ Client login successful:', { 
+    console.log(' Client login successful:', { 
       email, 
       allowedDashboards: clientSession.allowedDashboards 
     });

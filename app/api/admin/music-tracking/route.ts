@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const entryTypeFilter = searchParams.get('entryType') as 'live' | 'virtual' | null;
     const eventIdFilter = searchParams.get('eventId');
 
-    console.log(`🔍 Filters applied - entryType: ${entryTypeFilter}, eventId: ${eventIdFilter}`);
+    console.log(` Filters applied - entryType: ${entryTypeFilter}, eventId: ${eventIdFilter}`);
 
     // Get all approved entries
     const allEntries = await db.getAllEventEntries();
@@ -28,15 +28,15 @@ export async function GET(request: NextRequest) {
     // Apply filters
     if (entryTypeFilter) {
       approvedEntries = approvedEntries.filter(entry => entry.entryType === entryTypeFilter);
-      console.log(`📋 Filtered to ${entryTypeFilter} entries: ${approvedEntries.length}`);
+      console.log(` Filtered to ${entryTypeFilter} entries: ${approvedEntries.length}`);
     }
 
     if (eventIdFilter) {
       approvedEntries = approvedEntries.filter(entry => entry.eventId === eventIdFilter);
-      console.log(`📅 Filtered to event ${eventIdFilter}: ${approvedEntries.length}`);
+      console.log(` Filtered to event ${eventIdFilter}: ${approvedEntries.length}`);
     }
 
-    console.log(`📊 Found ${approvedEntries.length} approved entries`);
+    console.log(` Found ${approvedEntries.length} approved entries`);
 
     // Get additional data for each entry
     const entriesWithDetails = await Promise.all(
@@ -53,46 +53,46 @@ export async function GET(request: NextRequest) {
           try {
             const sqlClient = getSql();
             
-            console.log(`🔍 DEBUG: Entry ${entry.id} participantIds:`, entry.participantIds);
-            console.log(`🔍 DEBUG: participantIds type:`, typeof entry.participantIds);
-            console.log(`🔍 DEBUG: participantIds isArray:`, Array.isArray(entry.participantIds));
+            console.log(` DEBUG: Entry ${entry.id} participantIds:`, entry.participantIds);
+            console.log(` DEBUG: participantIds type:`, typeof entry.participantIds);
+            console.log(` DEBUG: participantIds isArray:`, Array.isArray(entry.participantIds));
             
             if (entry.participantIds && Array.isArray(entry.participantIds) && entry.participantIds.length > 0) {
-              console.log(`🔍 DEBUG: Looking for dancers with IDs: ${entry.participantIds.join(', ')}`);
+              console.log(` DEBUG: Looking for dancers with IDs: ${entry.participantIds.join(', ')}`);
               
               // Try as dancer IDs first
               const dancerResults = await sqlClient`
                 SELECT id, name FROM dancers WHERE id = ANY(${entry.participantIds})
               ` as any[];
               
-              console.log(`🔍 DEBUG: Found ${dancerResults.length} dancers by ID`);
+              console.log(` DEBUG: Found ${dancerResults.length} dancers by ID`);
               
               if (dancerResults.length > 0) {
                 const names = dancerResults.map(d => d.name);
                 contestantName = names.join(', ');
-                console.log(`✅ Found dancer names: ${contestantName}`);
+                console.log(` Found dancer names: ${contestantName}`);
               } else {
                 // Try as EODSA IDs
-                console.log(`🔍 DEBUG: Trying as EODSA IDs...`);
+                console.log(` DEBUG: Trying as EODSA IDs...`);
                 const eodsaResults = await sqlClient`
                   SELECT id, name, eodsa_id FROM dancers WHERE eodsa_id = ANY(${entry.participantIds})
                 ` as any[];
                 
-                console.log(`🔍 DEBUG: Found ${eodsaResults.length} dancers by EODSA ID`);
+                console.log(` DEBUG: Found ${eodsaResults.length} dancers by EODSA ID`);
                 
                 if (eodsaResults.length > 0) {
                   const names = eodsaResults.map(d => d.name);
                   contestantName = names.join(', ');
-                  console.log(`✅ Found dancer names by EODSA ID: ${contestantName}`);
+                  console.log(` Found dancer names by EODSA ID: ${contestantName}`);
                 } else {
-                  console.warn(`❌ No dancers found with IDs or EODSA IDs: ${entry.participantIds.join(', ')}`);
+                  console.warn(` No dancers found with IDs or EODSA IDs: ${entry.participantIds.join(', ')}`);
                 }
               }
             } else {
-              console.warn(`❌ No valid participantIds for entry ${entry.id}`);
+              console.warn(` No valid participantIds for entry ${entry.id}`);
             }
           } catch (error) {
-            console.error(`❌ Error fetching dancers for entry ${entry.id}:`, error);
+            console.error(` Error fetching dancers for entry ${entry.id}:`, error);
           }
 
           return {
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       return dateA - dateB;
     });
 
-    console.log(`✅ Returning ${sortedEntries.length} entries with details`);
+    console.log(` Returning ${sortedEntries.length} entries with details`);
 
     return NextResponse.json({
       success: true,

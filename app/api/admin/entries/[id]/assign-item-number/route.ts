@@ -29,8 +29,7 @@ export async function PUT(
     }
 
     // Item numbers are unique per event, not globally across all events.
-    const existingEntry = allEntries.find(entry =>
-      entry.eventId === currentEntry.eventId &&
+    const existingEntry = allEntries.find(entry => entry.eventId === currentEntry.eventId &&
       entry.itemNumber === itemNumber &&
       entry.id !== entryId
     );
@@ -96,7 +95,7 @@ export async function PUT(
             musicFileUrl: entry.musicFileUrl,
             musicFileName: entry.musicFileName
           } as any);
-          console.log(`✅ Created performance for virtual entry ${entryId}`);
+          console.log(` Created performance for virtual entry ${entryId}`);
         }
       }
     } catch (syncError) {

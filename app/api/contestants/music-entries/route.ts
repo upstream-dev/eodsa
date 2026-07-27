@@ -32,8 +32,7 @@ export async function GET(request: NextRequest) {
     
     // Filter entries that need music upload (live entries without music)
     // Note: nationals entries don't have entryType field (all virtual)
-    const entriesNeedingMusic = contestantEntries.filter(entry => 
-      (entry as any).entryType === 'live' && !(entry as any).musicFileUrl
+    const entriesNeedingMusic = contestantEntries.filter(entry => (entry as any).entryType === 'live' && !(entry as any).musicFileUrl
     );
     
     // Get additional info for each entry

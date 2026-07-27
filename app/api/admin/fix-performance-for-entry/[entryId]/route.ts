@@ -14,7 +14,7 @@ export async function POST(
     const { entryId } = await params;
     const sqlClient = getSql();
 
-    console.log(`🔧 Fixing performance for entry: ${entryId}`);
+    console.log(` Fixing performance for entry: ${entryId}`);
 
     // Get the entry
     const entryResult = await sqlClient`
@@ -56,7 +56,7 @@ export async function POST(
       
       // Check if event_id matches
       if (perf.event_id !== entry.event_id) {
-        console.log(`⚠️ Performance exists but event_id mismatch. Updating...`);
+        console.log(` Performance exists but event_id mismatch. Updating...`);
         await sqlClient`
           UPDATE performances 
           SET event_id = ${entry.event_id}
@@ -81,7 +81,7 @@ export async function POST(
     }
 
     // Performance doesn't exist - create it
-    console.log(`🎭 Creating performance for entry: ${entryId}`);
+    console.log(` Creating performance for entry: ${entryId}`);
 
     // Parse participant IDs
     let participantIds: string[] = [];
@@ -118,7 +118,7 @@ export async function POST(
       ` as any[];
       
       if (contestantCheck.length === 0) {
-        console.warn(`⚠️  Contestant ${entry.contestant_id} doesn't exist, trying first participant...`);
+        console.warn(`  Contestant ${entry.contestant_id} doesn't exist, trying first participant...`);
         
         if (participantIds.length > 0) {
           const firstParticipant = participantIds[0];
@@ -128,14 +128,14 @@ export async function POST(
           
           if (dancerCheck.length > 0) {
             validContestantId = dancerCheck[0].id;
-            console.log(`✅ Using dancer ID as contestant: ${validContestantId}`);
+            console.log(` Using dancer ID as contestant: ${validContestantId}`);
           } else {
             throw new Error(`No valid contestant found for entry ${entryId}`);
           }
         }
       }
     } catch (checkErr: any) {
-      console.error(`❌ Error validating contestant: ${checkErr.message}`);
+      console.error(` Error validating contestant: ${checkErr.message}`);
       throw checkErr;
     }
 
@@ -171,7 +171,7 @@ export async function POST(
     ` as any[];
 
     if (verifyPerformance.length > 0) {
-      console.log(`✅ Performance created successfully! (Performance ID: ${verifyPerformance[0].id})`);
+      console.log(` Performance created successfully! (Performance ID: ${verifyPerformance[0].id})`);
       
       return NextResponse.json({
         success: true,
@@ -186,7 +186,7 @@ export async function POST(
     }
 
   } catch (error: any) {
-    console.error('❌ Error fixing performance:', error);
+    console.error(' Error fixing performance:', error);
     return NextResponse.json(
       { 
         success: false, 

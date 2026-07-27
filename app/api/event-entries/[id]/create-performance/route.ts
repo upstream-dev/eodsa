@@ -69,7 +69,7 @@ export async function POST(
       ` as any[];
       
       if (contestantCheck.length === 0) {
-        console.warn(`⚠️  Contestant ${entry.contestantId} doesn't exist, using first participant as contestant`);
+        console.warn(`  Contestant ${entry.contestantId} doesn't exist, using first participant as contestant`);
         
         // Try to use first participant as contestant
         if (entry.participantIds && entry.participantIds.length > 0) {
@@ -82,9 +82,9 @@ export async function POST(
           
           if (dancerCheck.length > 0) {
             validContestantId = dancerCheck[0].id;
-            console.log(`✅ Using dancer ID as contestant: ${validContestantId}`);
+            console.log(` Using dancer ID as contestant: ${validContestantId}`);
           } else {
-            console.error(`❌ Cannot find valid contestant for entry ${entryId}`);
+            console.error(` Cannot find valid contestant for entry ${entryId}`);
           }
         }
       }

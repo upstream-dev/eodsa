@@ -2,179 +2,135 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { UserPlus, User, Building2, ArrowRight } from 'lucide-react';
+import { BrandLogo, CoBrandLine } from '@/components/brand/BrandLogo';
 
 export default function HomePage() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [splashPhase, setSplashPhase] = useState('entering'); // 'entering', 'visible', 'exiting'
+ const [showSplash, setShowSplash] = useState(true);
+ const [splashPhase, setSplashPhase] = useState<'entering' | 'visible' | 'exiting'>('entering');
 
-  useEffect(() => {
-    // Animation sequence - shows every time the page loads
-    const timer1 = setTimeout(() => setSplashPhase('visible'), 500); // Fade in
-    const timer2 = setTimeout(() => setSplashPhase('exiting'), 2500); // Start fade out
-    const timer3 = setTimeout(() => {
-      setShowSplash(false);
-    }, 3500); // Complete fade out
+ useEffect(() => {
+ const timer1 = setTimeout(() => setSplashPhase('visible'), 500);
+ const timer2 = setTimeout(() => setSplashPhase('exiting'), 2500);
+ const timer3 = setTimeout(() => setShowSplash(false), 3500);
 
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
-  }, []);
+ return () => {
+ clearTimeout(timer1);
+ clearTimeout(timer2);
+ clearTimeout(timer3);
+ };
+ }, []);
 
-  if (showSplash) {
-    return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-black transition-all duration-1000 ${
-        splashPhase === 'entering' ? 'opacity-0' : 
-        splashPhase === 'visible' ? 'opacity-100' : 
-        'opacity-0'
-      }`}>
-        {/* Background Effects */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl animate-pulse delay-700"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        </div>
+ if (showSplash) {
+ return (
+ <div
+ className={`fixed inset-0 z-50 flex items-center justify-center avalon-mesh transition-opacity duration-1000 ${
+ splashPhase === 'entering' ? 'opacity-0' : splashPhase === 'visible' ? 'opacity-100' : 'opacity-0'
+ }`}
+ >
+ <div
+ className={`relative text-center transition-all duration-1000 ${
+ splashPhase === 'entering'
+ ? 'scale-94 opacity-0 translate-y-8'
+ : splashPhase === 'visible'
+ ? 'scale-100 opacity-100 translate-y-0'
+ : 'scale-105 opacity-0 -translate-y-6'
+ }`}
+ >
+ <BrandLogo brand="avalon" size={120} priority className="mx-auto mb-6" />
+ <h1 className="font-display text-6xl md:text-8xl chrome-text leading-none mb-3">Avalon</h1>
+ <p className="label-caps text-[var(--chrome-mid)] tracking-[0.2em]">Competition Management</p>
+ <div className="mt-10 w-56 mx-auto">
+ <div className="h-px bg-[rgba(192,192,192,0.15)] overflow-hidden">
+ <div
+ className={`h-full bg-gradient-to-r from-[#00E6FF] to-[#FF2DA1] transition-all duration-[2000ms] ${
+ splashPhase === 'visible' ? 'w-full' : 'w-0'
+ }`}
+ />
+ </div>
+ </div>
+ </div>
+ </div> );
+ }
 
-        {/* Main Content */}
-        <div className={`relative text-center transition-all duration-1000 ${
-          splashPhase === 'entering' ? 'scale-90 opacity-0 translate-y-8' : 
-          splashPhase === 'visible' ? 'scale-100 opacity-100 translate-y-0' : 
-          'scale-110 opacity-0 -translate-y-8'
-        }`}>
-          {/* Main Title */}
-          <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent mb-4 tracking-wider">
-            AVALON
-          </h1>
-          
-          {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-gray-300 font-light tracking-wide mb-8">
-            Welcome to Dance Excellence
-          </p>
-
-          {/* Animated Sparkles */}
-          <div className="relative">
-            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2">
-              <div className="flex space-x-2 animate-bounce">
-                <span className="text-yellow-400 text-2xl animate-pulse">✨</span>
-                <span className="text-purple-400 text-2xl animate-pulse delay-300">💫</span>
-                <span className="text-pink-400 text-2xl animate-pulse delay-600">⭐</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Loading Bar */}
-          <div className="mt-12 w-64 mx-auto">
-            <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-              <div className={`h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-2000 ${
-                splashPhase === 'visible' ? 'w-full' : 'w-0'
-              }`}></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Floating Elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-20 text-purple-400/30 text-4xl animate-float">🎭</div>
-          <div className="absolute top-32 right-32 text-pink-400/30 text-3xl animate-float delay-1000">🩰</div>
-          <div className="absolute bottom-32 left-32 text-blue-400/30 text-3xl animate-float delay-500">🎪</div>
-          <div className="absolute bottom-20 right-20 text-purple-400/30 text-4xl animate-float delay-1500">🌟</div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      {/* Compact Header */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center mb-8">
-          {/* EODSA Logo Placeholder */}
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4 shadow-2xl">
-            <span className="text-white text-3xl font-bold">EODSA</span>
-          </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
-                          Avalon
-          </h1>
-          <p className="text-gray-300 text-lg">Competition Management Portal</p>
-        </div>
-
-        {/* Main Content */}
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Get Started</h2>
-            <p className="text-gray-400">Choose your path to get started</p>
-          </div>
-
-          <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-16 max-w-5xl mx-auto">
-            {/* New User Card */}
-            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-indigo-500/30 p-6 text-center hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-indigo-500/20">
-              <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
-                <span className="text-white text-2xl">👋</span>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">New User</h3>
-              <p className="text-gray-300 mb-4 text-sm">
-                Register as a new dancer to participate in EODSA competitions.
-              </p>
-              <Link 
-                href="/register"
-                className="block w-full px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl text-sm"
-              >
-                Start Registration
-              </Link>
-            </div>
-
-            {/* Dancer Portal Card (Secure Login Only) */}
-            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-purple-500/30 p-6 text-center hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-purple-500/20">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
-                <span className="text-white text-2xl">🩰</span>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Dancer Portal</h3>
-              <p className="text-gray-300 mb-4 text-sm">
-                Already registered? Use secure login to access your dancer dashboard and enter events.
-              </p>
-              
-              <div className="space-y-3">
-                <Link 
-                  href="/dancer-login"
-                  className="block w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl text-sm"
-                >
-                  Secure Dancer Login
-                </Link>
-                <p className="text-xs text-gray-400">
-                  After logging in, you can clearly select your event and complete your entry from your dashboard.
-                </p>
-              </div>
-            </div>
-
-            {/* Studio Portal Card */}
-            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-green-500/30 p-6 text-center hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-green-500/20">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
-                <span className="text-white text-2xl">🏢</span>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Studio Portal</h3>
-              <p className="text-gray-300 mb-4 text-sm">
-                Register your studio or access your studio dashboard to manage dancers.
-              </p>
-              <div className="space-y-2">
-                <Link 
-                  href="/studio-register"
-                  className="block w-full px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg font-semibold hover:from-green-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl text-sm"
-                >
-                  Register Studio
-                </Link>
-                <Link 
-                  href="/studio-login"
-                  className="block w-full px-4 py-2 border-2 border-green-500 text-green-400 rounded-lg font-semibold hover:bg-green-500 hover:text-white transition-all duration-300 text-sm"
-                >
-                  Studio Login
-                </Link>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  );
+ return (
+ <div className="min-h-screen avalon-mesh flex flex-col">
+ <header className="relative z-10 px-6 py-5 flex items-center justify-between">
+ <div className="flex items-center gap-3 opacity-80">
+ <BrandLogo brand="avalon" size={32} />
+ <span className="label-caps text-[var(--muted-foreground)] hidden sm:inline">Avalon</span>
+ </div>
+ <Link href="/portal/admin" className="btn-outline-chrome !py-2 !px-4 text-[10px]"> Staff portals
+ <ArrowRight className="w-3.5 h-3.5 inline ml-1" />
+ </Link>
+ </header>  <main className="relative flex-1 flex flex-col items-center justify-center px-6 py-10 sm:py-16">
+ <div
+ className="pointer-events-none absolute w-[min(520px,90vw)] h-[min(520px,90vw)] rounded-full border border-[rgba(192,192,192,0.08)] top-1/2 left-1/2 -translate-x-1/2 -translate-y-[55%]" aria-hidden
+ >
+ <div className="absolute inset-7 rounded-full border border-[rgba(0,230,255,0.08)]" />
+ <div className="absolute inset-14 rounded-full border border-[rgba(255,45,161,0.07)]" />
+ </div>  <div className="relative z-10 w-full max-w-4xl text-center">
+ <div className="animate-avalon-brand mb-8">
+ <BrandLogo brand="avalon" size={128} priority className="mx-auto sm:w-36 sm:h-36" />
+ </div>  <h1 className="font-display text-5xl sm:text-7xl md:text-8xl chrome-text leading-none mb-4 animate-avalon-fade-up"> Avalon</h1>
+ <p className="label-caps text-[var(--chrome-mid)] mb-3 tracking-[0.2em] animate-avalon-fade-up"> Competition Management
+ </p>
+ <div className="brand-duo-rule mx-auto mb-6 animate-avalon-fade-up" />
+ <div className="flex justify-center mb-12 animate-avalon-fade-up">
+ <CoBrandLine />
+ </div>  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 text-left"> {/* Register — same destination as before */}
+ <div className="glass-panel p-7 transition-all duration-220 hover:border-[rgba(192,192,192,0.45)] hover:shadow-[0_0_32px_rgba(0,230,255,0.08),0_0_28px_rgba(255,45,161,0.06)] group">
+ <div className="w-14 h-14 rounded-[14px] border border-[rgba(192,192,192,0.28)] bg-[rgba(192,192,192,0.06)] flex items-center justify-center mx-auto mb-5 group-hover:border-[rgba(0,230,255,0.35)] transition-colors">
+ <UserPlus className="w-6 h-6 text-[var(--chrome-mid)]" strokeWidth={1.75} />
+ </div>
+ <h2 className="font-display text-2xl text-white leading-none mb-3 text-center">Register</h2>
+ <p className="text-sm text-[var(--muted-foreground)] text-center leading-relaxed mb-6"> Create a dancer account to enter EODSA competitions.
+ </p>
+ <div className="flex justify-center">
+ <Link href="/register" className="btn-chrome !py-2.5 !px-5"> Get Started
+ </Link>
+ </div>
+ </div> {/* Dancer login — same destination */}
+ <div className="glass-panel p-7 transition-all duration-220 hover:border-[rgba(192,192,192,0.45)] hover:shadow-[0_0_32px_rgba(0,230,255,0.08),0_0_28px_rgba(255,45,161,0.06)] group">
+ <div className="w-14 h-14 rounded-[14px] border border-[rgba(192,192,192,0.28)] bg-[rgba(192,192,192,0.06)] flex items-center justify-center mx-auto mb-5 group-hover:border-[rgba(0,230,255,0.35)] transition-colors">
+ <User className="w-6 h-6 text-[var(--chrome-mid)]" strokeWidth={1.75} />
+ </div>
+ <h2 className="font-display text-2xl text-white leading-none mb-3 text-center">Dancer</h2>
+ <p className="text-sm text-[var(--muted-foreground)] text-center leading-relaxed mb-6"> Sign in to manage your profile and competition entries.
+ </p>
+ <div className="flex justify-center">
+ <Link href="/dancer-login" className="btn-outline-chrome !py-2.5 !px-5"> Sign In
+ </Link>
+ </div>
+ </div> {/* Studio — keep both register + login */}
+ <div className="glass-panel p-7 transition-all duration-220 hover:border-[rgba(192,192,192,0.45)] hover:shadow-[0_0_32px_rgba(0,230,255,0.08),0_0_28px_rgba(255,45,161,0.06)] group">
+ <div className="w-14 h-14 rounded-[14px] border border-[rgba(192,192,192,0.28)] bg-[rgba(192,192,192,0.06)] flex items-center justify-center mx-auto mb-5 group-hover:border-[rgba(255,45,161,0.35)] transition-colors">
+ <Building2 className="w-6 h-6 text-[var(--chrome-mid)]" strokeWidth={1.75} />
+ </div>
+ <h2 className="font-display text-2xl text-white leading-none mb-3 text-center">Studio</h2>
+ <p className="text-sm text-[var(--muted-foreground)] text-center leading-relaxed mb-6"> Register your studio or sign in to manage dancers and entries.
+ </p>
+ <div className="flex flex-col gap-2">
+ <Link href="/studio-register" className="btn-chrome !py-2.5 !px-5 w-full text-center"> Register Studio
+ </Link>
+ <Link href="/studio-login" className="btn-outline-chrome !py-2.5 !px-5 w-full text-center"> Studio Login
+ </Link>
+ </div>
+ </div>
+ </div>
+ </div>
+ </main>  <footer className="relative z-10 px-6 py-6 flex flex-col sm:flex-row items-center justify-center gap-4 opacity-50">
+ <div className="flex items-center gap-2">
+ <BrandLogo brand="avalon" size={20} />
+ <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--muted-foreground)]"> avalondance.co.za
+ </span>
+ </div>
+ <span className="hidden sm:inline text-[#3a3a3a]">|</span>
+ <div className="flex items-center gap-2">
+ <BrandLogo brand="eod" size={20} />
+ <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--muted-foreground)]"> elementscentral.com
+ </span>
+ </div>
+ </footer>
+ </div> );
 }

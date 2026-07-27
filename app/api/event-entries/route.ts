@@ -32,41 +32,41 @@ export async function GET() {
         
         try {
           if (entry.participantIds && Array.isArray(entry.participantIds) && entry.participantIds.length > 0) {
-            console.log(`🔍 DEBUG: Entry ${entry.id} participantIds:`, entry.participantIds);
+            console.log(` DEBUG: Entry ${entry.id} participantIds:`, entry.participantIds);
             
             // Try as dancer IDs first
             const dancerResults = await sqlClient`
               SELECT id, name FROM dancers WHERE id = ANY(${entry.participantIds})
             ` as any[];
             
-            console.log(`🔍 DEBUG: Found ${dancerResults.length} dancers by ID`);
+            console.log(` DEBUG: Found ${dancerResults.length} dancers by ID`);
             
             if (dancerResults.length > 0) {
               const names = dancerResults.map(d => d.name);
               contestantName = names.join(', ');
-              console.log(`✅ Found dancer names: ${contestantName}`);
+              console.log(` Found dancer names: ${contestantName}`);
             } else {
               // Try as EODSA IDs
-              console.log(`🔍 DEBUG: Trying as EODSA IDs...`);
+              console.log(` DEBUG: Trying as EODSA IDs...`);
               const eodsaResults = await sqlClient`
                 SELECT id, name, eodsa_id FROM dancers WHERE eodsa_id = ANY(${entry.participantIds})
               ` as any[];
               
-              console.log(`🔍 DEBUG: Found ${eodsaResults.length} dancers by EODSA ID`);
+              console.log(` DEBUG: Found ${eodsaResults.length} dancers by EODSA ID`);
               
               if (eodsaResults.length > 0) {
                 const names = eodsaResults.map(d => d.name);
                 contestantName = names.join(', ');
-                console.log(`✅ Found dancer names by EODSA ID: ${contestantName}`);
+                console.log(` Found dancer names by EODSA ID: ${contestantName}`);
               } else {
-                console.warn(`❌ No dancers found with IDs or EODSA IDs: ${entry.participantIds.join(', ')}`);
+                console.warn(` No dancers found with IDs or EODSA IDs: ${entry.participantIds.join(', ')}`);
               }
             }
           } else {
-            console.warn(`❌ No valid participantIds for entry ${entry.id}`);
+            console.warn(` No valid participantIds for entry ${entry.id}`);
           }
         } catch (error) {
-          console.error(`❌ Error fetching dancers for entry ${entry.id}:`, error);
+          console.error(` Error fetching dancers for entry ${entry.id}:`, error);
         }
         
         return {
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     
     // Additional safety: If event name contains "national" but event_type is not set, treat as NATIONAL_EVENT
     if (!(event as any).eventType && event.name && event.name.toLowerCase().includes('national')) {
-      console.warn(`⚠️ [Qualification] Event "${event.name}" (${event.id}) has "national" in name but event_type not set. Treating as NATIONAL_EVENT.`);
+      console.warn(` [Qualification] Event "${event.name}" (${event.id}) has "national" in name but event_type not set. Treating as NATIONAL_EVENT.`);
       eventType = 'NATIONAL_EVENT';
     }
     
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     
     // Auto-enforce qualification for NATIONAL_EVENT if not explicitly set
     if (eventType === 'NATIONAL_EVENT' && !qualificationRequired) {
-      console.warn(`⚠️ [Qualification] NATIONAL_EVENT "${event.name}" (${event.id}) has qualificationRequired=false. Auto-enforcing qualification.`);
+      console.warn(` [Qualification] NATIONAL_EVENT "${event.name}" (${event.id}) has qualificationRequired=false. Auto-enforcing qualification.`);
       qualificationRequired = true;
       // Also ensure qualification_source is set
       if (!(event as any).qualificationSource) {
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       const qualificationSource = (event as any).qualificationSource || null;
       const minimumQualificationScore = (event as any).minimumQualificationScore || null;
       
-      console.log(`[Qualification] ✅ Qualification REQUIRED - source: ${qualificationSource}, minScore: ${minimumQualificationScore}`);
+      console.log(`[Qualification]  Qualification REQUIRED - source: ${qualificationSource}, minScore: ${minimumQualificationScore}`);
       
       // Get the first participant (primary dancer) for qualification check
       const primaryDancerId = body.participantIds[0];
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
         console.log(`[Qualification] Qualification check result: ${hasQualification}`);
         
         if (!hasQualification) {
-          console.log(`[Qualification] ❌ BLOCKING entry - dancer ${primaryDancerId} does not have qualifying regional performance`);
+          console.log(`[Qualification]  BLOCKING entry - dancer ${primaryDancerId} does not have qualifying regional performance`);
           // Log blocked entry
           try {
             await sqlClient`
@@ -603,7 +603,7 @@ export async function POST(request: NextRequest) {
       console.log(`- Validated fee: R${validatedFee}`);
       
       if (!feeValidation.wasCorrect) {
-        console.warn(`⚠️ Fee correction applied: submitted R${body.calculatedFee}, corrected to R${validatedFee}`);
+        console.warn(` Fee correction applied: submitted R${body.calculatedFee}, corrected to R${validatedFee}`);
       }
     } else {
       // Get event config for event-specific fees (event already fetched above)
@@ -629,8 +629,8 @@ export async function POST(request: NextRequest) {
       );
       
       if (!feeValidation.wasCorrect) {
-        console.warn(`⚠️ ${performanceType} fee validation: submitted R${body.calculatedFee}, expected R${feeValidation.validatedFee}`);
-        console.warn(`⚠️ Using submitted fee but flagging for review`);
+        console.warn(` ${performanceType} fee validation: submitted R${body.calculatedFee}, expected R${feeValidation.validatedFee}`);
+        console.warn(` Using submitted fee but flagging for review`);
         // For non-solo, we log but don't auto-correct (in case there are special pricing rules)
       }
     }
@@ -647,7 +647,7 @@ export async function POST(request: NextRequest) {
         sqlClient
       );
       if (!calculatedAgeCategory || calculatedAgeCategory === 'N/A') {
-        console.warn(`⚠️ Could not calculate age category for entry, using event default: ${event.ageCategory}`);
+        console.warn(` Could not calculate age category for entry, using event default: ${event.ageCategory}`);
         calculatedAgeCategory = event.ageCategory;
       }
     } catch (error) {

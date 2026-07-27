@@ -59,22 +59,22 @@ export async function POST(request: NextRequest) {
     // Ensure percentage is a valid number
     let percentageValue = Number(percentage);
     if (isNaN(percentageValue) || percentageValue < 0) {
-      console.error(`❌ Invalid percentage value: ${percentage}, defaulting to 0`);
+      console.error(` Invalid percentage value: ${percentage}, defaulting to 0`);
       percentageValue = 0;
     }
     if (percentageValue > 100) {
-      console.warn(`⚠️ Percentage value exceeds 100: ${percentageValue}, capping at 100`);
+      console.warn(` Percentage value exceeds 100: ${percentageValue}, capping at 100`);
       percentageValue = 100;
     }
     
     // Ensure percentage is a whole number (round it)
     percentageValue = Math.round(percentageValue);
     
-    console.log(`📊 Certificate generation - Percentage: ${percentageValue} (original: ${percentage}, type: ${typeof percentage})`);
+    console.log(` Certificate generation - Percentage: ${percentageValue} (original: ${percentage}, type: ${typeof percentage})`);
     
     // Validate that percentage is not 0 or undefined before proceeding
     if (percentageValue === 0 && percentage !== 0) {
-      console.error(`❌ Percentage is 0 but original was not 0. Original: ${percentage}`);
+      console.error(` Percentage is 0 but original was not 0. Original: ${percentage}`);
     }
 
     // Truncate title if too long (max 26 characters to fit on certificate)
@@ -129,14 +129,14 @@ export async function POST(request: NextRequest) {
       } else if (nameCount >= 4) {
         inferredPerformanceType = 'Group';
       }
-      console.log(`📝 Inferred performance type from dancerName (${nameCount} names): ${inferredPerformanceType}`);
+      console.log(` Inferred performance type from dancerName (${nameCount} names): ${inferredPerformanceType}`);
     }
     
     const isGroupPerformance = inferredPerformanceType && ['Duet', 'Trio', 'Group'].includes(inferredPerformanceType);
     
     // CRITICAL: Determine what should be stored in certificates.dancer_name
-    // SOLO → dancer_name = dancer/participant name
-    // DUO/TRIO/GROUP → dancer_name = studio name from event_entries.studio_name (NEVER participant names)
+    // SOLO  dancer_name = dancer/participant name
+    // DUO/TRIO/GROUP  dancer_name = studio name from event_entries.studio_name (NEVER participant names)
     let displayName: string;
     let nameToStoreInDatabase: string; // This is what goes into certificates.dancer_name
     
@@ -146,33 +146,33 @@ export async function POST(request: NextRequest) {
       if (studioName && studioName.trim() !== '') {
         displayName = studioName.toUpperCase();
         nameToStoreInDatabase = studioName; // Store studio name, not participant names
-        console.log(`📝 Group performance - Using studioName parameter: ${displayName}`);
+        console.log(` Group performance - Using studioName parameter: ${displayName}`);
       } else if (dancerName && !dancerName.includes(',') && dancerName.trim() !== '' && dancerName !== 'Studio Name') {
         // If dancerName is a single name (not a list), use it as studio name
         // But exclude the literal "Studio Name" fallback
         displayName = dancerName.toUpperCase();
         nameToStoreInDatabase = dancerName;
-        console.log(`📝 Group performance - Using dancerName as studio (single name, not comma-separated): ${displayName}`);
+        console.log(` Group performance - Using dancerName as studio (single name, not comma-separated): ${displayName}`);
       } else {
         // Last resort: use a generic name instead of dancer names
         displayName = 'STUDIO NAME';
         nameToStoreInDatabase = 'Studio Name'; // Store generic, NOT participant names
-        console.error(`❌ Group performance - Studio name not found! Using fallback.`);
-        console.error(`❌ studioName: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
-        console.error(`❌ performanceType: ${performanceType}, isGroupPerformance: ${isGroupPerformance}`);
-        console.error(`❌ NOT storing participant names in database for group performance!`);
+        console.error(` Group performance - Studio name not found! Using fallback.`);
+        console.error(` studioName: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
+        console.error(` performanceType: ${performanceType}, isGroupPerformance: ${isGroupPerformance}`);
+        console.error(` NOT storing participant names in database for group performance!`);
       }
     } else {
       // For solo performances, use dancer name
       displayName = dancerName.toUpperCase();
       nameToStoreInDatabase = dancerName; // Store dancer name for solo
-      console.log(`📝 Solo performance - Using dancer name: ${displayName}`);
+      console.log(` Solo performance - Using dancer name: ${displayName}`);
     }
     
-    console.log(`📝 Certificate display name: ${displayName}`);
-    console.log(`📝 Name to store in database (certificates.dancer_name): ${nameToStoreInDatabase}`);
-    console.log(`📝 isGroup: ${isGroupPerformance}, performanceType (from request): ${performanceType || 'null'}, inferredPerformanceType: ${inferredPerformanceType || 'null'}`);
-    console.log(`📝 studioName from event_entries: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
+    console.log(` Certificate display name: ${displayName}`);
+    console.log(` Name to store in database (certificates.dancer_name): ${nameToStoreInDatabase}`);
+    console.log(` isGroup: ${isGroupPerformance}, performanceType (from request): ${performanceType || 'null'}, inferredPerformanceType: ${inferredPerformanceType || 'null'}`);
+    console.log(` studioName from event_entries: ${studioName || 'N/A'}, dancerName: ${dancerName || 'N/A'}`);
     
     // Dynamic font sizing based on name length to prevent overflow
     // Only adjust if using default (not custom position)
@@ -195,12 +195,12 @@ export async function POST(request: NextRequest) {
         // Extremely long names: minimum readable size
         nameFontSize = 32;
       }
-      console.log(`📏 Dynamic font sizing: name length ${nameLength} → font size ${nameFontSize}px`);
+      console.log(`📏 Dynamic font sizing: name length ${nameLength}  font size ${nameFontSize}px`);
     }
 
     // Get event to check for custom certificate template
     let templatePublicId = 'Template_syz7di'; // Default template
-    console.log('🔍 Certificate Generation - Checking for custom template...');
+    console.log(' Certificate Generation - Checking for custom template...');
     console.log('   eventId from request:', eventId);
     console.log('   performanceId from request:', performanceId);
     
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
           console.log('   ℹ️ Got eventId from performance:', finalEventId);
         }
       } catch (err) {
-        console.warn('   ⚠️ Could not fetch performance to get eventId:', err);
+        console.warn('    Could not fetch performance to get eventId:', err);
       }
     }
     
@@ -259,17 +259,17 @@ export async function POST(request: NextRequest) {
               if (filtered.length > 0) {
                 const lastPart = filtered[filtered.length - 1];
                 filtered[filtered.length - 1] = lastPart.replace(/\.(pdf|png|jpg|jpeg)$/i, '');
-                console.log('   Removed extension from:', lastPart, '→', filtered[filtered.length - 1]);
+                console.log('   Removed extension from:', lastPart, '', filtered[filtered.length - 1]);
               }
               
               templatePublicId = filtered.join('/');
-              console.log('✅ Using custom template with public_id:', templatePublicId);
+              console.log(' Using custom template with public_id:', templatePublicId);
             } else {
-              console.warn('   ⚠️ Could not find "upload" in path, using default template');
+              console.warn('    Could not find "upload" in path, using default template');
               console.warn('   Path parts:', pathParts);
             }
           } catch (urlError) {
-            console.error('   ❌ Could not parse certificate template URL, using default:', urlError);
+            console.error('    Could not parse certificate template URL, using default:', urlError);
             console.error('   URL was:', event?.certificateTemplateUrl || 'N/A');
           }
         } else {
@@ -283,7 +283,7 @@ export async function POST(request: NextRequest) {
           console.log('   Event object:', JSON.stringify(eventInfo));
         }
       } catch (err) {
-        console.error('   ❌ Could not fetch event for custom template, using default:', err);
+        console.error('    Could not fetch event for custom template, using default:', err);
         console.error('   EventId used:', finalEventId);
       }
     } else {
@@ -292,8 +292,8 @@ export async function POST(request: NextRequest) {
       console.log('   performanceId was:', performanceId);
     }
     
-    console.log('   📋 Final template public_id:', templatePublicId);
-    console.log('   📋 Will generate certificate with this template');
+    console.log('    Final template public_id:', templatePublicId);
+    console.log('    Will generate certificate with this template');
 
     // Generate certificate using Cloudinary with custom or default positioning
     const certificateUrl = cloudinary.url(templatePublicId, {

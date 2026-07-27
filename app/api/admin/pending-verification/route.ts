@@ -10,14 +10,12 @@ export async function GET(request: NextRequest) {
     
     // Get dancers created within 48 hours
     const dancers = await unifiedDb.getAllDancers();
-    const recentDancers = dancers.filter(dancer => 
-      dancer.createdAt && dancer.createdAt > fortEightHoursAgo
+    const recentDancers = dancers.filter(dancer => dancer.createdAt && dancer.createdAt > fortEightHoursAgo
     );
     
     // Get studios created within 48 hours  
     const studios = await unifiedDb.getAllStudios();
-    const recentStudios = studios.filter(studio => 
-      studio.createdAt && studio.createdAt > fortEightHoursAgo
+    const recentStudios = studios.filter(studio => studio.createdAt && studio.createdAt > fortEightHoursAgo
     );
 
     return NextResponse.json({

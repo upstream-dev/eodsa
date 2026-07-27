@@ -109,19 +109,19 @@ export async function GET(
 
     // Add warnings
     if (hasScores && hasPublishedScores) {
-      restrictions.warnings.push('⚠️ This event has published scores. Changing judge count could break score calculations.');
+      restrictions.warnings.push(' This event has published scores. Changing judge count could break score calculations.');
       restrictions.blocks.push('judgeCount');
     } else if (hasScores) {
-      restrictions.warnings.push('⚠️ This event has scores. Changing judge count could break score calculations.');
+      restrictions.warnings.push(' This event has scores. Changing judge count could break score calculations.');
       restrictions.blocks.push('judgeCount');
     }
 
     if (hasPayments) {
-      restrictions.warnings.push('💰 This event has paid entries. Changing fees may not retroactively match amounts already paid — review totals carefully.');
+      restrictions.warnings.push(' This event has paid entries. Changing fees may not retroactively match amounts already paid — review totals carefully.');
     }
 
     if (liveEntries > 0 && event.participation_mode === 'virtual') {
-      restrictions.warnings.push(`🎭 This event has ${liveEntries} live entry/entries. Changing to "Virtual only" would invalidate these entries.`);
+      restrictions.warnings.push(` This event has ${liveEntries} live entry/entries. Changing to "Virtual only" would invalidate these entries.`);
     }
 
     if (virtualEntries > 0 && event.participation_mode === 'live') {
@@ -133,7 +133,7 @@ export async function GET(
     }
 
     if (event.status === 'completed') {
-      restrictions.warnings.push('✅ Event is completed. Most changes are not recommended.');
+      restrictions.warnings.push(' Event is completed. Most changes are not recommended.');
       restrictions.blocks.push('dates', 'status');
     }
 

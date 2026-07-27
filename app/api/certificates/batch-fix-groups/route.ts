@@ -62,15 +62,14 @@ export async function POST(request: NextRequest) {
       return false;
     });
 
-    console.log(`🔍 Found ${certificatesResult.length} certificates for group performances to fix`);
+    console.log(` Found ${certificatesResult.length} certificates for group performances to fix`);
 
     const results = {
       total: certificatesResult.length,
       processed: 0,
       succeeded: 0,
       failed: 0,
-      errors: [] as Array<{ certificateId: string; performanceId: string; error: string }>
-    };
+      errors: [] as Array<{ certificateId: string; performanceId: string; error: string }> };
 
     // Derive base URL from request URL
     let baseUrl: string;
@@ -104,7 +103,7 @@ export async function POST(request: NextRequest) {
 
         if (regenerateResponse.ok) {
           results.succeeded++;
-          console.log(`   ✅ Successfully regenerated`);
+          console.log(`    Successfully regenerated`);
         } else {
           const errorText = await regenerateResponse.text();
           results.failed++;
@@ -113,7 +112,7 @@ export async function POST(request: NextRequest) {
             performanceId: cert.performance_id,
             error: errorText
           });
-          console.error(`   ❌ Failed to regenerate: ${errorText}`);
+          console.error(`    Failed to regenerate: ${errorText}`);
         }
       } catch (error) {
         results.failed++;
@@ -123,11 +122,11 @@ export async function POST(request: NextRequest) {
           performanceId: cert.performance_id,
           error: errorMessage
         });
-        console.error(`   ❌ Error processing certificate: ${errorMessage}`);
+        console.error(`    Error processing certificate: ${errorMessage}`);
       }
     }
 
-    console.log(`\n✅ Batch fix completed:`);
+    console.log(`\n Batch fix completed:`);
     console.log(`   Total: ${results.total}`);
     console.log(`   Processed: ${results.processed}`);
     console.log(`   Succeeded: ${results.succeeded}`);

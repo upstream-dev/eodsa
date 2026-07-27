@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    console.log(`📊 Found ${orphanedDancers.length} unified dancers without contestant records`);
+    console.log(` Found ${orphanedDancers.length} unified dancers without contestant records`);
     
     if (orphanedDancers.length === 0) {
       return NextResponse.json({
@@ -72,11 +72,11 @@ export async function POST(request: NextRequest) {
           ON CONFLICT (id) DO NOTHING
         `;
         
-        console.log(`✅ Created contestant record for dancer: ${dancer.name} (${dancer.eodsaId})`);
+        console.log(` Created contestant record for dancer: ${dancer.name} (${dancer.eodsaId})`);
         successCount++;
         
       } catch (error: any) {
-        console.error(`❌ Failed to create contestant record for dancer ${dancer.name}:`, error.message);
+        console.error(` Failed to create contestant record for dancer ${dancer.name}:`, error.message);
         errors.push(`${dancer.name}: ${error.message}`);
         errorCount++;
       }
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    console.log(`🔍 Verification: ${remainingCount} dancers still without contestant records`);
+    console.log(` Verification: ${remainingCount} dancers still without contestant records`);
     
     return NextResponse.json({
       success: true,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error: any) {
-    console.error('❌ Migration failed:', error);
+    console.error(' Migration failed:', error);
     return NextResponse.json(
       { 
         success: false, 

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       ORDER BY c.created_at DESC
     ` as any[];
 
-    console.log(`🔍 Found ${allCertificatesResult.length} certificates with invalid participant names to fix`);
+    console.log(` Found ${allCertificatesResult.length} certificates with invalid participant names to fix`);
 
     const results = {
       total: allCertificatesResult.length,
@@ -45,8 +45,7 @@ export async function POST(request: NextRequest) {
       succeeded: 0,
       failed: 0,
       errors: [] as Array<{ certificateId: string; performanceId: string; currentName: string; error: string }>,
-      fixed: [] as Array<{ certificateId: string; performanceId: string; oldName: string; newName?: string }>
-    };
+      fixed: [] as Array<{ certificateId: string; performanceId: string; oldName: string; newName?: string }> };
 
     // Derive base URL from request URL
     let baseUrl: string;
@@ -103,8 +102,8 @@ export async function POST(request: NextRequest) {
             newName: newName
           });
           
-          console.log(`   ✅ Successfully regenerated`);
-          console.log(`   Old name: "${cert.dancer_name}" → New name: "${newName}"`);
+          console.log(`    Successfully regenerated`);
+          console.log(`   Old name: "${cert.dancer_name}" New name: "${newName}"`);
         } else {
           const errorText = await regenerateResponse.text();
           results.failed++;
@@ -114,7 +113,7 @@ export async function POST(request: NextRequest) {
             currentName: cert.dancer_name,
             error: errorText
           });
-          console.error(`   ❌ Failed to regenerate: ${errorText}`);
+          console.error(`    Failed to regenerate: ${errorText}`);
         }
       } catch (error) {
         results.failed++;
@@ -125,11 +124,11 @@ export async function POST(request: NextRequest) {
           currentName: cert.dancer_name,
           error: errorMessage
         });
-        console.error(`   ❌ Error processing certificate: ${errorMessage}`);
+        console.error(`    Error processing certificate: ${errorMessage}`);
       }
     }
 
-    console.log(`\n✅ Batch fix completed:`);
+    console.log(`\n Batch fix completed:`);
     console.log(`   Total: ${results.total}`);
     console.log(`   Processed: ${results.processed}`);
     console.log(`   Succeeded: ${results.succeeded}`);

@@ -1,9 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePhase2Feature } from '@/hooks/usePhase2Feature';
+import {
+  Shield,
+  Gavel,
+  Archive,
+  ScrollText,
+  BookOpen,
+  Mic2,
+  ClipboardList,
+  Camera,
+  Volume2,
+  Bell,
+  CalendarCog,
+  Layers,
+  type LucideProps,
+} from 'lucide-react';
+
+type IconComponent = ComponentType<LucideProps>;
 
 export default function BackendDashboard() {
   const router = useRouter();
@@ -29,42 +46,55 @@ export default function BackendDashboard() {
       cancelled = true;
     };
   }, [router]);
-  
+
   // Portal links that should be disabled when Phase 2 is disabled
-  const phase2Portals = [
-    { href: '/portal/backstage', icon: '🎭', label: 'Backstage Manager', color: 'purple' },
-    { href: '/portal/announcer', icon: '📢', label: 'Announcer Portal', color: 'orange' },
-    { href: '/portal/registration', icon: '✅', label: 'Registration Desk', color: 'teal' },
-    { href: '/portal/media', icon: '📸', label: 'Media Portal', color: 'pink' },
-    { href: '/admin/sound-tech', icon: '🎵', label: 'Sound Tech', color: 'indigo' },
-    { href: '/admin/notifications', icon: '📧', label: 'Admin Notifications', color: 'emerald' },
-    { href: '/event-type-manager', icon: '🗂️', label: 'Event Type Manager', color: 'yellow', external: false }
+  const phase2Portals: { href: string; icon: IconComponent; label: string; external?: boolean }[] = [
+    { href: '/portal/backstage', icon: Layers, label: 'Backstage Manager' },
+    { href: '/portal/announcer', icon: Mic2, label: 'Announcer Portal' },
+    { href: '/portal/registration', icon: ClipboardList, label: 'Registration Desk' },
+    { href: '/portal/media', icon: Camera, label: 'Media Portal' },
+    { href: '/admin/sound-tech', icon: Volume2, label: 'Sound Tech' },
+    { href: '/admin/notifications', icon: Bell, label: 'Admin Notifications' },
+    { href: '/event-type-manager', icon: CalendarCog, label: 'Event Type Manager' },
   ];
 
-  const PortalLink = ({ href, icon, label, color, external = false }: { href: string; icon: string; label: string; color: string; external?: boolean }) => {
+  const tileBase =
+    'flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg transition-colors group glass-panel bg-black/40 border border-[rgba(192,192,192,0.22)] min-h-[88px] sm:min-h-[100px]';
+
+  const PortalLink = ({
+    href,
+    icon: Icon,
+    label,
+    external = false,
+  }: {
+    href: string;
+    icon: IconComponent;
+    label: string;
+    external?: boolean;
+  }) => {
     const isDisabled = !isPhase2Enabled;
-    
-    const colorClasses: Record<string, { bg: string; hover: string; text: string }> = {
-      purple: { bg: 'bg-purple-600/20', hover: 'hover:bg-purple-600/30', text: 'text-purple-400' },
-      orange: { bg: 'bg-orange-600/20', hover: 'hover:bg-orange-600/30', text: 'text-orange-400' },
-      teal: { bg: 'bg-teal-600/20', hover: 'hover:bg-teal-600/30', text: 'text-teal-400' },
-      pink: { bg: 'bg-pink-600/20', hover: 'hover:bg-pink-600/30', text: 'text-pink-400' },
-      indigo: { bg: 'bg-indigo-600/20', hover: 'hover:bg-indigo-600/30', text: 'text-indigo-400' },
-      emerald: { bg: 'bg-emerald-600/20', hover: 'hover:bg-emerald-600/30', text: 'text-emerald-400' },
-      yellow: { bg: 'bg-yellow-500/20', hover: 'hover:bg-yellow-500/30', text: 'text-yellow-300' }
-    };
-    
-    const colorClass = colorClasses[color] || colorClasses.purple;
-    const baseClasses = `flex flex-col items-center p-3 rounded-lg transition-colors group ${
-      isDisabled 
-        ? 'bg-gray-600/10 opacity-50 cursor-not-allowed' 
-        : `${colorClass.bg} ${colorClass.hover} cursor-pointer`
+
+    const baseClasses = `${tileBase} ${
+      isDisabled
+        ? 'opacity-50 cursor-not-allowed'
+        : 'hover:border-[rgba(192,192,192,0.4)] hover:bg-black/50 cursor-pointer'
     }`;
-    
+
     const content = (
       <>
-        <span className={`text-2xl mb-2 ${isDisabled ? '' : 'group-hover:scale-110'} transition-transform`}>{icon}</span>
-        <span className={`text-xs font-medium text-center ${isDisabled ? 'text-gray-500' : colorClass.text}`}>{label}</span>
+        <Icon
+          className={`w-6 h-6 mb-2 text-[var(--chrome-mid)] ${
+            isDisabled ? '' : 'group-hover:scale-110'
+          } transition-transform`}
+          strokeWidth={1.75}
+        />
+        <span
+          className={`text-xs font-medium text-center ${
+            isDisabled ? 'text-gray-500' : 'text-[#e8e8e8]'
+          }`}
+        >
+          {label}
+        </span>
       </>
     );
 
@@ -93,50 +123,51 @@ export default function BackendDashboard() {
 
   if (!authorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center">
-        <p className="text-gray-300 text-sm">Verifying admin access…</p>
+      <div className="min-h-screen avalon-mesh flex items-center justify-center">
+        <p className="text-[#c0c0c0] text-sm">Verifying admin access…</p>
       </div>
     );
   }
 
+  const alwaysOnPortals: { href: string; icon: IconComponent; label: string }[] = [
+    { href: '/portal/admin', icon: Shield, label: 'Admin Portal' },
+    { href: '/portal/judge', icon: Gavel, label: 'Judge Portal' },
+    { href: '/backend/archived', icon: Archive, label: 'Archived' },
+    { href: '/backend/logs', icon: ScrollText, label: 'Logs' },
+    { href: '/backend/guide', icon: BookOpen, label: 'Admin Guide' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4 shadow-2xl">
-            <span className="text-white text-3xl font-bold">EODSA</span>
+    <div className="min-h-screen avalon-mesh avalon-shell">
+      <div className="avalon-container avalon-section">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 bg-[rgba(192,192,192,0.1)] border border-[rgba(192,192,192,0.3)] rounded-2xl mb-3 sm:mb-4 shadow-2xl">
+            <span className="text-[#e8e8e8] text-xl sm:text-3xl font-bold">EODSA</span>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
-            Backend Dashboard
-          </h1>
-          <p className="text-gray-300 text-lg">Staff & Official Management Portal</p>
+          <h1 className="text-2xl sm:text-4xl font-bold chrome-text mb-2">Backend Dashboard</h1>
+          <p className="text-[#c0c0c0] text-sm sm:text-lg">Staff & Official Management Portal</p>
           <p className="text-xs text-amber-300/80 mt-2">Admin access only</p>
         </div>
 
         <div className="max-w-6xl mx-auto">
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-gray-500/30 p-6 mb-8 shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-4 text-center">Staff & Official Portals</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <Link href="/portal/admin" className="flex flex-col items-center p-3 bg-blue-600/20 rounded-lg hover:bg-blue-600/30 transition-colors group">
-                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">👑</span>
-                <span className="text-xs text-blue-400 font-medium">Admin Portal</span>
-              </Link>
-              <Link href="/portal/judge" className="flex flex-col items-center p-3 bg-green-600/20 rounded-lg hover:bg-green-600/30 transition-colors group">
-                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">⚖️</span>
-                <span className="text-xs text-green-400 font-medium">Judge Portal</span>
-              </Link>
-              <Link href="/backend/archived" className="flex flex-col items-center p-3 bg-slate-600/20 rounded-lg hover:bg-slate-600/30 transition-colors group">
-                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">📦</span>
-                <span className="text-xs text-slate-300 font-medium">Archived</span>
-              </Link>
-              <Link href="/backend/logs" className="flex flex-col items-center p-3 bg-violet-600/20 rounded-lg hover:bg-violet-600/30 transition-colors group">
-                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">📋</span>
-                <span className="text-xs text-violet-300 font-medium">Logs</span>
-              </Link>
-              <Link href="/backend/guide" className="flex flex-col items-center p-3 bg-amber-600/20 rounded-lg hover:bg-amber-600/30 transition-colors group">
-                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">📖</span>
-                <span className="text-xs text-amber-400 font-medium">Admin Guide</span>
-              </Link>
+          <div className="glass-panel rounded-2xl border border-[rgba(192,192,192,0.22)] p-4 sm:p-6 mb-6 sm:mb-8">
+            <h3 className="text-lg sm:text-xl font-bold text-[#e8e8e8] mb-4 text-center">
+              Staff & Official Portals
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              {alwaysOnPortals.map(({ href, icon: Icon, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`${tileBase} min-h-[88px] sm:min-h-[100px] justify-center hover:border-[rgba(192,192,192,0.4)] hover:bg-black/50 cursor-pointer`}
+                >
+                  <Icon
+                    className="w-5 h-5 sm:w-6 sm:h-6 mb-2 text-[var(--chrome-mid)] group-hover:scale-110 transition-transform"
+                    strokeWidth={1.75}
+                  />
+                  <span className="text-[11px] sm:text-xs text-[#e8e8e8] font-medium text-center leading-tight">{label}</span>
+                </Link>
+              ))}
               {phase2Portals.map((portal) => (
                 <PortalLink key={portal.href} {...portal} />
               ))}
@@ -145,18 +176,18 @@ export default function BackendDashboard() {
 
           <div className="text-center space-y-4">
             <div className="flex flex-wrap justify-center gap-4 text-sm">
-              <Link href="/admin/scoring-approval" className="text-indigo-400 hover:text-indigo-300 transition-colors">
+              <Link
+                href="/admin/scoring-approval"
+                className="text-[var(--chrome-mid)] hover:text-[#e8e8e8] transition-colors"
+              >
                 Score Approval System
               </Link>
             </div>
           </div>
 
           <div className="text-center mt-8">
-            <Link 
-              href="/"
-              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg font-semibold hover:from-gray-700 hover:to-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl text-sm"
-            >
-              ← Back to Main Portal
+            <Link href="/" className="btn-outline-chrome inline-flex items-center text-sm">
+              Back to Main Portal
             </Link>
           </div>
         </div>
