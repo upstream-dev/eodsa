@@ -42,8 +42,11 @@ export async function GET(request: NextRequest) {
         j.name as judge_name,
         p.id as performance_id,
         p.title as performance_title,
+        p.event_id,
         p.scores_published,
         p.scores_published_at,
+        e.event_type,
+        e.region,
         ee.item_name as entry_title,
         ee.eodsa_id,
         ee.participant_ids,
@@ -52,6 +55,7 @@ export async function GET(request: NextRequest) {
       JOIN performances p ON p.event_entry_id = ee.id
       JOIN scores s ON s.performance_id = p.id
       JOIN judges j ON j.id = s.judge_id
+      LEFT JOIN events e ON e.id = p.event_id
       LEFT JOIN dancers d ON ee.eodsa_id = d.eodsa_id
       LEFT JOIN contestants c ON ee.contestant_id = c.id
       WHERE (
@@ -69,6 +73,9 @@ export async function GET(request: NextRequest) {
       judgeName: row.judge_name,
       performanceId: row.performance_id,
       performanceTitle: row.performance_title || row.entry_title,
+      eventId: row.event_id,
+      eventType: row.event_type || 'REGIONAL_EVENT',
+      region: row.region || null,
       dancerName: row.dancer_name,
       eodsaId: row.eodsa_id,
       technicalScore: parseFloat(row.technical_score),

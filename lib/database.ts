@@ -2988,11 +2988,14 @@ export const db = {
         p.event_id,
         p.scores_published,
         p.scores_published_at,
+        e.event_type,
+        e.region,
         ee.item_name as entry_title
       FROM event_entries ee
       JOIN performances p ON p.event_entry_id = ee.id
       JOIN scores s ON s.performance_id = p.id
       JOIN judges j ON j.id = s.judge_id
+      LEFT JOIN events e ON e.id = p.event_id
       WHERE (
         ee.eodsa_id = ${eodsaId}
         OR ee.participant_ids::text LIKE ${`%${eodsaId}%`}
@@ -3009,6 +3012,8 @@ export const db = {
       performanceId: row.performance_id,
       performanceTitle: row.performance_title || row.entry_title,
       eventId: row.event_id,
+      eventType: row.event_type || 'REGIONAL_EVENT',
+      region: row.region || null,
       technicalScore: parseFloat(row.technical_score),
       musicalScore: parseFloat(row.musical_score || 0),
       performanceScore: parseFloat(row.performance_score || 0),

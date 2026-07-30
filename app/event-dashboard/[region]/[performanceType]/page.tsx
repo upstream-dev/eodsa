@@ -1117,13 +1117,13 @@ export default function PerformanceTypeEntryPage() {
  if (performanceType?.toLowerCase() === 'solo' && region?.toLowerCase() === 'nationals') {
  for (let i = 0; i < formData.solos.length; i++) {
  const solo = formData.solos[i];
- if (!solo.itemName || !solo.choreographer || !solo.mastery || !solo.itemStyle) {
+ if (!solo.itemName || !solo.mastery || !solo.itemStyle) {
  showAlert(`Please fill in all required fields for Solo ${i + 1}`, 'warning');
  setIsSubmitting(false);
  return;
  }
  }
- } else if (!formData.itemName || !formData.choreographer || !formData.mastery || !formData.itemStyle) {
+ } else if (!formData.itemName || !formData.mastery || !formData.itemStyle) {
  showAlert('Please fill in all required fields', 'warning');
  setIsSubmitting(false);
  return;
@@ -1715,14 +1715,14 @@ export default function PerformanceTypeEntryPage() {
  <span>{solo.itemName.length}/26</span>
  </div>
  </div>  <div>
- <label className="block text-sm font-medium text-gray-300 mb-2">Choreographer *</label>
+ <label className="block text-sm font-medium text-gray-300 mb-2">Choreographer</label>
  <input
  type="text" value={solo.choreographer}
  onChange={(e) => {
  const cleanValue = e.target.value.replace(/[^a-zA-Z\s\-\']/g, '');
  updateSoloField(index, 'choreographer', cleanValue);
  }}
- placeholder="Name of the choreographer" className="w-full px-4 py-3 border border-gray-600 bg-black/40 rounded-xl focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white placeholder-gray-400" required
+ placeholder="Name of the choreographer" className="w-full px-4 py-3 border border-gray-600 bg-black/40 rounded-xl focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white placeholder-gray-400"
  />
  </div>  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  <div>
@@ -1799,14 +1799,14 @@ export default function PerformanceTypeEntryPage() {
  <span>{formData.itemName.length}/26</span>
  </div>
  </div>  <div>
- <label className="block text-sm font-medium text-gray-300 mb-2">Choreographer *</label>
+ <label className="block text-sm font-medium text-gray-300 mb-2">Choreographer</label>
  <input
  type="text" name="choreographer" value={formData.choreographer}
  onChange={(e) => {
  const cleanValue = e.target.value.replace(/[^a-zA-Z\s\-\']/g, '');
  setFormData(prev => ({ ...prev, choreographer: cleanValue }));
  }}
- placeholder="Name of the choreographer" className="w-full px-4 py-3 border border-gray-600 bg-black/40 rounded-xl focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white placeholder-gray-400" required
+ placeholder="Name of the choreographer" className="w-full px-4 py-3 border border-gray-600 bg-black/40 rounded-xl focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white placeholder-gray-400"
  />
  </div>  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  <div>

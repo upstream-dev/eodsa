@@ -1132,6 +1132,16 @@ export default function CompetitionEntryPage() {
  return;
  }
 
+ if (!currentForm.itemStyle?.trim()) {
+ alert('Please select an Item Style before adding this entry.');
+ return;
+ }
+
+ if (!currentForm.mastery?.trim()) {
+ alert('Please select a Mastery Level before adding this entry.');
+ return;
+ }
+
  const limits = getParticipantLimits(showAddForm);
  if (currentForm.participantIds.length < limits.min || currentForm.participantIds.length > limits.max) {
  // Add some visual feedback that the form is invalid
@@ -1905,7 +1915,7 @@ export default function CompetitionEntryPage() {
  <span>{currentForm.itemName.length}/26</span>
  </div>
  </div>  <div>
- <label className="block text-sm font-semibold text-slate-300 mb-3">Choreographer *</label>
+ <label className="block text-sm font-semibold text-slate-300 mb-3">Choreographer</label>
  <input
  type="text" value={currentForm.choreographer}
  onChange={(e) => {
@@ -2296,13 +2306,17 @@ export default function CompetitionEntryPage() {
  ref={addEntryButtonRef}
  onClick={handleSaveEntry}
  disabled={
- !currentForm.itemName || 
+ !currentForm.itemName ||
+ !currentForm.itemStyle ||
+ !currentForm.mastery ||
  currentForm.participantIds.length === 0 ||
  currentForm.participantIds.length < getParticipantLimits(showAddForm).min ||
  currentForm.participantIds.length > getParticipantLimits(showAddForm).max
  }
  className={`w-full sm:w-auto px-6 py-3 text-white rounded-xl transition-all duration-300 font-semibold text-base min-h-[48px] sm:min-h-auto order-1 sm:order-2 ${
- !currentForm.itemName || 
+ !currentForm.itemName ||
+ !currentForm.itemStyle ||
+ !currentForm.mastery ||
  currentForm.participantIds.length === 0 ||
  currentForm.participantIds.length < getParticipantLimits(showAddForm).min ||
  currentForm.participantIds.length > getParticipantLimits(showAddForm).max
@@ -2310,6 +2324,8 @@ export default function CompetitionEntryPage() {
  : 'btn-chrome hover:scale-105'
  }`}
  > {!currentForm.itemName ? ' Enter Item Name' :
+ !currentForm.itemStyle ? ' Select Item Style' :
+ !currentForm.mastery ? ' Select Mastery Level' :
  currentForm.participantIds.length === 0 ? ' Select Participants' :
  currentForm.participantIds.length < getParticipantLimits(showAddForm).min ? 
  ` Need ${getParticipantLimits(showAddForm).min - currentForm.participantIds.length} More` :

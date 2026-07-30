@@ -21,6 +21,58 @@ interface MusicUploadProps {
  compact?: boolean;
 }
 
+const ALLOWED_EXTENSIONS = ['mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg', 'wma', 'webm'] as const;
+const ALLOWED_EXTENSIONS_LABEL = 'MP3, WAV, AAC, M4A, FLAC, OGG, WMA, or WebM';
+const MAX_FILE_SIZE_BYTES = 200000000; // 200MB
+const MAX_FILE_SIZE_LABEL = '200MB';
+
+const ALLOWED_MIME_TYPES = [
+ 'audio/mpeg', // MP3
+ 'audio/mp3',
+ 'audio/mpeg3',
+ 'audio/wav',
+ 'audio/x-wav',
+ 'audio/vnd.wav',
+ 'audio/aac',
+ 'audio/x-aac',
+ 'audio/mp4',
+ 'audio/x-m4a',
+ 'audio/mp4a-latm',
+ 'audio/flac',
+ 'audio/x-flac',
+ 'audio/ogg',
+ 'audio/x-ms-wma',
+ 'audio/webm',
+ '' // Some browsers omit MIME type; extension check still applies
+];
+
+const REJECTED_EXTENSIONS: Record<string, string> = {
+ mpeg: 'MPEG files are not supported. Please convert your track to MP3 or WAV and try again.',
+ mpg: 'MPG/MPEG files are not supported. Please convert your track to MP3 or WAV and try again.',
+ mpga: 'MPEG audio files are not supported. Please convert your track to MP3 or WAV and try again.',
+ mp2: 'MP2 files are not supported. Please convert your track to MP3 or WAV and try again.',
+ aiff: 'AIFF files are not supported. Please convert your track to MP3 or WAV and try again.',
+ aif: 'AIFF files are not supported. Please convert your track to MP3 or WAV and try again.',
+ mid: 'MIDI files are not supported. Please upload an audio recording (MP3 or WAV).',
+ midi: 'MIDI files are not supported. Please upload an audio recording (MP3 or WAV).',
+ mov: 'Video files are not allowed for music upload. Please upload an audio file instead.',
+ mp4: 'MP4 video files are not allowed for music upload. Please use M4A audio, or convert to MP3/WAV.',
+ avi: 'Video files are not allowed for music upload. Please upload an audio file instead.',
+ mkv: 'Video files are not allowed for music upload. Please upload an audio file instead.',
+};
+
+function getFileExtension(filename: string): string {
+ return filename.toLowerCase().split('.').pop() || '';
+}
+
+function buildInvalidTypeError(filename: string, extension: string): string {
+ if (extension && REJECTED_EXTENSIONS[extension]) {
+ return REJECTED_EXTENSIONS[extension];
+ }
+ const shownExt = extension ? `.${extension.toUpperCase()}` : 'this format';
+ return `“${filename}” (${shownExt}) is not supported. Allowed formats: ${ALLOWED_EXTENSIONS_LABEL}.`;
+}
+
 export default function MusicUpload({ 
  onUploadSuccess, 
  onUploadError, 
@@ -37,27 +89,24 @@ export default function MusicUpload({
  const handleFileUpload = async (file: File) => {
  if (!file) return;
 
- // Validate file type - check both MIME type and file extension for better browser compatibility
- const allowedTypes = [
- 'audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/x-wav', 'audio/aac', 'audio/mp4', 
- 'audio/flac', 'audio/ogg', 'audio/x-ms-wma', 'audio/webm', 'audio/vnd.wav',
- 'audio/x-aac', 'audio/x-m4a', 'audio/x-flac', 'audio/mpeg3', 'audio/mp4a-latm',
- 'audio/x-audio', 'audio/basic', '' // Some browsers don't provide MIME type
- ];
- 
- const fileExtension = file.name.toLowerCase().split('.').pop();
- const allowedExtensions = ['mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg', 'wma', 'webm'];
- 
- const isValidType = allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension || '');
- 
- if (!isValidType) {
- onUploadError('Invalid file type. Please upload audio files with extensions: MP3, WAV, AAC, M4A, FLAC, OGG, WMA, or WebM.');
+ const fileExtension = getFileExtension(file.name);
+ const hasAllowedExtension = ALLOWED_EXTENSIONS.includes(fileExtension as typeof ALLOWED_EXTENSIONS[number]);
+ const hasAllowedMime = ALLOWED_MIME_TYPES.includes(file.type);
+
+ // Always reject known unsupported extensions even if MIME looks like audio/mpeg
+ if (REJECTED_EXTENSIONS[fileExtension] || !hasAllowedExtension) {
+ onUploadError(buildInvalidTypeError(file.name, fileExtension));
  return;
  }
 
- // Validate file size (200MB)
- if (file.size > 200000000) {
- onUploadError('File too large. Maximum size is 200MB.');
+ // Extension is allowed; still require a plausible audio MIME when the browser provides one
+ if (file.type && !hasAllowedMime && !file.type.startsWith('audio/')) {
+ onUploadError(buildInvalidTypeError(file.name, fileExtension));
+ return;
+ }
+
+ if (file.size > MAX_FILE_SIZE_BYTES) {
+ onUploadError(`“${file.name}” is too large (${(file.size / 1000000).toFixed(1)}MB). Maximum size is ${MAX_FILE_SIZE_LABEL}.`);
  return;
  }
 
@@ -77,14 +126,11 @@ export default function MusicUpload({
  }),
  });
 
- if (!signatureResponse.ok) {
- throw new Error(`Signature error: ${signatureResponse.status}`);
- }
+ const signatureData = await signatureResponse.json().catch(() => null);
 
- const signatureData = await signatureResponse.json();
- 
- if (!signatureData.success) {
- throw new Error(signatureData.error || 'Failed to get upload signature');
+ if (!signatureResponse.ok || !signatureData?.success) {
+ const serverError = signatureData?.error || `Upload validation failed (${signatureResponse.status})`;
+ throw new Error(serverError);
  }
 
  console.log(' Signature data received:', signatureData.data);
@@ -122,7 +168,16 @@ export default function MusicUpload({
  reject(new Error('Invalid response from Cloudinary'));
  }
  } else {
- reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+ let cloudinaryMessage = `Upload failed (${xhr.status})`;
+ try {
+ const errBody = JSON.parse(xhr.responseText);
+ if (errBody?.error?.message) {
+ cloudinaryMessage = errBody.error.message;
+ }
+ } catch {
+ // keep default
+ }
+ reject(new Error(cloudinaryMessage));
  }
  });
 
@@ -154,15 +209,20 @@ export default function MusicUpload({
 
  } catch (error: any) {
  console.error('Upload error:', error);
- 
- if (error.message?.includes('Network error')) {
+ const message = error?.message || 'Upload failed. Please try again.';
+
+ if (message.includes('Network error')) {
  onUploadError('Network error. Please check your internet connection and try again.');
- } else if (error.message?.includes('Signature error')) {
- onUploadError('Upload validation failed. Please try again.');
- } else if (error.message?.includes('Upload failed')) {
- onUploadError(`Upload failed: ${error.message}`);
+ } else if (
+ message.toLowerCase().includes('invalid file type') ||
+ message.toLowerCase().includes('not supported') ||
+ message.toLowerCase().includes('mpeg')
+ ) {
+ onUploadError(message);
+ } else if (message.toLowerCase().includes('too large')) {
+ onUploadError(message);
  } else {
- onUploadError('Upload failed. Please try again.');
+ onUploadError(message.includes('Upload failed') ? message : `Upload failed: ${message}`);
  }
  } finally {
  setIsUploading(false);
@@ -199,20 +259,8 @@ export default function MusicUpload({
  if (files && files.length > 0) {
  handleFileUpload(files[0]);
  }
- };
-
- const formatFileSize = (bytes: number) => {
- if (bytes === 0) return '0 Bytes';
- const k = 1024;
- const sizes = ['Bytes', 'KB', 'MB', 'GB'];
- const i = Math.floor(Math.log(bytes) / Math.log(k));
- return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
- };
-
- const formatDuration = (seconds: number) => {
- const mins = Math.floor(seconds / 60);
- const secs = Math.floor(seconds % 60);
- return `${mins}:${secs.toString().padStart(2, '0')}`;
+ // Allow re-selecting the same file after an error
+ e.target.value = '';
  };
 
  return (
@@ -295,9 +343,9 @@ export default function MusicUpload({
  </p>  <div className={`text-xs ${compact ? 'mb-2' : 'mb-4'} space-y-1 ${
  disabled ? (variant === 'light' ? 'text-gray-400' : 'text-slate-500') : (variant === 'light' ? 'text-gray-500' : 'text-slate-400')
  }`}>
- <p>📀 <strong>Supports:</strong> MP3, WAV, AAC, M4A</p>
- <p>📏 <strong>Max size:</strong> 50MB</p>
- <p>⏱️ <strong>Recommended:</strong> 2-4 minute duration</p>
+ <p>📀 <strong>Allowed formats:</strong> MP3, WAV, AAC, M4A, FLAC, OGG, WMA, WebM</p>
+ <p>📏 <strong>Max size:</strong> {MAX_FILE_SIZE_LABEL}</p>
+ <p>⏱️ <strong>Recommended:</strong> 2–4 minute duration</p>
  </div>  <button
  type="button" onClick={() => fileInputRef.current?.click()}
  disabled={disabled}
@@ -312,7 +360,9 @@ export default function MusicUpload({
 
  <input
  ref={fileInputRef}
- type="file" accept=".mp3,.wav,.aac,.m4a,audio/*" onChange={handleFileSelect}
+ type="file"
+ accept=".mp3,.wav,.aac,.m4a,.flac,.ogg,.wma,.webm,audio/mpeg,audio/wav,audio/aac,audio/mp4,audio/flac,audio/ogg,audio/x-ms-wma,audio/webm"
+ onChange={handleFileSelect}
  className="hidden" disabled={disabled || isUploading}
  />
  </div> {/* Enhanced Help Text */}

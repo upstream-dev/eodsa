@@ -696,6 +696,30 @@ export interface MedalInfo {
   emoji: string;
 }
 
+/** Dark-theme text color for public studio/dancer score dashboards */
+export function getDashboardMedalColor(medalLabel: string): string {
+  switch (medalLabel) {
+    case 'Bronze':
+      return 'text-orange-400';
+    case 'Silver':
+      return 'text-gray-300';
+    case 'Silver+':
+      return 'text-slate-300';
+    case 'Gold':
+      return 'text-yellow-400';
+    case 'Pro Gold':
+      return 'text-yellow-500';
+    case 'Legend':
+      return 'text-yellow-400';
+    case 'Opus':
+      return 'text-yellow-500';
+    case 'Elite':
+      return 'text-yellow-600';
+    default:
+      return 'text-yellow-400';
+  }
+}
+
 /**
  * Get medal info from percentage score
  * IMPORTANT: Percentage should already be rounded using calculateRoundedPercentage()

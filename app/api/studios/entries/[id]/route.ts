@@ -22,18 +22,22 @@ export async function PUT(
     }
 
     // Validate updates
-    if (updates.mastery && !MASTERY_LEVELS.includes(updates.mastery)) {
-      return NextResponse.json(
-        { error: 'Invalid mastery level' },
-        { status: 400 }
-      );
+    if (updates.mastery !== undefined && updates.mastery !== null && updates.mastery !== '') {
+      if (!MASTERY_LEVELS.includes(updates.mastery)) {
+        return NextResponse.json(
+          { error: 'Invalid mastery level' },
+          { status: 400 }
+        );
+      }
     }
 
-    if (updates.itemStyle && !ITEM_STYLES.includes(updates.itemStyle)) {
-      return NextResponse.json(
-        { error: 'Invalid item style' },
-        { status: 400 }
-      );
+    if (updates.itemStyle !== undefined) {
+      if (!updates.itemStyle || !ITEM_STYLES.includes(updates.itemStyle)) {
+        return NextResponse.json(
+          { error: 'Item Style is required. Please select a valid style.' },
+          { status: 400 }
+        );
+      }
     }
 
     if (updates.estimatedDuration && (updates.estimatedDuration < 0.5 || updates.estimatedDuration > 3.5)) {

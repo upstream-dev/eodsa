@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import MusicUpload from '@/components/MusicUpload';
 import { AvalonShell } from '@/components/brand/AvalonShell';
 import { Plus } from 'lucide-react';
+import { getMedalFromPercentage, resolveScoringEventType, getDashboardMedalColor } from '@/lib/types';
 
 interface DancerSession {
  id: string;
@@ -648,24 +649,16 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
  Number(score.overallImpressionScore);
  };
 
- const getMedalColor = (total: number) => {
- if (total < 70) return 'text-orange-400'; // Bronze (-69)
- if (total >= 70 && total < 75) return 'text-gray-300'; // Silver (70-74)
- if (total >= 75 && total < 80) return 'text-slate-300'; // Silver+ (75-79)
- if (total >= 80 && total < 85) return 'text-yellow-400'; // Gold (80-84)
- if (total >= 85 && total < 90) return 'text-yellow-400'; // Legend (85-89)
- if (total >= 90 && total < 95) return 'text-yellow-500'; // Opus (90-94)
- return 'text-yellow-600'; // Elite (95+)
+ const getScoreMedal = (total: number, scoreOrGroup?: { eventType?: string; region?: string | null }) => {
+ const scoringEventType = resolveScoringEventType({
+ eventType: scoreOrGroup?.eventType,
+ region: scoreOrGroup?.region
+ });
+ const medal = getMedalFromPercentage(total, scoringEventType);
+ return {
+ label: medal.label,
+ color: getDashboardMedalColor(medal.label)
  };
-
- const getMedalName = (total: number) => {
- if (total < 70) return 'Bronze';
- if (total >= 70 && total < 75) return 'Silver';
- if (total >= 75 && total < 80) return 'Silver+';
- if (total >= 80 && total < 85) return 'Gold';
- if (total >= 85 && total < 90) return 'Legend';
- if (total >= 90 && total < 95) return 'Opus';
- return 'Elite'; // 95+
  };
 
  if (loading) {
@@ -749,6 +742,8 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
  acc[perfId] = {
  performanceId: perfId,
  performanceTitle: score.performanceTitle,
+ eventType: score.eventType,
+ region: score.region,
  scores: []
  };
  }
@@ -761,6 +756,7 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
  const totalScores = group.scores.map((s: any) => calculateTotalScore(s));
  const avgScore = totalScores.reduce((sum: number, score: number) => sum + score, 0) / totalScores.length;
  const roundedAvg = Math.round(avgScore * 100) / 100;
+ const avgMedal = getScoreMedal(roundedAvg, group);
 
  return (
  <div key={group.performanceId} className="bg-black/40 rounded-xl p-4 border border-gray-600">
@@ -768,11 +764,11 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
  <div className="flex justify-between items-start">
  <h4 className="text-xl font-bold text-white">{group.performanceTitle}</h4>
  <div className="text-right">
- <div className={`text-4xl font-bold ${getMedalColor(roundedAvg)}`}> {roundedAvg}<span className="text-xl text-gray-400">/100</span>
+ <div className={`text-4xl font-bold ${avgMedal.color}`}> {roundedAvg}<span className="text-xl text-gray-400">/100</span>
  </div>
- <div className={`text-sm font-semibold ${getMedalColor(roundedAvg)}`}> AVERAGE SCORE
+ <div className={`text-sm font-semibold ${avgMedal.color}`}> AVERAGE SCORE
  </div>
- <div className={`text-xs font-semibold ${getMedalColor(roundedAvg)} mt-1`}> {getMedalName(roundedAvg)} Medal
+ <div className={`text-xs font-semibold ${avgMedal.color} mt-1`}> {avgMedal.label} Medal
  </div>
  <div className="text-xs text-gray-400 mt-1"> From {group.scores.length} {group.scores.length === 1 ? 'judge' : 'judges'}
  </div>
@@ -781,6 +777,7 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
  </div>  <div className="space-y-3">
  <p className="text-sm text-gray-400 font-semibold mb-2">Individual Judge Scores:</p> {group.scores.map((score: any) => {
  const totalScore = calculateTotalScore(score);
+ const judgeMedal = getScoreMedal(totalScore, group);
  return (
  <div
  key={score.id}
@@ -795,7 +792,7 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
  <p className="text-xs text-gray-500">{new Date(score.scoredAt).toLocaleDateString()}</p>
  </div>
  <div className="text-right">
- <div className={`text-2xl font-bold ${getMedalColor(totalScore)}`}> {totalScore}<span className="text-sm text-gray-400">/100</span>
+ <div className={`text-2xl font-bold ${judgeMedal.color}`}> {totalScore}<span className="text-sm text-gray-400">/100</span>
  </div>
  </div>
  </div>  <div className="grid grid-cols-5 gap-2">
@@ -850,10 +847,10 @@ function ScoresFeedbackSection({ dancerSession, selectedEventId, events, onEvent
  </div>  <div className="p-6">
  <div className="bg-gradient-to-r from-[rgba(192,192,192,0.08)] to-[rgba(0,230,255,0.06)] border border-[rgba(192,192,192,0.22)] rounded-xl p-6 mb-6 text-center">
  <p className="text-sm font-semibold text-[var(--chrome-light)] mb-2">TOTAL SCORE</p>
- <p className={`text-5xl font-bold ${getMedalColor(calculateTotalScore(selectedScore))}`}> {calculateTotalScore(selectedScore)}
+ <p className={`text-5xl font-bold ${getScoreMedal(calculateTotalScore(selectedScore), selectedScore).color}`}> {calculateTotalScore(selectedScore)}
  <span className="text-3xl text-gray-400">/100</span>
  </p>
- <p className={`text-sm font-semibold mt-2 ${getMedalColor(calculateTotalScore(selectedScore))}`}>  {getMedalName(calculateTotalScore(selectedScore))}
+ <p className={`text-sm font-semibold mt-2 ${getScoreMedal(calculateTotalScore(selectedScore), selectedScore).color}`}>  {getScoreMedal(calculateTotalScore(selectedScore), selectedScore).label}
  </p>
  </div>  <div className="space-y-4 mb-6">
  <div className="bg-black/40 rounded-lg p-4">

@@ -4,6 +4,7 @@ import { emailService } from '@/lib/email';
 import { getExistingSoloEntries, validateAndCorrectEntryFee } from '@/lib/pricing-utils';
 import { calculateAgeCategoryForEntry } from '@/lib/age-category-calculator';
 import { checkAgeEligibility, getCompetitionAge } from '@/lib/competition-age';
+import { ITEM_STYLES } from '@/lib/types';
 
 // Initialize database on first request
 let dbInitialized = false;
@@ -100,6 +101,13 @@ export async function POST(request: NextRequest) {
     if (!body.eventId || !body.contestantId || !body.eodsaId || !body.participantIds || !Array.isArray(body.participantIds) || body.participantIds.length === 0) {
       return NextResponse.json(
         { error: 'Missing required fields: eventId, contestantId, eodsaId, participantIds' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.itemStyle || !ITEM_STYLES.includes(body.itemStyle)) {
+      return NextResponse.json(
+        { error: 'Item Style is required. Please select a valid style.' },
         { status: 400 }
       );
     }

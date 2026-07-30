@@ -4,6 +4,25 @@ import { cloudinary } from '@/lib/cloudinary';
 // Lightweight signature generation for direct Cloudinary uploads
 export const dynamic = 'force-dynamic';
 
+const ALLOWED_EXTENSIONS = ['mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg', 'wma', 'webm'];
+const ALLOWED_EXTENSIONS_LABEL = 'MP3, WAV, AAC, M4A, FLAC, OGG, WMA, or WebM';
+const MAX_FILE_SIZE_BYTES = 200000000; // 200MB
+
+const REJECTED_EXTENSION_MESSAGES: Record<string, string> = {
+  mpeg: 'MPEG files are not supported. Please convert your track to MP3 or WAV and try again.',
+  mpg: 'MPG/MPEG files are not supported. Please convert your track to MP3 or WAV and try again.',
+  mpga: 'MPEG audio files are not supported. Please convert your track to MP3 or WAV and try again.',
+  mp2: 'MP2 files are not supported. Please convert your track to MP3 or WAV and try again.',
+  aiff: 'AIFF files are not supported. Please convert your track to MP3 or WAV and try again.',
+  aif: 'AIFF files are not supported. Please convert your track to MP3 or WAV and try again.',
+  mid: 'MIDI files are not supported. Please upload an audio recording (MP3 or WAV).',
+  midi: 'MIDI files are not supported. Please upload an audio recording (MP3 or WAV).',
+  mov: 'Video files are not allowed for music upload. Please upload an audio file instead.',
+  mp4: 'MP4 video files are not allowed for music upload. Please use M4A audio, or convert to MP3/WAV.',
+  avi: 'Video files are not allowed for music upload. Please upload an audio file instead.',
+  mkv: 'Video files are not allowed for music upload. Please upload an audio file instead.',
+};
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -17,20 +36,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file size (200MB limit)
-    if (fileSize && fileSize > 200000000) {
+    if (fileSize && fileSize > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { success: false, error: 'File too large. Maximum size is 200MB.' },
+        { success: false, error: `File too large. Maximum size is 200MB.` },
         { status: 400 }
       );
     }
 
     // Validate file type
-    const fileExtension = filename.toLowerCase().split('.').pop();
-    const allowedExtensions = ['mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg', 'wma', 'webm'];
-    
-    if (!allowedExtensions.includes(fileExtension || '')) {
+    const fileExtension = filename.toLowerCase().split('.').pop() || '';
+
+    if (REJECTED_EXTENSION_MESSAGES[fileExtension]) {
       return NextResponse.json(
-        { success: false, error: 'Invalid file type. Please upload audio files with extensions: MP3, WAV, AAC, M4A, FLAC, OGG, WMA, or WebM.' },
+        { success: false, error: REJECTED_EXTENSION_MESSAGES[fileExtension] },
+        { status: 400 }
+      );
+    }
+    
+    if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `“${filename}” (.${fileExtension.toUpperCase() || 'UNKNOWN'}) is not supported. Allowed formats: ${ALLOWED_EXTENSIONS_LABEL}.`
+        },
         { status: 400 }
       );
     }

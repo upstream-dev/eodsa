@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { AvalonShell } from '@/components/brand/AvalonShell';
 import { RecaptchaV2 } from '@/components/RecaptchaV2';
-import { MASTERY_LEVELS, ITEM_STYLES } from '@/lib/types';
+import { MASTERY_LEVELS, ITEM_STYLES, getMedalFromPercentage, resolveScoringEventType, getDashboardMedalColor } from '@/lib/types';
 import MusicUpload from '@/components/MusicUpload';
 import VideoUpload from '@/components/VideoUpload';
 import VideoLinkInput from '@/components/VideoLinkInput';
@@ -752,6 +752,16 @@ export default function StudioDashboardPage() {
 
  const handleSaveEntryEdit = async () => {
  if (!studioSession || !editingEntry) return;
+
+ if (!editEntryData.itemStyle?.trim()) {
+ setError('Item Style is required. Please select a style.');
+ return;
+ }
+
+ if (!editEntryData.itemName?.trim() || !editEntryData.mastery?.trim()) {
+ setError('Please fill in all required fields (Item Name, Mastery, and Style).');
+ return;
+ }
 
  try {
  setError('');
@@ -2099,6 +2109,8 @@ export default function StudioDashboardPage() {
  performanceTitle: score.performanceTitle,
  dancerName: score.dancerName,
  eodsaId: score.eodsaId,
+ eventType: score.eventType,
+ region: score.region,
  scores: []
  };
  }
@@ -2113,31 +2125,14 @@ export default function StudioDashboardPage() {
  Number(score.overallImpressionScore);
  };
 
- const getMedalColor = (total: number) => {
- if (total < 70) return 'text-orange-400'; // Bronze (-69)
- if (total >= 70 && total < 75) return 'text-gray-300'; // Silver (70-74)
- if (total >= 75 && total < 80) return 'text-slate-300'; // Silver+ (75-79)
- if (total >= 80 && total < 85) return 'text-yellow-400'; // Gold (80-84)
- if (total >= 85 && total < 90) return 'text-yellow-400'; // Legend (85-89)
- if (total >= 90 && total < 95) return 'text-yellow-500'; // Opus (90-94)
- return 'text-yellow-600'; // Elite (95+)
- };
-
- const getMedalName = (total: number) => {
- if (total < 70) return 'Bronze';
- if (total >= 70 && total < 75) return 'Silver';
- if (total >= 75 && total < 80) return 'Silver+';
- if (total >= 80 && total < 85) return 'Gold';
- if (total >= 85 && total < 90) return 'Legend';
- if (total >= 90 && total < 95) return 'Opus';
- return 'Elite'; // 95+
- };
-
  return Object.values(groupedScores).map((group: any) => {
  // Calculate average score for this performance
  const totalScores = group.scores.map((s: any) => calculateTotalScore(s));
  const avgScore = totalScores.reduce((sum: number, score: number) => sum + score, 0) / totalScores.length;
  const roundedAvg = Math.round(avgScore * 100) / 100;
+ const scoringEventType = resolveScoringEventType({ eventType: group.eventType, region: group.region });
+ const medal = getMedalFromPercentage(roundedAvg, scoringEventType);
+ const medalColor = getDashboardMedalColor(medal.label);
 
  return (
  <div key={group.performanceId} className="bg-black/40 rounded-xl p-6 border border-gray-600">
@@ -2149,11 +2144,11 @@ export default function StudioDashboardPage() {
  </p>
  </div>
  <div className="text-right">
- <div className={`text-4xl font-bold ${getMedalColor(roundedAvg)}`}> {roundedAvg}<span className="text-xl text-gray-400">/100</span>
+ <div className={`text-4xl font-bold ${medalColor}`}> {roundedAvg}<span className="text-xl text-gray-400">/100</span>
  </div>
- <div className={`text-sm font-semibold ${getMedalColor(roundedAvg)}`}> AVERAGE SCORE
+ <div className={`text-sm font-semibold ${medalColor}`}> AVERAGE SCORE
  </div>
- <div className={`text-xs font-semibold ${getMedalColor(roundedAvg)} mt-1`}> {getMedalName(roundedAvg)} Medal
+ <div className={`text-xs font-semibold ${medalColor} mt-1`}> {medal.label} Medal
  </div>
  <div className="text-xs text-gray-400 mt-1"> From {group.scores.length} {group.scores.length === 1 ? 'judge' : 'judges'}
  </div>
@@ -2162,6 +2157,8 @@ export default function StudioDashboardPage() {
  </div>  <div className="space-y-3">
  <p className="text-sm text-gray-400 font-semibold mb-2">Individual Judge Scores:</p> {group.scores.map((score: any) => {
  const totalScore = calculateTotalScore(score);
+ const judgeMedal = getMedalFromPercentage(totalScore, scoringEventType);
+ const judgeMedalColor = getDashboardMedalColor(judgeMedal.label);
  return (
  <div
  key={score.id}
@@ -2172,7 +2169,7 @@ export default function StudioDashboardPage() {
  <p className="text-xs text-gray-500">{new Date(score.scoredAt).toLocaleDateString()}</p>
  </div>
  <div className="text-right">
- <div className={`text-2xl font-bold ${getMedalColor(totalScore)}`}> {totalScore}<span className="text-sm text-gray-400">/100</span>
+ <div className={`text-2xl font-bold ${judgeMedalColor}`}> {totalScore}<span className="text-sm text-gray-400">/100</span>
  </div>
  </div>
  </div>  <div className="grid grid-cols-5 gap-2 mb-3">
@@ -2489,14 +2486,14 @@ export default function StudioDashboardPage() {
  className="w-full px-4 py-2 border border-gray-600 bg-black/40 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" required
  />
  </div>  <div>
- <label className="block text-gray-300 text-sm font-medium mb-1">Choreographer *</label>
+ <label className="block text-gray-300 text-sm font-medium mb-1">Choreographer</label>
  <input
  type="text" value={editEntryData.choreographer}
  onChange={(e) => {
  const cleanValue = e.target.value.replace(/[^a-zA-Z\s\-\']/g, '');
  setEditEntryData({...editEntryData, choreographer: cleanValue});
  }}
- className="w-full px-4 py-2 border border-gray-600 bg-black/40 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" required
+ className="w-full px-4 py-2 border border-gray-600 bg-black/40 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]"
  />
  </div>  <div>
  <label className="block text-gray-300 text-sm font-medium mb-1">Mastery Level *</label>

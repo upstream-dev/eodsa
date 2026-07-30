@@ -11,7 +11,7 @@ import {
   batchEntryFingerprint,
   parseParticipantIds,
 } from './entry-dedup';
-import type { Performance } from './types';
+import { ITEM_STYLES, type Performance } from './types';
 
 export interface PendingBatchEntry {
   eventId: string;
@@ -144,6 +144,16 @@ export async function reconcileBatchEntriesFromPending(
     const entry = entriesToProcess[i];
     const participantIds = parseParticipantIds(entry.participantIds);
     const fingerprint = batchEntryFingerprint(entry.itemName, participantIds);
+
+    if (!entry.itemStyle || !ITEM_STYLES.includes(entry.itemStyle)) {
+      result.errors.push({
+        itemName: entry.itemName || `Entry ${i + 1}`,
+        index: i,
+        error: 'Item Style is required. Please select a valid style.',
+      });
+      continue;
+    }
+
     let existingId = existingByFingerprint.get(fingerprint);
 
     // Also block duplicates from a second payment / retry (different payment_id)

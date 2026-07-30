@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unifiedDb, db, getSql } from '@/lib/database';
 import { calculateAgeCategoryForEntry } from '@/lib/age-category-calculator';
+import { ITEM_STYLES } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +19,23 @@ export async function POST(request: NextRequest) {
     if (body.performanceType === 'Solo' && body.soloCount > 1 && (!body.soloDetails || !Array.isArray(body.soloDetails))) {
       return NextResponse.json(
         { error: 'Solo details are required for multiple solo entries' },
+        { status: 400 }
+      );
+    }
+
+    if (body.performanceType === 'Solo' && body.soloCount > 1 && body.soloDetails) {
+      for (let i = 0; i < body.soloDetails.length; i++) {
+        const solo = body.soloDetails[i];
+        if (!solo.itemStyle || !ITEM_STYLES.includes(solo.itemStyle)) {
+          return NextResponse.json(
+            { error: `Item Style is required for Solo ${i + 1}. Please select a valid style.` },
+            { status: 400 }
+          );
+        }
+      }
+    } else if (!body.itemStyle || !ITEM_STYLES.includes(body.itemStyle)) {
+      return NextResponse.json(
+        { error: 'Item Style is required. Please select a valid style.' },
         { status: 400 }
       );
     }

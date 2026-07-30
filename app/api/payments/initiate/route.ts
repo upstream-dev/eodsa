@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentData, createPayFastForm, calculateEntryFees, generatePaymentReference } from '@/lib/payfast';
 import { neon } from '@neondatabase/serverless';
 import { validateBatchEntryFees, createBatchTransactionRecords } from '@/lib/payment-validation';
+import { ITEM_STYLES } from '@/lib/types';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -98,6 +99,16 @@ export async function POST(request: NextRequest) {
     let validationResult = null;
     
     if (isBatchPayment && pendingEntries && pendingEntries.length > 0) {
+      const missingStyle = pendingEntries.findIndex(
+        (entry: any) => !entry.itemStyle || !ITEM_STYLES.includes(entry.itemStyle)
+      );
+      if (missingStyle !== -1) {
+        return NextResponse.json({
+          success: false,
+          error: `Item Style is required for entry "${pendingEntries[missingStyle].itemName || `#${missingStyle + 1}`}". Please select a valid style before paying.`
+        }, { status: 400 });
+      }
+
       // Validate each entry's fee against computed incremental fee
       validationResult = await validateBatchEntryFees(
         pendingEntries,
