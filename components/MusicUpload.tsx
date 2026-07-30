@@ -213,6 +213,8 @@ export default function MusicUpload({
 
  if (message.includes('Network error')) {
  onUploadError('Network error. Please check your internet connection and try again.');
+ } else if (message.toLowerCase().includes('public_id') && message.toLowerCase().includes('invalid')) {
+ onUploadError('Upload failed due to an invalid filename. Please rename the file (letters, numbers, spaces, dashes only) and try again.');
  } else if (
  message.toLowerCase().includes('invalid file type') ||
  message.toLowerCase().includes('not supported') ||

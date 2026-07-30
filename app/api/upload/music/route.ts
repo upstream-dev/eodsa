@@ -63,9 +63,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique public ID
+    // Generate unique public ID (Cloudinary rejects chars like &, #, ?, %, etc.)
     const fileTimestamp = Date.now();
-    const originalName = filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_"); // Remove extension and replace spaces with underscores
+    const originalName = filename
+      .replace(/\.[^/.]+$/, '') // strip extension
+      .replace(/[^a-zA-Z0-9_-]+/g, '_') // only Cloudinary-safe chars
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 80) || 'track';
     const publicId = `eodsa/music/${fileTimestamp}_${originalName}`;
 
     // Generate upload signature (no upload preset needed for signed uploads)

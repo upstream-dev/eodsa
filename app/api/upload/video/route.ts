@@ -34,9 +34,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique public ID
+    // Generate unique public ID (Cloudinary rejects chars like &, #, ?, %, etc.)
     const fileTimestamp = Date.now();
-    const originalName = filename.replace(/\.[^/.]+$/, ""); // Remove extension
+    const originalName = filename
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 80) || 'video';
     const publicId = `eodsa/videos/${fileTimestamp}_${originalName}`;
 
     // Generate upload signature for video
