@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 
 /**
- * Tablet-safe shell for /backend*.
- * Forces compositor-safe painting (no blur/filters/transforms/shadows)
- * so Chrome/WebKit on Android + iPadOS tablets don't leave ghost trails.
+ * Chrome-on-tablet safe shell for /backend*.
+ * Firefox is fine; Chromium leaves ghost trails when many cards/layers paint.
+ * Promote ONE compositor layer for the page, flatten children.
  */
 export default function BackendLayout({ children }: { children: ReactNode }) {
   return (
@@ -12,9 +12,14 @@ export default function BackendLayout({ children }: { children: ReactNode }) {
         .backend-safe {
           background: #050505 !important;
           min-height: 100dvh;
-          isolation: isolate;
+          /* Single GPU layer for the whole page — stops Chrome child-layer trails */
+          transform: translate3d(0, 0, 0) !important;
+          -webkit-transform: translate3d(0, 0, 0) !important;
+          backface-visibility: hidden !important;
+          -webkit-backface-visibility: hidden !important;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
         }
-        .backend-safe,
         .backend-safe *,
         .backend-safe *::before,
         .backend-safe *::after {
@@ -22,6 +27,7 @@ export default function BackendLayout({ children }: { children: ReactNode }) {
           -webkit-backdrop-filter: none !important;
           filter: none !important;
           transform: none !important;
+          -webkit-transform: none !important;
           translate: none !important;
           scale: none !important;
           rotate: none !important;
@@ -31,7 +37,8 @@ export default function BackendLayout({ children }: { children: ReactNode }) {
           box-shadow: none !important;
           text-shadow: none !important;
           will-change: auto !important;
-          -webkit-font-smoothing: antialiased;
+          backface-visibility: hidden !important;
+          -webkit-backface-visibility: hidden !important;
         }
       `}</style>
       <div className="backend-safe">{children}</div>
