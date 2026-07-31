@@ -195,15 +195,15 @@ export default function MusicPlayer({
           type="button"
           onClick={togglePlayPause}
           disabled={isLoading}
-          className="w-9 h-9 shrink-0 btn-chrome !rounded-full !p-0 !gap-0 flex items-center justify-center disabled:opacity-50"
+          className="btn-chrome-icon !w-9 !h-9 !min-w-9 !min-h-9 disabled:opacity-50"
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isLoading ? (
             <div className="w-3.5 h-3.5 border-2 border-[#050505] border-t-transparent rounded-full animate-spin" />
           ) : isPlaying ? (
-            <Pause className="w-3.5 h-3.5 text-[#050505]" strokeWidth={2} />
+            <Pause className="w-4 h-4" strokeWidth={2.5} aria-hidden />
           ) : (
-            <Play className="w-3.5 h-3.5 text-[#050505] ml-0.5" strokeWidth={2} />
+            <Play className="w-4 h-4 ml-0.5" strokeWidth={2.5} aria-hidden />
           )}
         </button>
         <span className="text-sm text-[#c0c0c0] min-w-0 truncate">{filename}</span>
@@ -276,15 +276,15 @@ export default function MusicPlayer({
             type="button"
             onClick={togglePlayPause}
             disabled={isLoading}
-            className="w-11 h-11 shrink-0 btn-chrome !rounded-full !p-0 flex items-center justify-center disabled:opacity-50"
+            className="btn-chrome-icon disabled:opacity-50"
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isLoading ? (
               <div className="w-4 h-4 border-2 border-[#050505] border-t-transparent rounded-full animate-spin" />
             ) : isPlaying ? (
-              <Pause className="w-4 h-4 text-[#050505]" strokeWidth={2} />
+              <Pause className="w-5 h-5" strokeWidth={2.5} aria-hidden />
             ) : (
-              <Play className="w-4 h-4 text-[#050505] ml-0.5" strokeWidth={2} />
+              <Play className="w-5 h-5 ml-0.5" strokeWidth={2.5} aria-hidden />
             )}
           </button>
 
