@@ -58,8 +58,9 @@ export default function BackendDashboard() {
     { href: '/event-type-manager', icon: CalendarCog, label: 'Event Type Manager' },
   ];
 
+  // Solid tiles (not nested glass-panel) — nested backdrop-filter glitches on iPad
   const tileBase =
-    'flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg transition-colors group glass-panel bg-black/40 border border-[rgba(192,192,192,0.22)] min-h-[88px] sm:min-h-[100px]';
+    'flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg transition-colors group bg-[#111] border border-[rgba(192,192,192,0.22)] min-h-[88px] sm:min-h-[100px]';
 
   const PortalLink = ({
     href,
@@ -150,7 +151,7 @@ export default function BackendDashboard() {
         </div>
 
         <div className="max-w-6xl mx-auto">
-          <div className="glass-panel rounded-2xl border border-[rgba(192,192,192,0.22)] p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="rounded-2xl border border-[rgba(192,192,192,0.22)] bg-[#111]/95 p-4 sm:p-6 mb-6 sm:mb-8">
             <h3 className="text-lg sm:text-xl font-bold text-[#e8e8e8] mb-4 text-center">
               Staff & Official Portals
             </h3>
