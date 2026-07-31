@@ -252,31 +252,47 @@ body {
   }
 
   /*
-   Opaque panels only — NEVER use backdrop-filter.
-   Nested blur + mesh caused iPad GPU ghosting (repeated tiles/text, static).
-   iPad Pro often skips max-width/hover media queries, so this is global.
+   Opaque panels only — NEVER use backdrop-filter / blur.
+   Blur + layered cards caused GPU ghosting (repeated tiles/text) on tablets
+   (Android Chrome + iPadOS Safari/Chrome). Kill it globally for all devices.
   */
   .glass-panel {
     background: rgba(17, 17, 17, 0.96) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     border: 1px solid var(--glass-border) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: none !important;
     border-radius: 12px !important;
   }
 
-  /* Soft wash only — no 1px grid (grids + compositing tear on WebKit tablets) */
+  /* Solid black only — gradient/mesh washes still tear on some tablet GPUs */
   .avalon-mesh {
     background-color: #050505 !important;
-    background-image:
-      radial-gradient(ellipse 70% 45% at 20% 10%, rgba(0, 230, 255, 0.06), transparent 55%),
-      radial-gradient(ellipse 60% 40% at 85% 90%, rgba(255, 45, 161, 0.05), transparent 55%) !important;
-    background-size: auto, auto !important;
-    background-attachment: scroll !important;
+    background-image: none !important;
   }
 
-  /* iOS/iPadOS: avoid background-clip:text ghost trails */
-  @supports (-webkit-touch-callout: none) {
+  /* Nuke Tailwind backdrop-blur utilities everywhere */
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-3xl,
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Avoid background-clip:text ghost trails on touch tablets */
+  @media (hover: none), (pointer: coarse) {
     .chrome-text,
     .brand-duo-text {
       background: none !important;
@@ -290,11 +306,6 @@ body {
 
     .brand-duo-text {
       color: #00e6ff !important;
-    }
-
-    .avalon-mesh {
-      background-image: none !important;
-      background-color: #050505 !important;
     }
   }
 

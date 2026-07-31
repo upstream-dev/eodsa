@@ -106,7 +106,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
  
  {/* Simple Modal Overlay */}
  <div 
- className="fixed inset-0 backdrop-blur-sm bg-white bg-opacity-20 flex items-center justify-center z-50 p-4" onClick={alertState.type === 'alert' ? closeAlert : undefined}
+ className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={alertState.type === 'alert' ? closeAlert : undefined}
  > {/* Simple Card Modal */}
  <div 
  className="bg-white rounded-lg shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}

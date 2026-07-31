@@ -64,12 +64,11 @@ export default function RootLayout({
  <link rel="preconnect" href="https://vitals.vercel-analytics.com" /> {/* DNS prefetch for better connectivity in different regions */}
  <link rel="dns-prefetch" href="https://res.cloudinary.com" />
  <link rel="dns-prefetch" href="https://api.cloudinary.com" /> {/* Meta tags for better mobile and regional support */}
- <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
  <meta name="format-detection" content="telephone=no" />
  <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
  </head>
  <body
- className={`${montserrat.variable} ${bebasNeue.variable} ${geistMono.variable} antialiased bg-[#050505] text-white`}
+ className={`${montserrat.variable} ${bebasNeue.variable} ${geistMono.variable} bg-[#050505] text-white`}
  >
  <ErrorBoundary>
  <AlertProvider>

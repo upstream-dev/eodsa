@@ -59,10 +59,10 @@ export const getThemeClasses = (_theme?: Theme | 'light' | 'dark') => {
     mainBg: 'avalon-mesh',
     loadingBg: 'avalon-mesh',
 
-    headerBg: 'bg-[#0a0a0a]/95 backdrop-blur-lg',
+    headerBg: 'bg-[#0a0a0a]',
     headerBorder: 'border-[rgba(192,192,192,0.12)]',
 
-    cardBg: 'bg-[rgba(17,17,17,0.85)] backdrop-blur-sm',
+    cardBg: 'bg-[#111111]',
     cardBorder: 'border-[rgba(192,192,192,0.22)]',
     cardShadow: 'shadow-xl',
     cardRadius: 'rounded-xl',
@@ -116,7 +116,7 @@ export const getThemeClasses = (_theme?: Theme | 'light' | 'dark') => {
 
     modalBg: 'bg-[#111111]',
     modalBorder: 'border-[rgba(192,192,192,0.22)]',
-    modalOverlay: 'bg-black/60 backdrop-blur-sm',
+    modalOverlay: 'bg-black/70',
 
     inputBg: 'bg-black/40',
     inputBorder: 'border-[rgba(192,192,192,0.2)]',
