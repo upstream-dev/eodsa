@@ -48,54 +48,31 @@ export async function PUT(
     }
     await db.updateEventEntry(entryId, entryUpdates);
 
-    // AUTO-SYNC: Update the corresponding performance as well (or create if missing)
+    // AUTO-SYNC: Update/create the corresponding performance so it appears on
+    // backstage / judge / announcer dashboards (not just the admin entries list).
     try {
-      const allPerformances = await db.getAllPerformances();
-      let performance = allPerformances.find(p => p.eventEntryId === entryId);
+      const { ensurePerformanceForEntry } = await import('@/lib/ensure-performance');
+      const { getSql } = await import('@/lib/database');
+      const sqlClient = getSql();
+      const entryRows = await sqlClient`
+        SELECT
+          id, event_id, item_name, contestant_id, participant_ids,
+          choreographer, mastery, item_style, estimated_duration, item_number,
+          entry_type, music_file_url, music_file_name,
+          video_external_url, video_external_type, approved
+        FROM event_entries
+        WHERE id = ${entryId}
+        LIMIT 1
+      ` as any[];
 
-      if (performance) {
-        await db.updatePerformanceItemNumber(performance.id, itemNumber);
-        console.log(`Auto-synced item number ${itemNumber} to performance ${performance.id}`);
-      } else {
-        // Performance doesn't exist yet - create it (happens for virtual entries)
-        const entry = allEntries.find(e => e.id === entryId);
-        if (entry && entry.approved) {
-          console.log(`Creating missing performance for entry ${entryId} (${entry.entryType})`);
-
-          // Build participant names
-          const { unifiedDb } = await import('@/lib/database');
-          const participantNames: string[] = [];
-          for (let i = 0; i < entry.participantIds.length; i++) {
-            const pid = entry.participantIds[i];
-            try {
-              const dancer = await unifiedDb.getDancerById(pid);
-              if (dancer?.name) {
-                participantNames.push(dancer.name);
-                continue;
-              }
-            } catch {}
-            participantNames.push(`Participant ${i + 1}`);
-          }
-
-          await db.createPerformance({
-            eventId: entry.eventId,
-            eventEntryId: entry.id,
-            contestantId: entry.contestantId,
-            title: entry.itemName,
-            participantNames,
-            duration: entry.estimatedDuration || 0,
-            itemNumber: itemNumber,
-            choreographer: entry.choreographer,
-            mastery: entry.mastery,
-            itemStyle: entry.itemStyle,
-            status: 'scheduled',
-            entryType: entry.entryType || 'live',
-            videoExternalUrl: entry.videoExternalUrl,
-            videoExternalType: entry.videoExternalType,
-            musicFileUrl: entry.musicFileUrl,
-            musicFileName: entry.musicFileName
-          } as any);
-          console.log(` Created performance for virtual entry ${entryId}`);
+      if (entryRows.length > 0 && entryRows[0].approved) {
+        const result = await ensurePerformanceForEntry(entryRows[0], {
+          itemNumberOverride: itemNumber
+        });
+        if (result?.created) {
+          console.log(`Created missing performance ${result.performanceId} for entry ${entryId} with item #${itemNumber}`);
+        } else if (result) {
+          console.log(`Auto-synced item number ${itemNumber} to performance ${result.performanceId}`);
         }
       }
     } catch (syncError) {

@@ -3470,87 +3470,16 @@ export const db = {
   async getPerformancesByEvent(eventId: string) {
     const sqlClient = getSql();
     
-    // CRITICAL: First ensure all approved+paid entries have performances
-    // This fixes the issue where PayFast payments create entries but performances might be missing
+    // CRITICAL: Repair wrong event_ids + create missing performances for approved entries.
+    // This is what backstage / judge / announcer dashboards use — without a performances
+    // row (or with the wrong event_id), an entry is invisible on those dashboards.
     try {
-      const missingPerformances = await sqlClient`
-        SELECT ee.id, ee.item_name, ee.participant_ids, ee.contestant_id, 
-               ee.choreographer, ee.mastery, ee.item_style, ee.estimated_duration,
-               ee.entry_type, ee.music_file_url, ee.music_file_name,
-               ee.video_external_url, ee.video_external_type
-        FROM event_entries ee
-        WHERE ee.event_id = ${eventId}
-        AND ee.approved = true
-        AND ee.payment_status = 'paid'
-        AND NOT EXISTS (
-          SELECT 1 FROM performances p WHERE p.event_entry_id = ee.id
-        )
-      ` as any[];
-      
-      // Create missing performances for approved+paid entries
-      if (missingPerformances.length > 0) {
-        console.log(`🔧 Creating ${missingPerformances.length} missing performance(s) for approved+paid entries in event ${eventId}`);
-        
-        for (const entry of missingPerformances) {
-          try {
-            // Parse participant IDs
-            let participantIds: string[] = [];
-            if (entry.participant_ids) {
-              try {
-                participantIds = typeof entry.participant_ids === 'string' 
-                  ? JSON.parse(entry.participant_ids) 
-                  : entry.participant_ids;
-              } catch {
-                participantIds = [];
-              }
-            }
-            
-            // Get participant names from unified dancers
-            const participantNames: string[] = [];
-            try {
-              const { unifiedDb } = await import('./database');
-              for (const pid of participantIds) {
-                try {
-                  const dancer = await unifiedDb.getDancerById(pid);
-                  if (dancer?.name) {
-                    participantNames.push(dancer.name);
-                  } else {
-                    participantNames.push(`Participant ${participantNames.length + 1}`);
-                  }
-                } catch {
-                  participantNames.push(`Participant ${participantNames.length + 1}`);
-                }
-              }
-            } catch {
-              // Fallback: use generic names
-              participantIds.forEach((_, i) => participantNames.push(`Participant ${i + 1}`));
-            }
-            
-            // Create the performance
-            await this.createPerformance({
-              eventId: eventId,
-              eventEntryId: entry.id,
-              contestantId: entry.contestant_id,
-              title: entry.item_name || 'Untitled Performance',
-              participantNames: participantNames.length > 0 ? participantNames : ['Participant 1'],
-              duration: entry.estimated_duration || 0,
-              choreographer: entry.choreographer || '',
-              mastery: entry.mastery || 'Water (Competitive)',
-              itemStyle: entry.item_style || '',
-              status: 'scheduled',
-              itemNumber: undefined,
-              entryType: entry.entry_type || 'live',
-              videoExternalUrl: entry.video_external_url || undefined,
-              videoExternalType: entry.video_external_type || undefined,
-              musicFileUrl: entry.music_file_url || undefined,
-              musicFileName: entry.music_file_name || undefined
-            });
-            
-            console.log(`✅ Created missing performance for entry: ${entry.id} (${entry.item_name})`);
-          } catch (perfErr) {
-            console.error(`⚠️ Failed to create missing performance for entry ${entry.id}:`, perfErr);
-          }
-        }
+      const { ensurePerformancesForEvent } = await import('./ensure-performance');
+      const ensureResult = await ensurePerformancesForEvent(eventId);
+      if (ensureResult.created || ensureResult.repaired || ensureResult.failed) {
+        console.log(
+          `🔧 ensurePerformancesForEvent(${eventId}): created=${ensureResult.created}, repaired=${ensureResult.repaired}, failed=${ensureResult.failed}`
+        );
       }
     } catch (error) {
       console.error('Error ensuring performances exist:', error);
