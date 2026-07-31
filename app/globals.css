@@ -251,52 +251,32 @@ body {
     box-shadow: 0 0 24px rgba(192, 192, 192, 0.18) !important;
   }
 
+  /*
+   Opaque panels only — NEVER use backdrop-filter.
+   Nested blur + mesh caused iPad GPU ghosting (repeated tiles/text, static).
+   iPad Pro often skips max-width/hover media queries, so this is global.
+  */
   .glass-panel {
-    background: var(--glass-bg) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
+    background: rgba(17, 17, 17, 0.96) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1px solid var(--glass-border) !important;
-    box-shadow:
-      0 2px 8px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 var(--glass-highlight) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
     border-radius: 12px !important;
-    /* Keep glass layers on their own compositor plane without nested filter thrash */
-    transform: translateZ(0);
   }
 
+  /* Soft wash only — no 1px grid (grids + compositing tear on WebKit tablets) */
   .avalon-mesh {
     background-color: #050505 !important;
     background-image:
-      radial-gradient(ellipse 70% 45% at 20% 10%, rgba(0, 230, 255, 0.07), transparent 55%),
-      radial-gradient(ellipse 60% 40% at 85% 90%, rgba(255, 45, 161, 0.06), transparent 55%),
-      radial-gradient(ellipse 50% 40% at 50% 50%, rgba(192, 192, 192, 0.03), transparent 60%),
-      linear-gradient(rgba(192, 192, 192, 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(192, 192, 192, 0.025) 1px, transparent 1px) !important;
-    background-size: auto, auto, auto, 56px 56px, 56px 56px !important;
+      radial-gradient(ellipse 70% 45% at 20% 10%, rgba(0, 230, 255, 0.06), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 85% 90%, rgba(255, 45, 161, 0.05), transparent 55%) !important;
+    background-size: auto, auto !important;
+    background-attachment: scroll !important;
   }
 
-  /*
-   iPad / phone WebKit bug: nested backdrop-filter over fine mesh grids
-   produces multicolor static, ghosted/repeated text, and torn tiles.
-   Use opaque panels + simpler mesh on touch / tablet viewports.
-  */
-  @media (hover: none) and (pointer: coarse), (max-width: 1024px) {
-    .glass-panel,
-    .glass {
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      background: rgba(17, 17, 17, 0.96) !important;
-      transform: none !important;
-    }
-
-    .avalon-mesh {
-      background-image:
-        radial-gradient(ellipse 70% 45% at 20% 10%, rgba(0, 230, 255, 0.07), transparent 55%),
-        radial-gradient(ellipse 60% 40% at 85% 90%, rgba(255, 45, 161, 0.06), transparent 55%) !important;
-      background-size: auto, auto !important;
-    }
-
-    /* background-clip:text also ghosts / repeats on some iPads */
+  /* iOS/iPadOS: avoid background-clip:text ghost trails */
+  @supports (-webkit-touch-callout: none) {
     .chrome-text,
     .brand-duo-text {
       background: none !important;
@@ -310,6 +290,11 @@ body {
 
     .brand-duo-text {
       color: #00e6ff !important;
+    }
+
+    .avalon-mesh {
+      background-image: none !important;
+      background-color: #050505 !important;
     }
   }
 
@@ -403,9 +388,9 @@ body {
  }
 
  .glass {
- backdrop-filter: blur(16px) saturate(180%);
- -webkit-backdrop-filter: blur(16px) saturate(180%);
- background-color: rgba(255, 255, 255, 0.05);
+ backdrop-filter: none !important;
+ -webkit-backdrop-filter: none !important;
+ background-color: rgba(17, 17, 17, 0.96) !important;
  border: 1px solid rgba(255, 255, 255, 0.125);
  }
 

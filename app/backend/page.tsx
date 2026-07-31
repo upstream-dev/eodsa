@@ -58,9 +58,9 @@ export default function BackendDashboard() {
     { href: '/event-type-manager', icon: CalendarCog, label: 'Event Type Manager' },
   ];
 
-  // Solid tiles (not nested glass-panel) — nested backdrop-filter glitches on iPad
+  // Plain solid tiles — no glass/blur/scale (iPad WebKit ghosts those)
   const tileBase =
-    'flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg transition-colors group bg-[#111] border border-[rgba(192,192,192,0.22)] min-h-[88px] sm:min-h-[100px]';
+    'flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg bg-[#141414] border border-[rgba(192,192,192,0.28)] min-h-[88px] sm:min-h-[100px]';
 
   const PortalLink = ({
     href,
@@ -78,15 +78,13 @@ export default function BackendDashboard() {
     const baseClasses = `${tileBase} ${
       isDisabled
         ? 'opacity-50 cursor-not-allowed'
-        : 'hover:border-[rgba(192,192,192,0.4)] hover:bg-black/50 cursor-pointer'
+        : 'hover:border-[rgba(192,192,192,0.5)] hover:bg-[#1a1a1a] cursor-pointer'
     }`;
 
     const content = (
       <>
         <Icon
-          className={`w-6 h-6 mb-2 text-[var(--chrome-mid)] ${
-            isDisabled ? '' : 'group-hover:scale-110'
-          } transition-transform`}
+          className={`w-6 h-6 mb-2 ${isDisabled ? 'text-gray-500' : 'text-[#c0c0c0]'}`}
           strokeWidth={1.75}
         />
         <span
@@ -124,7 +122,7 @@ export default function BackendDashboard() {
 
   if (!authorized) {
     return (
-      <div className="min-h-screen avalon-mesh flex items-center justify-center">
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
         <p className="text-[#c0c0c0] text-sm">Verifying admin access…</p>
       </div>
     );
@@ -139,19 +137,19 @@ export default function BackendDashboard() {
   ];
 
   return (
-    <div className="min-h-screen avalon-mesh avalon-shell">
+    <div className="min-h-screen bg-[#050505] avalon-shell text-white">
       <div className="avalon-container avalon-section">
         <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 bg-[rgba(192,192,192,0.1)] border border-[rgba(192,192,192,0.3)] rounded-2xl mb-3 sm:mb-4 shadow-2xl">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 bg-[#141414] border border-[rgba(192,192,192,0.35)] rounded-2xl mb-3 sm:mb-4">
             <span className="text-[#e8e8e8] text-xl sm:text-3xl font-bold">EODSA</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-bold chrome-text mb-2">Backend Dashboard</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold text-[#e8e8e8] mb-2">Backend Dashboard</h1>
           <p className="text-[#c0c0c0] text-sm sm:text-lg">Staff & Official Management Portal</p>
           <p className="text-xs text-amber-300/80 mt-2">Admin access only</p>
         </div>
 
         <div className="max-w-6xl mx-auto">
-          <div className="rounded-2xl border border-[rgba(192,192,192,0.22)] bg-[#111]/95 p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="rounded-2xl border border-[rgba(192,192,192,0.28)] bg-[#111111] p-4 sm:p-6 mb-6 sm:mb-8">
             <h3 className="text-lg sm:text-xl font-bold text-[#e8e8e8] mb-4 text-center">
               Staff & Official Portals
             </h3>
@@ -160,13 +158,12 @@ export default function BackendDashboard() {
                 <Link
                   key={href}
                   href={href}
-                  className={`${tileBase} min-h-[88px] sm:min-h-[100px] justify-center hover:border-[rgba(192,192,192,0.4)] hover:bg-black/50 cursor-pointer`}
+                  className={`${tileBase} justify-center hover:border-[rgba(192,192,192,0.5)] hover:bg-[#1a1a1a] cursor-pointer`}
                 >
-                  <Icon
-                    className="w-5 h-5 sm:w-6 sm:h-6 mb-2 text-[var(--chrome-mid)] group-hover:scale-110 transition-transform"
-                    strokeWidth={1.75}
-                  />
-                  <span className="text-[11px] sm:text-xs text-[#e8e8e8] font-medium text-center leading-tight">{label}</span>
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 mb-2 text-[#c0c0c0]" strokeWidth={1.75} />
+                  <span className="text-[11px] sm:text-xs text-[#e8e8e8] font-medium text-center leading-tight">
+                    {label}
+                  </span>
                 </Link>
               ))}
               {phase2Portals.map((portal) => (
@@ -179,7 +176,7 @@ export default function BackendDashboard() {
             <div className="flex flex-wrap justify-center gap-4 text-sm">
               <Link
                 href="/admin/scoring-approval"
-                className="text-[var(--chrome-mid)] hover:text-[#e8e8e8] transition-colors"
+                className="text-[#c0c0c0] hover:text-[#e8e8e8] transition-colors"
               >
                 Score Approval System
               </Link>
@@ -187,7 +184,10 @@ export default function BackendDashboard() {
           </div>
 
           <div className="text-center mt-8">
-            <Link href="/" className="btn-outline-chrome inline-flex items-center text-sm">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center rounded-full border border-[rgba(192,192,192,0.45)] px-6 py-3 text-sm font-semibold tracking-widest uppercase text-[#e8e8e8] bg-[#111111]"
+            >
               Back to Main Portal
             </Link>
           </div>
