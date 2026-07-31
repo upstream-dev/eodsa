@@ -16,12 +16,16 @@ async function ensureDbInitialized() {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await ensureDbInitialized();
     
-    // Get all event entries
-    const entries = await db.getAllEventEntries();
+    // Get all event entries (optional ?eventId= filter — non-breaking for other callers)
+    const eventIdFilter = request.nextUrl.searchParams.get('eventId');
+    let entries = await db.getAllEventEntries();
+    if (eventIdFilter) {
+      entries = entries.filter((entry) => entry.eventId === eventIdFilter);
+    }
     
     // Enhance entries with contestant names from participantIds
     const { getSql } = await import('@/lib/database');

@@ -4,6 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/simple-toast';
 import RealtimeUpdates from '@/components/RealtimeUpdates';
+import {
+  Users,
+  UserCheck,
+  UserX,
+  Percent,
+  ClipboardList,
+} from 'lucide-react';
 
 interface Performance {
  id: string;
@@ -300,24 +307,25 @@ export default function RegistrationDashboard() {
  <div className="min-h-screen avalon-mesh"> {/* Header */}
  <div className="glass-panel backdrop-blur-sm border-b border-[rgba(192,192,192,0.15)]">
  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
- <div className="flex justify-between items-center py-6">
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 py-6">
  <div className="flex items-center space-x-4">
  <div className="w-12 h-12 btn-chrome !rounded-xl rounded-xl flex items-center justify-center">
- <span className="text-white text-xl font-display">R</span>
+ <span className="text-[#050505] text-xl font-display">R</span>
  </div>
  <div>
  <h1 className="font-display text-2xl chrome-text leading-none">Registration Dashboard</h1>
- <p className="text-gray-400 mt-1">Welcome, {user?.name}</p>
+ <p className="text-[#c0c0c0] mt-1">Welcome, {user?.name}</p>
  </div>
  </div>
- <div className="flex items-center space-x-4">
+ <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
  <select
  value={selectedEvent}
  onChange={(e) => setSelectedEvent(e.target.value)}
- className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white" >
+ className="w-full sm:w-auto px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white" >
  {events.map(event => (
  <option key={event.id} value={event.id}>{event.name}</option> ))}
  </select>
+ <div className="flex items-center gap-3">
  <button
  onClick={() => {
  const rows = [['Item #','Item Name','Contestant','Participants','Present','CheckedInBy','CheckedInAt']];
@@ -338,7 +346,7 @@ export default function RegistrationDashboard() {
  const a = document.createElement('a');
  a.href = url; a.download = 'presence.csv'; a.click(); URL.revokeObjectURL(url);
  }}
- className="btn-chrome !px-3 !py-2" >
+ className="btn-chrome !px-3 !py-2 flex-1 sm:flex-none" >
  Export Presence CSV
  </button>
  <button
@@ -346,78 +354,79 @@ export default function RegistrationDashboard() {
  localStorage.removeItem('registrationSession');
  router.push('/portal/registration');
  }}
- className="btn-outline-chrome !px-4 !py-2" >
+ className="btn-outline-chrome !px-4 !py-2 flex-1 sm:flex-none" >
  Logout
  </button>
  </div>
  </div>
  </div>
+ </div>
  </div>  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"> {/* Event Info */}
  {event && (
- <div className="bg-gray-800 border border-[rgba(192,192,192,0.15)] rounded-lg shadow p-6 mb-8">
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6 mb-8">
  <h2 className="text-xl font-semibold text-white mb-2">{event.name}</h2>
- <p className="text-gray-300">Date: {event.eventDate} | Venue: {event.venue}</p>
+ <p className="text-[#e0e0e0]">Date: {event.eventDate} | Venue: {event.venue}</p>
  </div> )}
 
  {/* Stats Cards */}
  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
- <div className="bg-gray-800 border border-[rgba(192,192,192,0.15)] rounded-lg shadow p-6">
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6">
  <div className="flex items-center">
- <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
- <span className="text-white"></span>
+ <div className="w-8 h-8 bg-[rgba(192,192,192,0.08)] border border-[rgba(192,192,192,0.22)] rounded-lg flex items-center justify-center mr-3">
+ <Users className="w-4 h-4 text-[var(--chrome-mid)]" />
  </div>
  <div>
- <p className="text-sm font-medium text-gray-400">Total Performers</p>
+ <p className="text-sm font-medium text-[#c0c0c0]">Total Performers</p>
  <p className="text-2xl font-semibold text-white">{performances.length}</p>
  </div>
  </div>
- </div>  <div className="bg-gray-800 border border-[rgba(192,192,192,0.15)] rounded-lg shadow p-6">
+ </div>  <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6">
  <div className="flex items-center">
- <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center mr-3">
- <span className="text-white"></span>
+ <div className="w-8 h-8 bg-[rgba(192,192,192,0.08)] border border-[rgba(192,192,192,0.22)] rounded-lg flex items-center justify-center mr-3">
+ <UserCheck className="w-4 h-4 text-[var(--chrome-mid)]" />
  </div>
  <div>
- <p className="text-sm font-medium text-gray-400">Present</p>
+ <p className="text-sm font-medium text-[#c0c0c0]">Present</p>
  <p className="text-2xl font-semibold text-white">{presentCount}</p>
  </div>
  </div>
- </div>  <div className="bg-gray-800 border border-[rgba(192,192,192,0.15)] rounded-lg shadow p-6">
+ </div>  <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6">
  <div className="flex items-center">
- <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center mr-3">
- <span className="text-white"></span>
+ <div className="w-8 h-8 bg-[rgba(192,192,192,0.08)] border border-[rgba(192,192,192,0.22)] rounded-lg flex items-center justify-center mr-3">
+ <UserX className="w-4 h-4 text-[var(--chrome-mid)]" />
  </div>
  <div>
- <p className="text-sm font-medium text-gray-400">Absent</p>
+ <p className="text-sm font-medium text-[#c0c0c0]">Absent</p>
  <p className="text-2xl font-semibold text-white">{absentCount}</p>
  </div>
  </div>
- </div>  <div className="bg-gray-800 border border-[rgba(192,192,192,0.15)] rounded-lg shadow p-6">
+ </div>  <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6">
  <div className="flex items-center">
  <div className="w-8 h-8 bg-[rgba(192,192,192,0.08)] border border-[rgba(192,192,192,0.22)] rounded-lg flex items-center justify-center mr-3">
- <span className="text-white"></span>
+ <Percent className="w-4 h-4 text-[var(--chrome-mid)]" />
  </div>
  <div>
- <p className="text-sm font-medium text-gray-400">Attendance Rate</p>
+ <p className="text-sm font-medium text-[#c0c0c0]">Attendance Rate</p>
  <p className="text-2xl font-semibold text-white"> {performances.length > 0 ? Math.round((presentCount / performances.length) * 100) : 0}%
  </p>
  </div>
  </div>
  </div>
  </div> {/* Filters */}
- <div className="bg-gray-800 border border-[rgba(192,192,192,0.15)] rounded-lg shadow p-6 mb-8">
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6 mb-8">
  <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0">
  <div className="flex-1">
- <label className="block text-sm font-medium text-white mb-2">Search</label>
+ <label className="block text-sm font-medium text-[#e0e0e0] mb-2">Search</label>
  <input
  type="text" value={searchTerm}
  onChange={(e) => setSearchTerm(e.target.value)}
- placeholder="Search by name, item number, or EODSA ID..." className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white placeholder-gray-400" />
+ placeholder="Search by name, item number, or EODSA ID..." className="w-full px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white placeholder:text-[#c0c0c0]" />
  </div>  <div>
- <label className="block text-sm font-medium text-white mb-2">Presence Status</label>
+ <label className="block text-sm font-medium text-[#e0e0e0] mb-2">Presence Status</label>
  <select
  value={presenceFilter}
  onChange={(e) => setPresenceFilter(e.target.value)}
- className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white" >
+ className="w-full sm:w-auto px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] text-white" >
  <option value="all">All Performers</option>
  <option value="present">Present Only</option>
  <option value="absent">Absent Only</option>
@@ -425,51 +434,51 @@ export default function RegistrationDashboard() {
  </div>
  </div>
  </div> {/* Performer List */}
- <div className="bg-gray-800 border border-[rgba(192,192,192,0.15)] rounded-lg shadow">
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg">
  <div className="px-6 py-4 border-b border-[rgba(192,192,192,0.15)]">
- <h2 className="text-lg font-semibold text-white flex items-center">
- <span className="mr-2"></span> Performers ({filteredPerformances.length} total)</h2>
+ <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+ <ClipboardList className="w-5 h-5 text-[var(--chrome-mid)]" /> Performers ({filteredPerformances.length} total)</h2>
  </div> {filteredPerformances.length > 0 ? (
- <div className="divide-y divide-gray-700"> {filteredPerformances.map((performance) => (
- <div key={performance.id} className={`p-6 ${performance.presence?.present ? 'bg-green-900/20' : 'bg-gray-800'}`}>
- <div className="flex items-start justify-between">
- <div className="flex items-center space-x-4 flex-1">
- <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg ${
+ <div className="divide-y divide-[rgba(192,192,192,0.15)]"> {filteredPerformances.map((performance) => (
+ <div key={performance.id} className={`p-6 ${performance.presence?.present ? 'bg-green-900/20' : ''}`}>
+ <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+ <div className="flex items-start space-x-4 flex-1 min-w-0">
+ <div className={`w-12 h-12 shrink-0 rounded-lg flex items-center justify-center font-bold text-lg ${
  performance.presence?.present ? 'bg-green-500 text-white' :
- 'bg-gray-600 text-white'
+ 'bg-[rgba(192,192,192,0.25)] text-white'
  }`}> {performance.itemNumber || '?'}
  </div>  <div className="flex-1 min-w-0">
  <h3 className="text-lg font-semibold text-white"> {performance.title}</h3>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
  <div>
- <p className="text-sm text-gray-300">
+ <p className="text-sm text-[#e0e0e0]">
  <strong className="text-white">Entry Name:</strong> {performance.title}
  </p>
- <p className="text-sm text-gray-300">
+ <p className="text-sm text-[#e0e0e0]">
  <strong className="text-white">Choreographer:</strong> {performance.choreographer}
  </p>
- <p className="text-sm text-gray-300">
+ <p className="text-sm text-[#e0e0e0]">
  <strong className="text-white">Style:</strong> {performance.itemStyle} • <strong className="text-white">Level:</strong> {performance.mastery}
  </p> {performance.ageCategory && (
- <p className="text-sm text-gray-300">
+ <p className="text-sm text-[#c0c0c0]">
  <strong className="text-white">Age Category:</strong> {performance.ageCategory}
  </p> )}
  </div>
  <div>
- <p className="text-sm text-gray-300">
+ <p className="text-sm text-[#e0e0e0]">
  <strong className="text-white">Studio Name:</strong> {performance.contestantName}
  </p>
- <p className="text-sm text-gray-300">
+ <p className="text-sm text-[#e0e0e0]">
  <strong className="text-white">Contestant(s):</strong> {performance.participantNames.join(', ')}
  </p> {performance.eodsaId && (
- <p className="text-xs text-gray-400">
- <strong className="text-gray-300">EODSA ID:</strong> {performance.eodsaId}
+ <p className="text-xs text-[#c0c0c0]">
+ <strong className="text-[#e0e0e0]">EODSA ID:</strong> {performance.eodsaId}
  </p> )}
  {/* Music Status for Live Performances */}
  {performance.entryType === 'live' && (
  <p className="text-xs">
  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
- performance.musicFileUrl ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
+ performance.musicFileUrl ? 'bg-green-900/40 text-green-200 border border-green-700/50' : 'bg-yellow-900/40 text-yellow-200 border border-yellow-700/50'
  }`}> {performance.musicFileUrl ? 'Music uploaded' : 'Music missing'}
  </span>
  </p> )}
@@ -477,45 +486,48 @@ export default function RegistrationDashboard() {
  </div> {performance.presence?.checkedInAt && (
  <p className="text-xs text-[var(--chrome-mid)] mt-2"> Last updated: {new Date(performance.presence.checkedInAt).toLocaleString()}
  </p> )}
- </div>  <div className="flex items-center space-x-2">
- <span className={`px-2 py-1 text-xs font-medium rounded-full ${
- performance.status === 'in_progress' ? 'bg-orange-600 text-white' :
- performance.status === 'completed' ? 'bg-blue-600 text-white' :
- performance.status === 'cancelled' ? 'bg-red-600 text-white' :
- 'bg-gray-600 text-white'
+ </div>
+ </div>  <div className="flex flex-col gap-3 sm:items-end">
+ <div className="flex flex-wrap items-center gap-2">
+ <span className={`px-2 py-1 text-xs font-medium rounded-full border ${
+ performance.status === 'in_progress' ? 'bg-[rgba(192,192,192,0.12)] text-[#e0e0e0] border-[rgba(192,192,192,0.35)]' :
+ performance.status === 'completed' ? 'bg-green-900/40 text-green-200 border-green-700/50' :
+ performance.status === 'cancelled' ? 'bg-red-900/40 text-red-200 border-red-700/50' :
+ 'bg-[rgba(192,192,192,0.08)] text-[#c0c0c0] border-[rgba(192,192,192,0.22)]'
  }`}> {performance.status.toUpperCase()}
- </span>  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+ </span>  <span className={`px-2 py-1 text-xs font-medium rounded-full border ${
  performance.presence?.present 
- ? 'bg-green-600 text-white' 
- : 'bg-red-600 text-white'
+ ? 'bg-green-900/40 text-green-200 border-green-700/50' 
+ : 'bg-red-900/40 text-red-200 border-red-700/50'
  }`}> {performance.presence?.present ? 'PRESENT' : 'ABSENT'}
  </span>
  </div>
- </div>  <button
+ <button
  onClick={() => togglePresence(
  performance.id, 
  performance.presence?.present || false, 
  performance.title
  )}
  disabled={checkingIn.has(performance.id)}
- className={`ml-4 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+ className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
  performance.presence?.present
  ? 'bg-red-600 text-white hover:bg-red-700'
- : 'bg-green-600 text-white hover:bg-green-700'
+ : 'btn-chrome'
  }`}
  > {checkingIn.has(performance.id) ? (
- <div className="flex items-center">
+ <div className="flex items-center justify-center">
  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div> Updating...
  </div> ) : (
  <> {performance.presence?.present ? ' Mark Absent' : ' Check In'}
  </> )}
  </button>
  </div>
+ </div>
  </div> ))}
  </div> ) : (
  <div className="p-8 text-center">
- <span className="text-4xl mb-4 block"></span>
- <p className="text-gray-400">No performers found for the selected filter</p>
+ <ClipboardList className="w-10 h-10 mx-auto mb-4 text-[var(--chrome-mid)]" />
+ <p className="text-[#c0c0c0]">No performers found for the selected filter</p>
  </div> )}
  </div>
  </div>

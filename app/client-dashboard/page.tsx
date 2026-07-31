@@ -311,7 +311,7 @@ export default function ClientDashboard() {
  <div className="flex items-center justify-between">
  <div className="flex items-center space-x-4">
  <div className="w-12 h-12 btn-chrome !rounded-full rounded-full flex items-center justify-center">
- <span className="text-xl font-display text-white">S</span>
+ <span className="text-xl font-display text-[#050505]">S</span>
  </div>
  <div>
  <h1 className="font-display text-2xl chrome-text leading-none">Staff Dashboard</h1>
@@ -369,9 +369,9 @@ export default function ClientDashboard() {
  <div
  key={event.id}
  className="glass-panel rounded-xl border border-[rgba(192,192,192,0.22)] p-6" >
- <div className="flex items-center justify-between mb-4">
- <div className="flex-1">
- <div className="flex items-center space-x-3 mb-2">
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+ <div className="flex-1 min-w-0">
+ <div className="flex flex-wrap items-center gap-3 mb-2">
  <h3 className="text-xl font-bold text-white">{event.name}</h3>
  <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-[var(--chrome-light)] rounded text-xs"> {event.status}
  </span>
@@ -400,16 +400,16 @@ export default function ClientDashboard() {
  onClick={() => setExpandedEventId(
  expandedEventId === event.id ? null : event.id
  )}
- className="ml-4 btn-chrome !px-4 !py-2" >
+ className="btn-chrome !px-4 !py-2 w-full sm:w-auto sm:ml-4" >
  {expandedEventId === event.id ? 'Hide' : 'View'} Judges
  </button>
  </div> {expandedEventId === event.id && (
  <div className="mt-4 pt-4 border-t border-[rgba(192,192,192,0.15)]/20">
- <div className="flex items-center justify-between mb-4">
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
  <h4 className="text-lg font-semibold text-white"> Assigned Judges ({event.judges.length})</h4>
  <button
  onClick={() => openAddJudgeModal(event.id)}
- className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm" disabled={getAvailableJudgesForEvent(event.id).length === 0}
+ className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm w-full sm:w-auto" disabled={getAvailableJudgesForEvent(event.id).length === 0}
  > + Add Judge
  </button>
  </div> {event.judges.length === 0 ? (
@@ -426,7 +426,7 @@ export default function ClientDashboard() {
  .map((judge, index) => (
  <div
  key={judge.id}
- className="bg-black/40 rounded-lg p-4 flex items-center justify-between" >
+ className="bg-black/40 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" >
  <div className="flex items-center space-x-4">
  <div className="w-10 h-10 btn-chrome !rounded-full rounded-full flex items-center justify-center text-[#050505] font-bold"> {index + 1}
  </div>
@@ -438,7 +438,7 @@ export default function ClientDashboard() {
  </div>
  <button
  onClick={() => handleRemoveJudge(event.id, judge.id)}
- className="px-3 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded transition-colors text-sm" >
+ className="px-3 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded transition-colors text-sm w-full sm:w-auto" >
  Remove
  </button>
  </div> ))}

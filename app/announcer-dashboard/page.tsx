@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/simple-toast';
 import RealtimeUpdates from '@/components/RealtimeUpdates';
 import { useEffect as ReactUseEffect } from 'react';
+import {
+  ListOrdered,
+  CheckCircle2,
+  Clock3,
+  Radio,
+  Megaphone,
+} from 'lucide-react';
 // import InlineMusicControls from '@/components/InlineMusicControls';
 
 interface Performance {
@@ -444,24 +451,25 @@ export default function AnnouncerDashboard() {
  <div className="min-h-screen avalon-mesh text-white"> {/* Header */}
  <div className="glass-panel backdrop-blur-sm border-b border-[rgba(192,192,192,0.15)]">
  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
- <div className="flex justify-between items-center py-6">
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 py-6">
  <div className="flex items-center space-x-4">
  <div className="w-12 h-12 btn-chrome !rounded-xl rounded-xl flex items-center justify-center">
- <span className="text-white text-xl font-display">A</span>
+ <span className="text-[#050505] text-xl font-display">A</span>
  </div>
  <div>
  <h1 className="font-display text-2xl chrome-text leading-none">Announcer Dashboard</h1>
- <p className="text-gray-400 mt-1">Welcome, {user?.name}</p>
+ <p className="text-[#c0c0c0] mt-1">Welcome, {user?.name}</p>
  </div>
  </div>
- <div className="flex items-center space-x-4">
+ <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
  <select
  value={selectedEvent}
  onChange={(e) => setSelectedEvent(e.target.value)}
- className="px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" >
+ className="w-full sm:w-auto px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" >
  {events.map(event => (
  <option key={event.id} value={event.id}>{event.name}</option> ))}
  </select>
+ <div className="flex items-center gap-3">
  <button
  onClick={() => {
  const rows = [['Item #','Item Name','Contestant','Participants','Style','Level','Age Category','Status','Announced','Music Cue','Entry Type','Music File','Presence']];
@@ -489,7 +497,7 @@ export default function AnnouncerDashboard() {
  const a = document.createElement('a');
  a.href = url; a.download = `announcer-program-${event?.name || 'event'}.csv`; a.click(); URL.revokeObjectURL(url);
  }}
- className="btn-chrome !px-3 !py-2" >
+ className="btn-chrome !px-3 !py-2 flex-1 sm:flex-none" >
  Export CSV
  </button>
  <button
@@ -497,21 +505,22 @@ export default function AnnouncerDashboard() {
  localStorage.removeItem('announcerSession');
  router.push('/portal/announcer');
  }}
- className="btn-outline-chrome !px-4 !py-2" >
+ className="btn-outline-chrome !px-4 !py-2 flex-1 sm:flex-none" >
  Logout
  </button>
  </div>
  </div>
  </div>
+ </div>
  </div>  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"> {/* Announcer General Notes */}
- <div className="bg-gray-800 border border-[rgba(192,192,192,0.15)] rounded-lg shadow p-4 sm:p-6 mb-8">
- <div className="flex items-center justify-between mb-3">
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-4 sm:p-6 mb-8">
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
  <h2 className="text-xl sm:text-2xl font-bold text-white">Announcer Notes</h2>
  <div className="flex items-center gap-3">
- <span className="text-xs text-gray-500">Autosaves</span>
+ <span className="text-xs text-[#c0c0c0]">Autosaves</span>
  <button
  onClick={saveGeneralNotes}
- className="px-3 py-1.5 bg-orange-600 text-white rounded-md text-xs font-semibold hover:bg-orange-700" >
+ className="btn-chrome !px-3 !py-1.5 text-xs font-semibold" >
  Save Notes
  </button>
  </div>
@@ -522,30 +531,30 @@ export default function AnnouncerDashboard() {
  onBlur={() => {
  try { localStorage.setItem(`announcer:generalNotes:${selectedEvent}`, generalNotes || ''); } catch {}
  }}
- className="w-full min-h-[120px] sm:min-h-[160px] px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg" placeholder="Script, announcements, reminders…" />
+ className="w-full min-h-[120px] sm:min-h-[160px] px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg placeholder:text-[#c0c0c0]" placeholder="Script, announcements, reminders…" />
  </div> {/* Event Info */}
  {event && (
- <div className="bg-white rounded-lg shadow p-6 mb-8">
- <h2 className="text-xl font-semibold text-black mb-2">{event.name}</h2>
- <p className="text-black">Date: {event.eventDate} | Venue: {event.venue}</p>
- <p className="text-xs text-gray-500 mt-1">Live updating… Last sync {lastSyncAt || '—'}</p>
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6 mb-8">
+ <h2 className="text-xl font-semibold text-white mb-2">{event.name}</h2>
+ <p className="text-[#e0e0e0]">Date: {event.eventDate} | Venue: {event.venue}</p>
+ <p className="text-xs text-[#c0c0c0] mt-1">Live updating… Last sync {lastSyncAt || '—'}</p>
  </div> )}
 
  {/* Current Performance */}
  {currentPerformance && (
- <div className="bg-orange-100 border border-orange-400 rounded-lg p-6 mb-8">
- <div className="flex items-center justify-between">
+ <div className="glass-panel border border-[rgba(192,192,192,0.35)] rounded-lg p-6 mb-8">
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
  <div>
- <h3 className="text-xl font-semibold text-orange-800 flex items-center">
- <span className="mr-2"></span> NOW PERFORMING</h3>
- <p className="text-lg font-medium text-orange-700"> #{currentPerformance.itemNumber} - {currentPerformance.title}
+ <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+ <Radio className="w-5 h-5 text-[var(--chrome-mid)]" /> NOW PERFORMING</h3>
+ <p className="text-lg font-medium text-white mt-1"> #{currentPerformance.itemNumber} - {currentPerformance.title}
  </p>
- <p className="text-orange-600"> {currentPerformance.participantNames.join(', ')}
+ <p className="text-[#c0c0c0]"> {currentPerformance.participantNames.join(', ')}
  </p>
  </div>
  <button
  onClick={() => markAsPerformed(currentPerformance.id, currentPerformance.title)}
- className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors" >
+ className="btn-chrome !px-6 !py-3 font-semibold w-full sm:w-auto" >
   Mark as Performed
  </button>
  </div>
@@ -553,75 +562,75 @@ export default function AnnouncerDashboard() {
 
  {/* Stats Cards */}
  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
- <div className="bg-white rounded-lg shadow p-6">
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6">
  <div className="flex items-center">
- <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
- <span className="text-blue-600"></span>
+ <div className="w-8 h-8 bg-[rgba(192,192,192,0.08)] border border-[rgba(192,192,192,0.22)] rounded-lg flex items-center justify-center mr-3">
+ <ListOrdered className="w-4 h-4 text-[var(--chrome-mid)]" />
  </div>
  <div>
- <p className="text-sm font-medium text-black">Total Items</p>
- <p className="text-2xl font-semibold text-black">{performances.length}</p>
+ <p className="text-sm font-medium text-[#c0c0c0]">Total Items</p>
+ <p className="text-2xl font-semibold text-white">{performances.length}</p>
  </div>
  </div>
- </div>  <div className="bg-white rounded-lg shadow p-6">
+ </div>  <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6">
  <div className="flex items-center">
- <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
- <span className="text-green-600"></span>
+ <div className="w-8 h-8 bg-[rgba(192,192,192,0.08)] border border-[rgba(192,192,192,0.22)] rounded-lg flex items-center justify-center mr-3">
+ <CheckCircle2 className="w-4 h-4 text-[var(--chrome-mid)]" />
  </div>
  <div>
- <p className="text-sm font-medium text-black">Announced</p>
- <p className="text-2xl font-semibold text-black"> {performances.filter(p => p.announced).length}
+ <p className="text-sm font-medium text-[#c0c0c0]">Announced</p>
+ <p className="text-2xl font-semibold text-white"> {performances.filter(p => p.announced).length}
  </p>
  </div>
  </div>
- </div>  <div className="bg-white rounded-lg shadow p-6">
- <div className="flex items-center">
- <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
- <span className="text-orange-600">⏳</span>
- </div>
- <div>
- <p className="text-sm font-medium text-black">Remaining</p>
- <p className="text-2xl font-semibold text-black">{upcomingPerformances.length}</p>
- </div>
- </div>
- </div>  <div className="bg-white rounded-lg shadow p-6">
+ </div>  <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6">
  <div className="flex items-center">
  <div className="w-8 h-8 bg-[rgba(192,192,192,0.08)] border border-[rgba(192,192,192,0.22)] rounded-lg flex items-center justify-center mr-3">
- <span className="text-[var(--chrome-mid)] text-xs font-medium">ST</span>
+ <Clock3 className="w-4 h-4 text-[var(--chrome-mid)]" />
  </div>
  <div>
- <p className="text-sm font-medium text-black">In Progress</p>
- <p className="text-2xl font-semibold text-black"> {performances.filter(p => p.status === 'in_progress').length}
+ <p className="text-sm font-medium text-[#c0c0c0]">Remaining</p>
+ <p className="text-2xl font-semibold text-white">{upcomingPerformances.length}</p>
+ </div>
+ </div>
+ </div>  <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6">
+ <div className="flex items-center">
+ <div className="w-8 h-8 bg-[rgba(192,192,192,0.08)] border border-[rgba(192,192,192,0.22)] rounded-lg flex items-center justify-center mr-3">
+ <Radio className="w-4 h-4 text-[var(--chrome-mid)]" />
+ </div>
+ <div>
+ <p className="text-sm font-medium text-[#c0c0c0]">In Progress</p>
+ <p className="text-2xl font-semibold text-white"> {performances.filter(p => p.status === 'in_progress').length}
  </p>
  </div>
  </div>
  </div>
  </div> {/* Filters */}
- <div className="bg-white rounded-lg shadow p-6 mb-8">
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg p-6 mb-8">
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
  <div className="lg:col-span-2">
- <label className="block text-sm font-medium text-black mb-2">Search</label>
+ <label className="block text-sm font-medium text-[#e0e0e0] mb-2">Search</label>
  <input
  type="text" value={searchTerm}
  onChange={(e) => setSearchTerm(e.target.value)}
- placeholder="Search by item name, number, or participant..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black" />
+ placeholder="Search by item name, number, or participant..." className="w-full px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)] placeholder:text-[#c0c0c0]" />
  </div>  <div>
- <label className="block text-sm font-medium text-black mb-2">Status</label>
+ <label className="block text-sm font-medium text-[#e0e0e0] mb-2">Status</label>
  <select
  value={statusFilter}
  onChange={(e) => setStatusFilter(e.target.value)}
- className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black" >
+ className="w-full px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" >
  <option value="scheduled">Upcoming Items</option>
  <option value="announced">Announced Items</option>
  <option value="completed">Completed Items</option>
  <option value="all">All Items</option>
  </select>
  </div>  <div>
- <label className="block text-sm font-medium text-black mb-2">Type</label>
+ <label className="block text-sm font-medium text-[#e0e0e0] mb-2">Type</label>
  <select
  value={performanceTypeFilter}
  onChange={(e) => setPerformanceTypeFilter(e.target.value)}
- className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black" >
+ className="w-full px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" >
  <option value="all">All Types</option>
  <option value="Solo">Solo</option>
  <option value="Duet">Duet</option>
@@ -629,35 +638,35 @@ export default function AnnouncerDashboard() {
  <option value="Group">Group</option>
  </select>
  </div>  <div>
- <label className="block text-sm font-medium text-black mb-2">Age Category</label>
+ <label className="block text-sm font-medium text-[#e0e0e0] mb-2">Age Category</label>
  <select
  value={ageCategoryFilter}
  onChange={(e) => setAgeCategoryFilter(e.target.value)}
- className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black" >
+ className="w-full px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" >
  <option value="all">All Ages</option> {/* Get unique age categories from performances */}
  {Array.from(new Set(performances.map(p => p.ageCategory).filter(Boolean))).sort().map(ageCategory => (
  <option key={ageCategory} value={ageCategory}>{ageCategory}</option> ))}
  </select>
  </div>
  </div> {/* Secondary filter row for additional filters */}
- <div className="mt-4 pt-4 border-t border-gray-200">
+ <div className="mt-4 pt-4 border-t border-[rgba(192,192,192,0.15)]">
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
  <div>
- <label className="block text-sm font-medium text-black mb-2">Style Filter</label>
+ <label className="block text-sm font-medium text-[#e0e0e0] mb-2">Style Filter</label>
  <select
  value={styleFilter}
  onChange={(e) => setStyleFilter(e.target.value)}
- className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black" >
+ className="w-full px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" >
  <option value="all">All Styles</option> {/* Get unique styles from performances */}
  {Array.from(new Set(performances.map(p => p.itemStyle).filter(Boolean))).sort().map(style => (
  <option key={style} value={style}>{style}</option> ))}
  </select>
  </div>  <div>
- <label className="block text-sm font-medium text-black mb-2">Presence Status</label>
+ <label className="block text-sm font-medium text-[#e0e0e0] mb-2">Presence Status</label>
  <select
  value={presenceFilter}
  onChange={(e) => setPresenceFilter(e.target.value)}
- className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black" >
+ className="w-full px-3 py-2 border border-[rgba(192,192,192,0.22)] bg-black/40 text-white rounded-lg focus:ring-2 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]" >
  <option value="all">All Performers</option>
  <option value="present">Present</option>
  <option value="absent">Not Checked In</option>
@@ -672,163 +681,164 @@ export default function AnnouncerDashboard() {
  setStyleFilter('all');
  setAgeCategoryFilter('all');
  }}
- className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" >
+ className="btn-outline-chrome !px-4 !py-2 text-sm w-full sm:w-auto" >
  Clear All Filters
  </button>
  </div>
  </div>
  </div>
  </div> {/* Performance List */}
- <div className="bg-white rounded-lg shadow">
- <div className="px-6 py-4 border-b border-gray-200">
- <div className="flex items-center justify-between">
- <h2 className="text-lg font-semibold text-black flex items-center">
- <span className="mr-2"></span> Program ({filteredPerformances.length} of {performances.length} items)</h2> {/* Active filters indicator */}
- <div className="flex items-center space-x-2 text-sm text-gray-600"> {statusFilter !== 'scheduled' && (
- <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-md"> Status: {statusFilter}
+ <div className="glass-panel border border-[rgba(192,192,192,0.22)] rounded-lg">
+ <div className="px-6 py-4 border-b border-[rgba(192,192,192,0.15)]">
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+ <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+ <Megaphone className="w-5 h-5 text-[var(--chrome-mid)]" /> Program ({filteredPerformances.length} of {performances.length} items)</h2> {/* Active filters indicator */}
+ <div className="flex flex-wrap items-center gap-2 text-sm text-[#c0c0c0]"> {statusFilter !== 'scheduled' && (
+ <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-[#e0e0e0] border border-[rgba(192,192,192,0.22)] rounded-md"> Status: {statusFilter}
  </span> )}
  {performanceTypeFilter !== 'all' && (
- <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md"> Type: {performanceTypeFilter}
+ <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-[#e0e0e0] border border-[rgba(192,192,192,0.22)] rounded-md"> Type: {performanceTypeFilter}
  </span> )}
  {presenceFilter !== 'all' && (
- <span className="px-2 py-1 bg-green-100 text-green-800 rounded-md"> Presence: {presenceFilter}
+ <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-[#e0e0e0] border border-[rgba(192,192,192,0.22)] rounded-md"> Presence: {presenceFilter}
  </span> )}
  {styleFilter !== 'all' && (
- <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-[var(--chrome-mid)] rounded-md"> Style: {styleFilter}
+ <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-[var(--chrome-mid)] border border-[rgba(192,192,192,0.22)] rounded-md"> Style: {styleFilter}
  </span> )}
  {ageCategoryFilter !== 'all' && (
- <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-gray-300 rounded-md"> Age: {ageCategoryFilter}
+ <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-[#c0c0c0] border border-[rgba(192,192,192,0.22)] rounded-md"> Age: {ageCategoryFilter}
  </span> )}
  {searchTerm && (
- <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-md"> Search: "{searchTerm}"
+ <span className="px-2 py-1 bg-[rgba(192,192,192,0.08)] text-[#e0e0e0] border border-[rgba(192,192,192,0.22)] rounded-md"> Search: "{searchTerm}"
  </span> )}
  </div>
  </div>
  </div> {filteredPerformances.length > 0 ? (
- <div className="divide-y divide-gray-200"> {filteredPerformances.map((performance) => (
- <div key={performance.id} className={`p-6 ${performance.status === 'completed' ? 'bg-green-50' : performance.announced ? 'bg-gray-50' : ''}`}>
- <div className="flex items-start justify-between">
- <div className="flex items-center space-x-4 flex-1">
- <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg ${
- performance.status === 'completed' ? 'bg-green-500 text-white' :
- performance.status === 'in_progress' ? 'bg-orange-500 text-white' :
- performance.announced ? 'bg-gray-400 text-white' :
- 'bg-blue-500 text-white'
+ <div className="divide-y divide-[rgba(192,192,192,0.15)]"> {filteredPerformances.map((performance) => (
+ <div key={performance.id} className={`p-6 ${performance.status === 'completed' ? 'bg-green-900/15' : performance.announced ? 'bg-black/20' : ''}`}>
+ <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+ <div className="flex items-start space-x-4 flex-1 min-w-0">
+ <div className={`w-12 h-12 shrink-0 rounded-lg flex items-center justify-center font-bold text-lg ${
+ performance.status === 'completed' ? 'bg-green-600 text-white' :
+ performance.status === 'in_progress' ? 'btn-chrome text-[#050505]' :
+ performance.announced ? 'bg-[rgba(192,192,192,0.25)] text-white' :
+ 'btn-chrome text-[#050505]'
  }`}> {performance.itemNumber || '?'}
  </div>  <div className="flex-1 min-w-0">
- <h3 className={`text-3xl font-extrabold ${performance.status === 'completed' ? 'text-green-800' : performance.announced ? 'text-gray-600' : 'text-white'}`}> {performance.title}</h3>
+ <h3 className={`text-2xl sm:text-3xl font-extrabold ${performance.status === 'completed' ? 'text-green-300' : performance.announced ? 'text-[#c0c0c0]' : 'text-white'}`}> {performance.title}</h3>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
  <div>
- <p className={`text-xl font-semibold ${performance.status === 'completed' ? 'text-green-700' : performance.announced ? 'text-gray-500' : 'text-black'}`}>
- <strong>Style:</strong> {performance.itemStyle} • <strong>Level:</strong> {performance.mastery}
+ <p className={`text-base sm:text-xl font-semibold ${performance.status === 'completed' ? 'text-green-200' : 'text-[#e0e0e0]'}`}>
+ <strong className="text-white">Style:</strong> {performance.itemStyle} • <strong className="text-white">Level:</strong> {performance.mastery}
  </p> {performance.musicCue && (
- <p className={`text-base ${performance.status === 'completed' ? 'text-green-700' : performance.announced ? 'text-gray-500' : 'text-black'}`}>
- <strong>Music cue:</strong> {performance.musicCue === 'onstage' ? 'Onstage (start when in position)' : 'Offstage (start while walking on)'}
+ <p className={`text-base ${performance.status === 'completed' ? 'text-green-200' : 'text-[#c0c0c0]'}`}>
+ <strong className="text-white">Music cue:</strong> {performance.musicCue === 'onstage' ? 'Onstage (start when in position)' : 'Offstage (start while walking on)'}
  </p> )}
  {performance.ageCategory && (
- <p className={`text-base ${performance.status === 'completed' ? 'text-green-700' : performance.announced ? 'text-gray-500' : 'text-black'}`}>
- <strong>Age Category:</strong> {performance.ageCategory}
+ <p className={`text-base ${performance.status === 'completed' ? 'text-green-200' : 'text-[#c0c0c0]'}`}>
+ <strong className="text-white">Age Category:</strong> {performance.ageCategory}
  </p> )}
  </div>
  <div> {Array.isArray(performance.participantNames) && (
  <>
- <p className={`text-xl font-semibold ${performance.status === 'completed' ? 'text-green-700' : performance.announced ? 'text-gray-500' : 'text-black'}`}>
- <strong>Performer(s):</strong> {performance.participantNames.length === 1 ? performance.participantNames[0] : `${performance.participantNames.length} performers`}
+ <p className={`text-base sm:text-xl font-semibold ${performance.status === 'completed' ? 'text-green-200' : 'text-[#e0e0e0]'}`}>
+ <strong className="text-white">Performer(s):</strong> {performance.participantNames.length === 1 ? performance.participantNames[0] : `${performance.participantNames.length} performers`}
  </p> {performance.participantNames.length > 1 && (
- <p className={`text-sm ${performance.status === 'completed' ? 'text-green-600' : performance.announced ? 'text-gray-400' : 'text-gray-600'}`}> {performance.participantNames.join(', ')}
+ <p className={`text-sm ${performance.status === 'completed' ? 'text-green-300' : 'text-[#c0c0c0]'}`}> {performance.participantNames.join(', ')}
  </p> )}
  </> )}
  
  {/* Music Controls - temporarily disabled */}
  
- <p className={`text-xs ${performance.status === 'completed' ? 'text-green-600' : performance.announced ? 'text-gray-400' : 'text-gray-600'}`}> {performance.entryType?.toUpperCase()}
+ <p className={`text-xs ${performance.status === 'completed' ? 'text-green-300' : 'text-[#c0c0c0]'}`}> {performance.entryType?.toUpperCase()}
  <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
- performance.musicFileUrl ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+ performance.musicFileUrl ? 'bg-green-900/40 text-green-200 border border-green-700/50' : 'bg-yellow-900/40 text-yellow-200 border border-yellow-700/50'
  }`}> {performance.musicFileUrl ? 'Track uploaded' : 'Track missing'}
  </span> {presenceByPerformance[performance.id]?.present !== undefined && (
  <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
- presenceByPerformance[performance.id]?.present ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+ presenceByPerformance[performance.id]?.present ? 'bg-green-900/40 text-green-200 border border-green-700/50' : 'bg-red-900/40 text-red-200 border border-red-700/50'
  }`}> {presenceByPerformance[performance.id]?.present ? 'Checked-in' : 'Not checked-in'}
  </span> )}
  </p>
  </div>
  </div> {performance.performedAt && (
- <p className="text-xs text-green-600 mt-2"> Performed at {new Date(performance.performedAt).toLocaleTimeString()} by {performance.performedBy}
+ <p className="text-xs text-green-300 mt-2"> Performed at {new Date(performance.performedAt).toLocaleTimeString()} by {performance.performedBy}
  </p> )}
- </div>  <div className="flex items-center space-x-2">
- <span className={`px-2 py-1 text-xs font-medium rounded-full ${
- performance.status === 'completed' ? 'bg-green-100 text-green-800' :
- performance.status === 'in_progress' ? 'bg-orange-100 text-orange-800' :
- performance.status === 'cancelled' ? 'bg-red-100 text-red-800' :
- 'bg-gray-100 text-gray-800'
+ </div>
+ </div>  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+ <span className={`px-2 py-1 text-xs font-medium rounded-full border ${
+ performance.status === 'completed' ? 'bg-green-900/40 text-green-200 border-green-700/50' :
+ performance.status === 'in_progress' ? 'bg-[rgba(192,192,192,0.12)] text-[#e0e0e0] border-[rgba(192,192,192,0.35)]' :
+ performance.status === 'cancelled' ? 'bg-red-900/40 text-red-200 border-red-700/50' :
+ 'bg-[rgba(192,192,192,0.08)] text-[#c0c0c0] border-[rgba(192,192,192,0.22)]'
  }`}> {performance.status === 'completed' ? 'PERFORMED' : performance.status.toUpperCase()}
  </span> {performance.announced && performance.status !== 'completed' && (
- <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800"> ANNOUNCED
+ <span className="px-2 py-1 text-xs font-medium rounded-full bg-[rgba(192,192,192,0.12)] text-[#e0e0e0] border border-[rgba(192,192,192,0.35)]"> ANNOUNCED
  </span> )}
 
  {/* Toggle Performed */}
  <button
  onClick={() => togglePerformed(performance)}
- className={`${performance.status === 'completed' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-200 hover:bg-gray-300'} text-white px-3 py-1 rounded-md text-xs font-semibold`}
+ className={`${performance.status === 'completed' ? 'btn-chrome' : 'btn-outline-chrome'} !px-3 !py-1 text-xs font-semibold`}
  title={performance.status === 'completed' ? 'Mark as not performed' : 'Mark as performed'}
  > {performance.status === 'completed' ? 'Performed ' : 'Mark Performed'}
  </button> {presenceByPerformance[performance.id]?.present !== undefined && (
- <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+ <span className={`px-2 py-1 text-xs font-medium rounded-full border ${
  presenceByPerformance[performance.id]?.present
- ? 'bg-green-100 text-green-800'
- : 'bg-red-100 text-red-800'
+ ? 'bg-green-900/40 text-green-200 border-green-700/50'
+ : 'bg-red-900/40 text-red-200 border-red-700/50'
  }`}> {presenceByPerformance[performance.id]?.present ? 'CHECKED-IN' : 'NOT CHECKED-IN'}
  </span> )}
- </div>
- </div> {!performance.announced && performance.status === 'in_progress' && (
+ {!performance.announced && performance.status === 'in_progress' && (
  <button
  onClick={() => markAsPerformed(performance.id, performance.title)}
- className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors" >
+ className="btn-chrome !px-4 !py-2 font-semibold w-full sm:w-auto" >
   Mark as Performed
  </button> )}
+ </div>
  </div> {/* Per-item announcer notes removed per client request */}
  </div> ))}
  </div> ) : (
  <div className="p-8 text-center">
- <span className="text-4xl mb-4 block">📢</span>
- <p className="text-black">No performances found for the selected filter</p>
+ <Megaphone className="w-10 h-10 mx-auto mb-4 text-[var(--chrome-mid)]" />
+ <p className="text-[#e0e0e0]">No performances found for the selected filter</p>
  </div> )}
  </div> {/* Full-screen Announcer Prompt */}
  {activePrompt && (
- <div className="fixed inset-0 z-50 bg-white">
- <div className="max-w-6xl mx-auto px-8 py-10">
- <div className="flex items-start justify-between mb-10">
- <div className="flex items-center space-x-6">
- <div className="w-24 h-24 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-5xl font-extrabold"> {activePrompt.itemNumber || '?'}
+ <div className="fixed inset-0 z-50 avalon-mesh overflow-y-auto">
+ <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-10">
+ <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-10">
+ <div className="flex items-center space-x-4 sm:space-x-6">
+ <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl btn-chrome text-[#050505] flex items-center justify-center text-3xl sm:text-5xl font-extrabold shrink-0"> {activePrompt.itemNumber || '?'}
  </div>
  <div>
- <div className="text-2xl text-gray-600">Now Announcing</div>
- <h2 className="text-6xl font-extrabold chrome-text leading-tight">{activePrompt.title}</h2>
+ <div className="text-lg sm:text-2xl text-[#c0c0c0]">Now Announcing</div>
+ <h2 className="text-3xl sm:text-6xl font-extrabold text-white leading-tight">{activePrompt.title}</h2>
  </div>
  </div>
  <button
  onClick={() => setActivePrompt(null)}
- className="px-5 py-3 rounded-xl border border-gray-300 text-2xl text-gray-700 hover:bg-gray-100" >
+ className="btn-outline-chrome !px-5 !py-3 text-lg sm:text-2xl w-full sm:w-auto" >
  Close
  </button>
- </div>  <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
- <div className="md:col-span-2">
- <p className="text-3xl text-gray-900"> Performers: <span className="font-semibold">{activePrompt.participantNames.join(', ')}</span>
+ </div>  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-10 mb-12">
+ <div className="md:col-span-2 glass-panel border border-[rgba(192,192,192,0.22)] rounded-xl p-6">
+ <p className="text-xl sm:text-3xl text-[#e0e0e0]"> Performers: <span className="font-semibold text-white">{activePrompt.participantNames.join(', ')}</span>
  </p>
- <p className="text-2xl text-gray-800 mt-2"> Style: <span className="font-semibold">{activePrompt.itemStyle}</span> • Level: <span className="font-semibold">{activePrompt.mastery}</span>
+ <p className="text-lg sm:text-2xl text-[#c0c0c0] mt-2"> Style: <span className="font-semibold text-white">{activePrompt.itemStyle}</span> • Level: <span className="font-semibold text-white">{activePrompt.mastery}</span>
  </p> {/* Duration hidden by request */}
  {presenceByPerformance[activePrompt.id]?.present !== undefined && (
- <div className={`inline-block mt-5 px-5 py-2 text-xl font-bold rounded-full ${
- presenceByPerformance[activePrompt.id]?.present ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+ <div className={`inline-block mt-5 px-5 py-2 text-lg sm:text-xl font-bold rounded-full border ${
+ presenceByPerformance[activePrompt.id]?.present ? 'bg-green-900/40 text-green-200 border-green-700/50' : 'bg-red-900/40 text-red-200 border-red-700/50'
  }`}> {presenceByPerformance[activePrompt.id]?.present ? 'CHECKED-IN' : 'NOT CHECKED-IN'}
  </div> )}
  </div>
  <div className="hidden md:block" />
  </div>  <div className="mt-10">
- <div className="text-xl text-gray-500 mb-4">Next up</div>
- <div className="flex items-center space-x-4"> {performances.filter(p => !activePrompt || p.id !== activePrompt.id).filter(p => p.status !== 'completed').slice(0, 3).map(p => (
- <div key={p.id} className="px-4 py-3 border border-gray-200 rounded-xl bg-white shadow-sm text-xl text-gray-800">
- <span className="font-bold">#{p.itemNumber || '?'}</span> {p.title}
+ <div className="text-xl text-[#c0c0c0] mb-4">Next up</div>
+ <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4"> {performances.filter(p => !activePrompt || p.id !== activePrompt.id).filter(p => p.status !== 'completed').slice(0, 3).map(p => (
+ <div key={p.id} className="px-4 py-3 glass-panel border border-[rgba(192,192,192,0.22)] rounded-xl text-lg sm:text-xl text-[#e0e0e0]">
+ <span className="font-bold text-white">#{p.itemNumber || '?'}</span> {p.title}
  </div> ))}
  </div>
  </div>
