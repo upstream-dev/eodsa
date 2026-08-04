@@ -163,9 +163,12 @@ export default function BackendDashboard() {
               key={section.title}
               className="rounded-2xl border border-[rgba(192,192,192,0.28)] bg-[#111111] p-4 sm:p-6"
             >
-              <div className="mb-4 text-center sm:text-left">
-                <h2 className="text-lg sm:text-xl font-bold text-[#e8e8e8]">{section.title}</h2>
-                <p className="text-xs sm:text-sm text-[#9a9a9a] mt-1">{section.subtitle}</p>
+              <div className="mb-5 text-center sm:text-left">
+                <h2 className="font-display text-2xl sm:text-3xl text-white tracking-[0.08em]">
+                  {section.title}
+                </h2>
+                <div className="mx-auto sm:mx-0 mt-2 mb-2 h-0.5 w-20 bg-[linear-gradient(90deg,#00e6ff,#ff2da1)]" />
+                <p className="text-xs sm:text-sm text-[#9a9a9a]">{section.subtitle}</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 {section.items.map((portal) => (
