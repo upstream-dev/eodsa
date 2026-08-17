@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
+import { getAllContestantEntriesForDancer } from '@/lib/contestant-entries';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -13,21 +14,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verify the entry exists and user has access (owner OR group participant)
-    const allEntries = await db.getAllEventEntries();
-    const entry = allEntries.find(e => {
-      if (e.id !== entryId) return false;
-      
-      // Allow if user is the entry owner
-      if (e.eodsaId === eodsaId) return true;
-      
-      // Allow if user is a participant in the group entry
-      if (e.participantIds && Array.isArray(e.participantIds)) {
-        return e.participantIds.includes(eodsaId);
-      }
-      
-      return false;
-    });
+    const contestantEntries = await getAllContestantEntriesForDancer(eodsaId);
+    const entry = contestantEntries.find((e) => e.id === entryId);
     
     if (!entry) {
       return NextResponse.json(
@@ -36,7 +24,6 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    // Verify this is a live entry that needs music
     if (entry.entryType !== 'live') {
       return NextResponse.json(
         { success: false, error: 'Only live entries can have music uploaded' },
@@ -44,10 +31,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update the entry with music information
     await db.updateEventEntry(entryId, {
       musicFileUrl,
-      musicFileName
+      musicFileName,
     });
     
     return NextResponse.json({
@@ -56,11 +42,11 @@ export async function PUT(request: NextRequest) {
       entry: {
         ...entry,
         musicFileUrl,
-        musicFileName
-      }
+        musicFileName,
+      },
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error uploading music for entry:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to upload music' },

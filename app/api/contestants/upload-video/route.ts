@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
+import { getAllContestantEntriesForDancer } from '@/lib/contestant-entries';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -13,7 +14,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Must provide either videoExternalUrl (preferred) or videoFileUrl (legacy)
     if (!videoExternalUrl && !videoFileUrl) {
       return NextResponse.json(
         { success: false, error: 'Video URL or video file URL is required' },
@@ -21,21 +21,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verify the entry exists and user has access (owner OR group participant)
-    const allEntries = await db.getAllEventEntries();
-    const entry = allEntries.find(e => {
-      if (e.id !== entryId) return false;
-      
-      // Allow if user is the entry owner
-      if (e.eodsaId === eodsaId) return true;
-      
-      // Allow if user is a participant in the group entry
-      if (e.participantIds && Array.isArray(e.participantIds)) {
-        return e.participantIds.includes(eodsaId);
-      }
-      
-      return false;
-    });
+    const contestantEntries = await getAllContestantEntriesForDancer(eodsaId);
+    const entry = contestantEntries.find((e) => e.id === entryId);
     
     if (!entry) {
       return NextResponse.json(
@@ -44,24 +31,20 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    // Verify this is a virtual entry that can have video
-    if (entry.entryType !== 'virtual') {
+    if (entry.entryType !== 'virtual' && !entry.nationalsEventId) {
       return NextResponse.json(
         { success: false, error: 'Only virtual entries can have video uploaded' },
         { status: 400 }
       );
     }
 
-    // Update the entry with video information
-    // Prefer videoExternalUrl (link) over videoFileUrl (file upload)
-    const updates: any = {};
+    const updates: Record<string, string> = {};
     if (videoExternalUrl) {
       updates.videoExternalUrl = videoExternalUrl;
       if (videoExternalType) {
         updates.videoExternalType = videoExternalType;
       }
     } else if (videoFileUrl) {
-      // Legacy support for file uploads
       updates.videoFileUrl = videoFileUrl;
       if (videoFileName) {
         updates.videoFileName = videoFileName;
@@ -75,11 +58,11 @@ export async function PUT(request: NextRequest) {
       message: videoExternalUrl ? 'Video link saved successfully' : 'Video uploaded successfully',
       entry: {
         ...entry,
-        ...updates
-      }
+        ...updates,
+      },
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error uploading video for contestant entry:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

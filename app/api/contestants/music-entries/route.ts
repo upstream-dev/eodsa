@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
+import {
+  getAllContestantEntriesForDancer,
+  normalizeEntryEventId,
+} from '@/lib/contestant-entries';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,63 +17,44 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all event entries for this contestant (owned OR participating in)
-    // CRITICAL FIX: Query BOTH event_entries AND nationals_event_entries
-    const regularEntries = await db.getAllEventEntries();
-    const nationalsEntries = await db.getAllNationalsEventEntries();
-    const allEntries = [...regularEntries, ...nationalsEntries];
-    const contestantEntries = allEntries.filter(entry => {
-      // Include if user owns the entry
-      if (entry.eodsaId === eodsaId) return true;
-      
-      // Include if user is a participant in the group entry
-      if (entry.participantIds && Array.isArray(entry.participantIds)) {
-        return entry.participantIds.includes(eodsaId);
+    const contestantEntries = await getAllContestantEntriesForDancer(eodsaId);
+    const entriesNeedingMusic = contestantEntries.filter(
+      (entry) => entry.entryType === 'live' && !entry.musicFileUrl
+    );
+    
+    const events = await db.getAllEvents();
+
+    const entriesWithDetails = entriesNeedingMusic.map((entry) => {
+      try {
+        const eventId = normalizeEntryEventId(entry);
+        const event = events.find((e) => e.id === eventId);
+        
+        return {
+          ...entry,
+          eventId,
+          eventName: event?.name || 'Unknown Event',
+          eventDate: event?.eventDate || null,
+          venue: event?.venue || 'TBD',
+        };
+      } catch (error) {
+        console.error('Error getting event details for entry:', entry.id, error);
+        return {
+          ...entry,
+          eventId: normalizeEntryEventId(entry),
+          eventName: 'Unknown Event',
+          eventDate: null,
+          venue: 'TBD',
+        };
       }
-      
-      return false;
     });
-    
-    // Filter entries that need music upload (live entries without music)
-    // Note: nationals entries don't have entryType field (all virtual)
-    const entriesNeedingMusic = contestantEntries.filter(entry => (entry as any).entryType === 'live' && !(entry as any).musicFileUrl
-    );
-    
-    // Get additional info for each entry
-    const entriesWithDetails = await Promise.all(
-      entriesNeedingMusic.map(async (entry) => {
-        try {
-          // Get event details
-          // Handle both eventId (regular entries) and nationalsEventId (nationals entries)
-          const events = await db.getAllEvents();
-          const eventId = (entry as any).eventId || (entry as any).nationalsEventId;
-          const event = events.find(e => e.id === eventId);
-          
-          return {
-            ...entry,
-            eventName: event?.name || 'Unknown Event',
-            eventDate: event?.eventDate || null,
-            venue: event?.venue || 'TBD'
-          };
-        } catch (error) {
-          console.error('Error getting event details for entry:', entry.id, error);
-          return {
-            ...entry,
-            eventName: 'Unknown Event',
-            eventDate: null,
-            venue: 'TBD'
-          };
-        }
-      })
-    );
     
     return NextResponse.json({
       success: true,
       entries: entriesWithDetails,
-      total: entriesWithDetails.length
+      total: entriesWithDetails.length,
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching contestant music entries:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch entries' },
