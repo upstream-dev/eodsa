@@ -2585,8 +2585,10 @@ function AdminDashboard() {
  const searchMatch = !searchTerm || 
  entry.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
  entry.contestantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+ (Array.isArray(entry.participantNames) && entry.participantNames.some((name: string) => name.toLowerCase().includes(searchTerm.toLowerCase()))) ||
  entry.studioName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
  entry.eodsaId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+ entry.displayEodsaId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
  entry.choreographer?.toLowerCase().includes(searchTerm.toLowerCase());
  
  // Entry type filter
@@ -2614,7 +2616,7 @@ function AdminDashboard() {
  <div className={`text-xs sm:text-sm ${themeClasses.textMuted}`}>{entry.mastery} • {entry.itemStyle}</div> {/* Mobile-only content */}
  <div className="sm:hidden space-y-1">
  <div className={`text-xs font-medium ${themeClasses.textPrimary}`}>{entry.contestantName || 'Unknown'}</div>
- <div className={`text-xs ${themeClasses.textMuted}`}>{entry.eodsaId}</div>
+ <div className={`text-xs ${themeClasses.textMuted}`}>{entry.displayEodsaId || entry.eodsaId}</div>
  <div className={`text-xs ${themeClasses.textMuted}`}>{entry.studioName || 'Independent'}</div>
  </div>
  </div> {/* Music Upload for Live Entries Missing Music */}
@@ -2751,7 +2753,7 @@ function AdminDashboard() {
  <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
  <div>
  <div className={`text-sm font-medium ${themeClasses.textPrimary}`}>{entry.contestantName || 'Unknown'}</div>
- <div className={`text-sm ${themeClasses.textMuted}`}>{entry.eodsaId}</div>
+ <div className={`text-sm ${themeClasses.textMuted}`}>{entry.displayEodsaId || entry.eodsaId}</div>
  <div className={`text-sm ${themeClasses.textMuted}`}>{entry.studioName || 'Independent'}</div>
  </div>
  </td>
