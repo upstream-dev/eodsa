@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import MusicUpload from '@/components/MusicUpload';
+import VirtualVideoUploadForm from '@/components/VirtualVideoUploadForm';
 import { AvalonShell } from '@/components/brand/AvalonShell';
 import { Plus } from 'lucide-react';
 import { getMedalFromPercentage, resolveScoringEventType, getDashboardMedalColor } from '@/lib/types';
@@ -223,10 +224,6 @@ function VideoUploadSection({ dancerSession, selectedEventId, events, onEventCha
  const [videoEntries, setVideoEntries] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
- const [uploadingEntryId, setUploadingEntryId] = useState<string | null>(null);
- const [videoUrlInputs, setVideoUrlInputs] = useState<Record<string, string>>({});
- const [videoUrlErrors, setVideoUrlErrors] = useState<Record<string, string>>({});
- const [isValidatingUrl, setIsValidatingUrl] = useState<Record<string, boolean>>({});
 
  useEffect(() => {
  loadVideoEntries();
@@ -239,14 +236,6 @@ function VideoUploadSection({ dancerSession, selectedEventId, events, onEventCha
  
  if (data.success) {
  setVideoEntries(data.entries);
- // Initialize URL inputs with existing video URLs
- const initialInputs: Record<string, string> = {};
- data.entries.forEach((entry: any) => {
- if (entry.videoExternalUrl) {
- initialInputs[entry.id] = entry.videoExternalUrl;
- }
- });
- setVideoUrlInputs(initialInputs);
  } else {
  setError(data.error || 'Failed to load entries');
  }
@@ -255,159 +244,6 @@ function VideoUploadSection({ dancerSession, selectedEventId, events, onEventCha
  setError('Failed to load entries');
  } finally {
  setLoading(false);
- }
- };
-
- // Convert Google Drive URL from /view to /preview format
- const convertGoogleDriveUrl = (url: string): string => {
- if (!url || !url.includes('drive.google.com')) return url;
- 
- const fileIdPattern = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
- const match = url.match(fileIdPattern);
- 
- if (match && match[1]) {
- const fileId = match[1];
- return `https://drive.google.com/file/d/${fileId}/preview`;
- }
- 
- const openPattern = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
- const openMatch = url.match(openPattern);
- 
- if (openMatch && openMatch[1]) {
- const fileId = openMatch[1];
- return `https://drive.google.com/file/d/${fileId}/preview`;
- }
- 
- return url;
- };
-
- // Detect video type from URL
- const detectVideoType = (url: string): 'youtube' | 'vimeo' | 'other' => {
- if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
- if (url.includes('vimeo.com')) return 'vimeo';
- return 'other';
- };
-
- // Validate Google Drive URL
- const validateGoogleDriveUrl = async (url: string): Promise<{ isValid: boolean; error?: string }> => {
- if (!url || !url.includes('drive.google.com')) {
- return { isValid: true };
- }
-
- try {
- const response = await fetch('/api/validate/google-drive-url', {
- method: 'POST',
- headers: {
- 'Content-Type': 'application/json',
- },
- body: JSON.stringify({ url }),
- });
-
- const data = await response.json();
-
- if (data.success) {
- if (data.isValid) {
- return { isValid: true };
- } else {
- return { 
- isValid: false, 
- error: data.error || 'This Drive link is private. Please set it to "Anyone with the link" before saving.'
- };
- }
- } else {
- return { 
- isValid: true, 
- error: data.message || 'Could not verify access. Please ensure the file is shared with "Anyone with the link".'
- };
- }
- } catch (error) {
- console.error('Error validating Google Drive URL:', error);
- return { 
- isValid: true, 
- error: 'Could not verify access. Please ensure the file is shared with "Anyone with the link".'
- };
- }
- };
-
- const handleVideoUrlChange = async (entryId: string, url: string) => {
- setVideoUrlInputs(prev => ({ ...prev, [entryId]: url }));
- setVideoUrlErrors(prev => ({ ...prev, [entryId]: '' }));
- 
- // Auto-convert Google Drive URLs
- if (url.includes('drive.google.com')) {
- const convertedUrl = convertGoogleDriveUrl(url);
- if (convertedUrl !== url) {
- setVideoUrlInputs(prev => ({ ...prev, [entryId]: convertedUrl }));
- }
- }
- };
-
- const handleVideoUrlBlur = async (entryId: string, url: string) => {
- if (url && url.includes('drive.google.com')) {
- setIsValidatingUrl(prev => ({ ...prev, [entryId]: true }));
- const validation = await validateGoogleDriveUrl(url);
- setIsValidatingUrl(prev => ({ ...prev, [entryId]: false }));
- 
- if (!validation.isValid && validation.error) {
- setVideoUrlErrors(prev => ({ ...prev, [entryId]: validation.error || '' }));
- }
- }
- };
-
- const handleVideoUrlSubmit = async (entryId: string) => {
- const url = (videoUrlInputs[entryId] || '').trim();
- 
- if (!url) {
- setError('Please enter a video URL');
- return;
- }
-
- // Validate Google Drive URL if present
- if (url.includes('drive.google.com')) {
- setIsValidatingUrl(prev => ({ ...prev, [entryId]: true }));
- const validation = await validateGoogleDriveUrl(url);
- setIsValidatingUrl(prev => ({ ...prev, [entryId]: false }));
- 
- if (!validation.isValid && validation.error) {
- setVideoUrlErrors(prev => ({ ...prev, [entryId]: validation.error || '' }));
- return;
- }
- }
-
- try {
- setUploadingEntryId(entryId);
- setError('');
- 
- const videoType = detectVideoType(url);
- const processedUrl = url.includes('drive.google.com') ? convertGoogleDriveUrl(url) : url;
- 
- const response = await fetch('/api/contestants/upload-video', {
- method: 'PUT',
- headers: {
- 'Content-Type': 'application/json',
- },
- body: JSON.stringify({
- entryId,
- videoExternalUrl: processedUrl,
- videoExternalType: videoType,
- eodsaId: dancerSession.eodsaId
- }),
- });
-
- const result = await response.json();
- 
- if (result.success) {
- // Refresh the entries list
- await loadVideoEntries();
- setVideoUrlInputs(prev => ({ ...prev, [entryId]: '' }));
- } else {
- setError(result.error || 'Failed to save video URL');
- }
- } catch (error) {
- console.error('Error saving video URL:', error);
- setError('Failed to save video URL');
- } finally {
- setUploadingEntryId(null);
  }
  };
 
@@ -509,76 +345,12 @@ function VideoUploadSection({ dancerSession, selectedEventId, events, onEventCha
  </div> )}
  
  <div className="border-t border-gray-600 pt-4 mt-4">
- <p className="text-sm text-gray-400 mb-3">Submit video link (YouTube/Vimeo/Google Drive) for this virtual performance:</p> {/* Show existing video URL if available */}
- {(entry.videoExternalUrl || entry.videoFileUrl) && !videoUrlInputs[entry.id] && (
- <div className="mb-3 p-3 bg-green-900/20 border border-[rgba(192,192,192,0.22)] rounded-lg">
- <div className="flex items-center justify-between">
- <div className="flex items-center space-x-2">
- <span className="text-[var(--chrome-mid)]"></span>
- <span className="text-green-300 text-sm font-medium"> Video {entry.videoExternalUrl ? 'link' : 'file'} submitted
- </span>
- </div> {entry.videoExternalUrl && (
- <a
- href={entry.videoExternalUrl}
- target="_blank" rel="noopener noreferrer" className="text-[var(--chrome-mid)] hover:text-green-300 text-sm underline" >
- View Video
- </a> )}
- </div>
- </div> )}
-
- {/* URL Input */}
- <div className="space-y-2">
- <input
- type="url" value={videoUrlInputs[entry.id] || ''}
- onChange={(e) => handleVideoUrlChange(entry.id, e.target.value)}
- onBlur={(e) => handleVideoUrlBlur(entry.id, e.target.value)}
- placeholder="https://www.youtube.com/watch?v=... or https://vimeo.com/... or https://drive.google.com/..." disabled={uploadingEntryId === entry.id}
- className={`w-full p-3 bg-gray-800 border-2 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all ${
- videoUrlErrors[entry.id]
- ? 'border-red-500 focus:ring-red-500'
- : 'border-gray-600 focus:ring-[rgba(192,192,192,0.45)] focus:border-[rgba(192,192,192,0.5)]'
- } disabled:opacity-50 disabled:cursor-not-allowed`}
- /> {isValidatingUrl[entry.id] && (
- <div className="text-sm text-blue-400 flex items-center space-x-2">
- <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
- <span>Checking Google Drive access...</span>
- </div> )}
- 
- {videoUrlErrors[entry.id] && (
- <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
- <div className="text-red-300 text-sm flex items-start space-x-2">
- <span className="text-lg"></span>
- <div className="flex-1">
- <p className="font-medium mb-1">{videoUrlErrors[entry.id]}</p>
- <p className="text-xs text-red-400"> Please update the sharing settings in Google Drive and try again.
- </p>
- </div>
- </div>
- </div> )}
- 
- {videoUrlInputs[entry.id] && !videoUrlErrors[entry.id] && !isValidatingUrl[entry.id] && (
- <div className="p-3 bg-green-900/20 border border-[rgba(192,192,192,0.22)] rounded-lg">
- <div className="text-green-300 text-sm flex items-center space-x-2">
- <span></span>
- <span className="font-medium"> {videoUrlInputs[entry.id].includes('drive.google.com') 
- ? 'Google Drive URL ready' 
- : 'Video URL ready'}
- </span>
- </div>
- </div> )}
- 
- <button
- onClick={() => handleVideoUrlSubmit(entry.id)}
- disabled={!videoUrlInputs[entry.id] || uploadingEntryId === entry.id || !!videoUrlErrors[entry.id]}
- className="w-full px-4 py-2 btn-chrome !rounded-full text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold" >
- {uploadingEntryId === entry.id ? (
- <span className="flex items-center justify-center">
- <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Saving...
- </span> ) : (
- 'Save Video Link'
- )}
- </button>
- </div>
+ <VirtualVideoUploadForm
+ entryId={entry.id}
+ eodsaId={dancerSession.eodsaId}
+ initialVideoUrl={entry.videoExternalUrl || entry.videoFileUrl}
+ onSuccess={loadVideoEntries}
+ />
  </div>
  </div>
  </div> );
@@ -1108,11 +880,23 @@ function CompetitionEntriesSection({ dancerSession, selectedEventId, events, onE
  </div> )}
 
  {entry.entryType === 'virtual' && (
- <div className="mt-3 p-2 bg-indigo-900/20 border border-[rgba(192,192,192,0.22)] rounded-lg">
- <p className="text-indigo-300 text-sm"> Video File: {(entry.videoFileUrl || entry.videoExternalUrl) ? 
- <span className="text-[var(--chrome-mid)] font-medium"> Uploaded</span> : 
- <span className="text-yellow-400 font-medium">📤 Upload Required</span> }
+ <div className="mt-3 p-4 bg-indigo-900/20 border border-[rgba(192,192,192,0.22)] rounded-lg">
+ {(entry.videoFileUrl || entry.videoExternalUrl) ? (
+ <p className="text-indigo-300 text-sm">
+ Video File: <span className="text-[var(--chrome-mid)] font-medium">Uploaded</span>
  </p>
+ ) : (
+ <>
+ <p className="text-yellow-400 text-sm font-medium mb-3">Video upload required</p>
+ <VirtualVideoUploadForm
+ entryId={entry.id}
+ eodsaId={dancerSession.eodsaId}
+ initialVideoUrl={entry.videoExternalUrl}
+ onSuccess={loadCompetitionEntries}
+ compact
+ />
+ </>
+ )}
  </div> )}
  </div>
  </div> );
@@ -1588,6 +1372,12 @@ export default function DancerDashboardPage() {
  selectedEventId={selectedEventId}
  events={events}
  onEventChange={setSelectedEventId}
+ /> {/* Video Upload Section - shown before entries so uploads are easy to find */}
+ <VideoUploadSection 
+ dancerSession={dancerSession}
+ selectedEventId={selectedEventId}
+ events={events}
+ onEventChange={setSelectedEventId}
  /> {/* Competition Entries Section */}
  <CompetitionEntriesSection 
  dancerSession={dancerSession}
@@ -1630,12 +1420,6 @@ export default function DancerDashboardPage() {
  </div> )}
  </div> {/* Music Upload Section */}
  <MusicUploadSection 
- dancerSession={dancerSession}
- selectedEventId={selectedEventId}
- events={events}
- onEventChange={setSelectedEventId}
- /> {/* Video Upload Section */}
- <VideoUploadSection 
  dancerSession={dancerSession}
  selectedEventId={selectedEventId}
  events={events}
