@@ -5,7 +5,15 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAlert } from '@/components/ui/custom-alert';
 import { calculateEODSAFee } from '@/lib/types';
-import { eventUsesFlatPricing, getFixedEntryPrice, getPerDancerRate } from '@/lib/event-pricing';
+import {
+ eventUsesFlatPricing,
+ getExpectedFlatLineFees,
+ getPerDancerRate,
+ resolveEventRegistrationFee,
+ countNewRegistrantsOnEntry,
+ collectRegistrationKeys,
+ entryContainsRegistrationKey,
+} from '@/lib/event-pricing';
 import { getSql } from '@/lib/database';
 import { ThemeProvider, useTheme, getThemeClasses } from '@/components/providers/ThemeProvider';
 import { getCompetitionAge } from '@/lib/competition-age';
@@ -52,6 +60,9 @@ interface Event {
  soloPrice?: number;
  duetPrice?: number;
  groupPrice?: number;
+ discountEnabled?: boolean;
+ discountMinEntries?: number;
+ discountAmount?: number;
  registrationFee?: number;
  isArchived?: boolean;
  archivedAt?: string | null;
@@ -2239,26 +2250,55 @@ function FeeBreakdownComponent({ entry, event, allEntries }: { entry: EventEntry
  duetPrice: event.duetPrice,
  groupPrice: event.groupPrice,
  });
- const performanceFee = getFixedEntryPrice(
+ const priorEntries = (allEntries || []).filter((e) => {
+ if (!entry || e.id === entry.id) return false;
+ if (e.eventId !== entry.eventId) return false;
+ return new Date(e.submittedAt).getTime() < new Date(entry.submittedAt).getTime();
+ });
+ const newRegistrants = countNewRegistrantsOnEntry(entry, priorEntries);
+ let soloOrdinal = 1;
+ if (performanceType === 'Solo') {
+ const dancerKeys = collectRegistrationKeys(entry);
+ const priorSolos = priorEntries.filter((e) => {
+ const isSolo = (e.performanceType || '').toLowerCase() === 'solo' ||
+ (Array.isArray(e.participantIds) && e.participantIds.length === 1);
+ if (!isSolo) return false;
+ return dancerKeys.some((k) => entryContainsRegistrationKey(e, k));
+ }).length;
+ soloOrdinal = priorSolos + 1;
+ }
+ const expected = getExpectedFlatLineFees(
+ {
  performanceType,
+ participantIds: entry.participantIds,
+ eodsaId: entry.eodsaId,
+ },
  {
  soloPrice: event.soloPrice,
  duetPrice: event.duetPrice,
  groupPrice: event.groupPrice,
+ discountEnabled: event.discountEnabled,
+ discountMinEntries: event.discountMinEntries,
+ discountAmount: event.discountAmount,
+ registrationFee: resolveEventRegistrationFee(event),
  },
- participantCount
+ newRegistrants,
+ soloOrdinal
  );
  const breakdownText =
  performanceType === 'Solo'
  ? `Solo: ${currencySymbol}${rate.toFixed(2)}`
- : `${performanceType}: ${currencySymbol}${rate.toFixed(2)} × ${participantCount} dancer${participantCount !== 1 ? 's' : ''} = ${currencySymbol}${performanceFee.toFixed(2)}`;
+ : `${performanceType}: ${currencySymbol}${rate.toFixed(2)} × ${participantCount} dancer${participantCount !== 1 ? 's' : ''} = ${currencySymbol}${expected.performanceFee.toFixed(2)}`;
+ const registrationBreakdown =
+ expected.registrationFee > 0
+ ? `Registration fee (first entry in this event)`
+ : `Registration is charged once per dancer per event — not carried over from regionals.`;
  setBreakdown({
- performanceFee,
- registrationFee: 0,
- totalFee: performanceFee,
+ performanceFee: expected.performanceFee,
+ registrationFee: expected.registrationFee,
+ totalFee: expected.totalFee,
  breakdown: breakdownText,
- registrationBreakdown:
- 'Registration (if charged) is included once on the PayFast batch total for each new dancer — not on this line.',
+ registrationBreakdown,
  totalFeeDescription:
  performanceType === 'Solo'
  ? 'Per solo item'
@@ -2494,7 +2534,7 @@ function FeeBreakdownComponent({ entry, event, allEntries }: { entry: EventEntry
  if (entry && event) {
  calculateBreakdown();
  }
- }, [entry, event]);
+ }, [entry, event, allEntries]);
 
  if (!entry || !event) return null;
 
@@ -2528,7 +2568,11 @@ function FeeBreakdownComponent({ entry, event, allEntries }: { entry: EventEntry
  <span className={`text-base font-semibold ${themeClasses.textPrimary}`}>Total Fee:</span>
  <span className={`text-lg font-bold ${theme === 'dark' ? 'text-[var(--chrome-mid)]' : 'text-emerald-600'}`}> {currencySymbol}{breakdown.totalFee.toFixed(2)}
  </span>
- </div> {breakdown.soloCount && (
+ </div> {Math.abs((entry.calculatedFee || 0) - breakdown.totalFee) > 0.01 && (
+ <div className={`text-xs mt-2 pt-2 border-t border-amber-500/30 ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+ Stored on this entry: {currencySymbol}{(entry.calculatedFee || 0).toFixed(2)}. Expected for this event is {currencySymbol}{breakdown.totalFee.toFixed(2)} (registration is per event, not carried from regionals).
+ </div>
+ )} {breakdown.soloCount && (
  <div className={`text-xs ${themeClasses.textMuted} mt-2 pt-2 border-t border-gray-600/30`}> {breakdown.totalFeeDescription || (breakdown.soloCount ? `Solo #${breakdown.soloCount} for this dancer in this event` : '')}
  </div> )}
  </div> ) : (

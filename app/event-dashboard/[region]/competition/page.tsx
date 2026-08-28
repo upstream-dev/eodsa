@@ -1532,7 +1532,7 @@ export default function CompetitionEntryPage() {
  contestantId: dancerId,
  eodsaId: entryEodsaId,
  participantIds: entry.participantIds,
- calculatedFee: entry.validatedFee || entry.fee, // Use validated total fee (includes registration if charged)
+      calculatedFee: entry.entryFee ?? entry.fee, // Performance fee only; backend adds registration once per new dancer
  itemName: entry.itemName,
  choreographer: entry.choreographer,
  mastery: entry.mastery,

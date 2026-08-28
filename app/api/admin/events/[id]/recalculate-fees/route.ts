@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, getSql } from '@/lib/database';
 import { calculateSmartEODSAFee } from '@/lib/registration-fee-tracker';
+import {
+  countNewRegistrantsOnEntry,
+  eventUsesFlatPricing,
+  getExpectedFlatLineFees,
+  getPricingDancerKey,
+  resolveEventRegistrationFee,
+} from '@/lib/event-pricing';
 
 export async function POST(
   request: NextRequest,
@@ -108,8 +115,51 @@ export async function POST(
         // So we need to calculate fees directly based on event configuration and soloCount
         
         let feeBreakdown: any;
-        
-        if (performanceType === 'Solo' && soloCount && event) {
+
+        const priorEntries = sortedEntries.filter((e) => {
+          if (e.id === entry.id) return false;
+          return new Date(e.submittedAt).getTime() < new Date(entry.submittedAt).getTime();
+        });
+
+        if (eventUsesFlatPricing(event)) {
+          const newRegistrants = countNewRegistrantsOnEntry(entry, priorEntries);
+          const dancerKey = getPricingDancerKey(entry, 0);
+          const priorSolos = priorEntries.filter((e) => {
+            const isSolo = (e.performanceType || '').toLowerCase() === 'solo' ||
+              (Array.isArray(e.participantIds) && e.participantIds.length === 1);
+            if (!isSolo) return false;
+            return getPricingDancerKey(e, 0) === dancerKey ||
+              (e.participantIds && entry.participantIds &&
+                e.participantIds[0] === entry.participantIds[0]);
+          }).length;
+          const expected = getExpectedFlatLineFees(
+            {
+              performanceType,
+              participantIds: entry.participantIds,
+              eodsaId: entry.eodsaId,
+            },
+            {
+              soloPrice: (event as any).soloPrice,
+              duetPrice: (event as any).duetPrice,
+              groupPrice: (event as any).groupPrice,
+              discountEnabled: (event as any).discountEnabled,
+              discountMinEntries: (event as any).discountMinEntries,
+              discountAmount: (event as any).discountAmount,
+              registrationFee: resolveEventRegistrationFee(event as any),
+            },
+            newRegistrants,
+            priorSolos + 1
+          );
+          feeBreakdown = {
+            performanceFee: expected.performanceFee,
+            registrationFee: expected.registrationFee,
+            totalFee: expected.totalFee,
+            breakdown: `${performanceType} (flat pricing)`,
+            registrationBreakdown: expected.registrationFee > 0
+              ? 'Registration fee (first entry in this event)'
+              : 'Registration fee waived (already assigned on previous entry in this event)',
+          };
+        } else if (performanceType === 'Solo' && soloCount && event) {
           // Calculate fees directly based on event configuration
           const regFee = event.registrationFeePerDancer || 0;
           const solo1Fee = event.solo1Fee || 0;

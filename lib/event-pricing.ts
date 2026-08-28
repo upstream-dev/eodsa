@@ -58,6 +58,63 @@ export function getPricingDancerKey(entry: PricingEntry, index: number): string 
   return `__unassigned_${index}`;
 }
 
+/**
+ * Dancer keys used for per-event registration.
+ * Prefer participant IDs only — do not also treat eodsaId as a separate dancer
+ * (studio submissions use a studio eodsaId alongside dancer participant IDs).
+ */
+export function collectRegistrationKeys(entry: PricingEntry): string[] {
+  const ids = Array.isArray(entry.participantIds)
+    ? entry.participantIds.filter(Boolean).map((id) => String(id))
+    : [];
+  if (ids.length > 0) return Array.from(new Set(ids));
+  if (entry.eodsaId) return [String(entry.eodsaId)];
+  return [];
+}
+
+export function entryContainsRegistrationKey(
+  entry: PricingEntry & { contestantId?: string },
+  key: string
+): boolean {
+  if (!key) return false;
+  if (entry.eodsaId && String(entry.eodsaId) === String(key)) return true;
+  if (entry.contestantId && String(entry.contestantId) === String(key)) return true;
+  return collectRegistrationKeys(entry).includes(String(key));
+}
+
+/** How many dancers on this line still need the per-event registration fee. */
+export function countNewRegistrantsOnEntry(
+  entry: PricingEntry & { contestantId?: string },
+  priorEntries: Array<PricingEntry & { contestantId?: string }>
+): number {
+  const keys = collectRegistrationKeys(entry);
+  let count = 0;
+  const seen = new Set<string>();
+  for (const key of keys) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const already = priorEntries.some((prior) => entryContainsRegistrationKey(prior, key));
+    if (!already) count++;
+  }
+  return count;
+}
+
+export function getExpectedFlatLineFees(
+  entry: PricingEntry,
+  event: EventPricingConfig,
+  newRegistrantCount: number,
+  soloOrdinal = 1
+): { performanceFee: number; registrationFee: number; totalFee: number } {
+  const parts = getNetPerformanceLineParts(entry, event, soloOrdinal);
+  const registrationFee =
+    Math.max(0, toAmount(event.registrationFee, 0)) * Math.max(0, newRegistrantCount);
+  return {
+    performanceFee: parts.net,
+    registrationFee,
+    totalFee: parts.net + registrationFee,
+  };
+}
+
 /** Number of dancers billed on this line (duet/trio/group multiply by this). */
 export function getParticipantCount(entry: PricingEntry): number {
   const ids = Array.isArray(entry.participantIds) ? entry.participantIds.filter(Boolean) : [];

@@ -8,12 +8,16 @@ import { createTransactionRecord } from './transaction-records';
 import { getSql } from './database';
 import {
   calculateEventPricing,
+  collectRegistrationKeys,
   getFixedEntryPrice,
   getParticipantCount,
   getPricingDancerKey,
   resolveEventRegistrationFee,
 } from './event-pricing';
+import { applyComputedBatchFees } from './batch-registration-fees';
 import { markRegistrationCharged } from './incremental-fee-calculator';
+
+export { enrichBatchEntriesWithRegistrationFees } from './batch-registration-fees';
 
 export interface BatchPricingResult {
   totalComputedFee: number;
@@ -25,44 +29,7 @@ export interface BatchPricingResult {
 }
 
 function collectParticipantKeys(entry: any): string[] {
-  const keys = new Set<string>();
-  const ids = Array.isArray(entry.participantIds) ? entry.participantIds : [];
-  ids.forEach((id: string) => id && keys.add(String(id)));
-  if (entry.eodsaId) keys.add(String(entry.eodsaId));
-  return Array.from(keys);
-}
-
-/** Add per-event registration fee to the first batch line for each dancer not already registered. */
-export function enrichBatchEntriesWithRegistrationFees(
-  entries: any[],
-  registrationFeePerDancer: number,
-  alreadyRegistered: Set<string>
-): { entries: any[]; newlyCharged: Array<{ eodsaId: string; dancerId: string }> } {
-  if (registrationFeePerDancer <= 0 || !entries.length) {
-    return { entries: entries.map((e) => ({ ...e })), newlyCharged: [] };
-  }
-
-  const chargedInBatch = new Set<string>();
-  const newlyCharged: Array<{ eodsaId: string; dancerId: string }> = [];
-  const result = entries.map((entry) => ({
-    ...entry,
-    calculatedFee: Number(entry.calculatedFee) || 0,
-  }));
-
-  for (const entry of result) {
-    for (const key of collectParticipantKeys(entry)) {
-      if (alreadyRegistered.has(key) || chargedInBatch.has(key)) continue;
-
-      entry.calculatedFee += registrationFeePerDancer;
-      chargedInBatch.add(key);
-
-      const eodsaId = String(entry.eodsaId || key);
-      const dancerId = String(entry.contestantId || entry.eodsaId || key);
-      newlyCharged.push({ eodsaId, dancerId });
-    }
-  }
-
-  return { entries: result, newlyCharged };
+  return collectRegistrationKeys(entry);
 }
 
 export async function markBatchRegistrationCharged(
@@ -201,8 +168,12 @@ export async function prepareEntriesForBatchCreation(
   eventId: string
 ): Promise<{ entries: any[]; newlyCharged: Array<{ eodsaId: string; dancerId: string }> }> {
   const batchPricing = await computeBatchEntryPricing(entries, eventId);
-  return enrichBatchEntriesWithRegistrationFees(
+  const performanceFees = batchPricing.validations.map((v) => v.computedFee);
+  // Backend performance fees + registration once per new dancer.
+  // Do not add registration on top of client-sent totals (EFT was doing that).
+  return applyComputedBatchFees(
     entries,
+    performanceFees,
     batchPricing.registrationFeePerDancer,
     batchPricing.alreadyRegistered
   );
