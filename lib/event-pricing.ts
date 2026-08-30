@@ -1,9 +1,15 @@
 export type PricingEntryType = 'Solo' | 'Duet' | 'Group' | 'Trio';
 
-export interface PricingEntry {
-  performanceType: PricingEntryType | string;
+/** Identity fields used to decide who still owes per-event registration. */
+export interface RegistrationIdentity {
   participantIds?: string[];
   eodsaId?: string;
+  contestantId?: string;
+  performanceType?: string;
+}
+
+export interface PricingEntry extends RegistrationIdentity {
+  performanceType: PricingEntryType | string;
 }
 
 export interface EventPricingConfig {
@@ -51,7 +57,7 @@ export function resolveEventRegistrationFee(input: {
 }
 
 /** Primary grouping key: first participant, else eodsaId, else unique per row (no accidental cross-dancer bundling). */
-export function getPricingDancerKey(entry: PricingEntry, index: number): string {
+export function getPricingDancerKey(entry: RegistrationIdentity, index: number): string {
   const ids = Array.isArray(entry.participantIds) ? entry.participantIds.filter(Boolean) : [];
   if (ids.length > 0) return String(ids[0]);
   if (entry.eodsaId) return String(entry.eodsaId);
@@ -63,7 +69,7 @@ export function getPricingDancerKey(entry: PricingEntry, index: number): string 
  * Prefer participant IDs only — do not also treat eodsaId as a separate dancer
  * (studio submissions use a studio eodsaId alongside dancer participant IDs).
  */
-export function collectRegistrationKeys(entry: PricingEntry): string[] {
+export function collectRegistrationKeys(entry: RegistrationIdentity): string[] {
   const ids = Array.isArray(entry.participantIds)
     ? entry.participantIds.filter(Boolean).map((id) => String(id))
     : [];
@@ -73,7 +79,7 @@ export function collectRegistrationKeys(entry: PricingEntry): string[] {
 }
 
 export function entryContainsRegistrationKey(
-  entry: PricingEntry & { contestantId?: string },
+  entry: RegistrationIdentity,
   key: string
 ): boolean {
   if (!key) return false;
@@ -84,8 +90,8 @@ export function entryContainsRegistrationKey(
 
 /** How many dancers on this line still need the per-event registration fee. */
 export function countNewRegistrantsOnEntry(
-  entry: PricingEntry & { contestantId?: string },
-  priorEntries: Array<PricingEntry & { contestantId?: string }>
+  entry: RegistrationIdentity,
+  priorEntries: RegistrationIdentity[]
 ): number {
   const keys = collectRegistrationKeys(entry);
   let count = 0;

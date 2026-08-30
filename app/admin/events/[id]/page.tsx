@@ -90,6 +90,7 @@ interface EventEntry {
  mastery: string;
  itemStyle: string;
  estimatedDuration: number;
+ performanceType?: string;
  itemNumber?: number;
  contestantName?: string;
  contestantEmail?: string;
