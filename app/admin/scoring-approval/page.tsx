@@ -49,7 +49,7 @@ function ScoringApprovalPageContent() {
  const [showDetails, setShowDetails] = useState(false);
  const [editingJudgeScore, setEditingJudgeScore] = useState<JudgeScore | null>(null);
  const [editedScoreValues, setEditedScoreValues] = useState<any>(null);
- const [editingTotal, setEditingTotal] = useState<number | null>(null);
+ const [fetchError, setFetchError] = useState<string | null>(null);
 
  useEffect(() => {
  // Check admin authentication
@@ -74,14 +74,20 @@ function ScoringApprovalPageContent() {
 
  const fetchApprovals = async () => {
  setIsLoading(true);
+ setFetchError(null);
  try {
  const response = await fetch('/api/scores/approve');
  const data = await response.json();
  if (data.success) {
  setApprovals(data.approvals || []);
+ } else {
+ const message = data.details ? `${data.error}: ${data.details}` : (data.error || 'Failed to fetch score approvals');
+ setFetchError(message);
+ error(message);
  }
- } catch (error) {
- console.error('Error fetching score approvals:', error);
+ } catch (err) {
+ console.error('Error fetching score approvals:', err);
+ setFetchError('Failed to fetch score approvals');
  } finally {
  setIsLoading(false);
  }
@@ -284,6 +290,11 @@ function ScoringApprovalPageContent() {
  </div>
 
  <div className="avalon-container avalon-section">
+ {fetchError && (
+ <div className={`mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200`}>
+ {fetchError}
+ </div>
+ )}
  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
  <div className={`${themeClasses.metricCardBg} ${themeClasses.cardRadius} ${themeClasses.cardShadow} p-3 sm:p-6 border ${themeClasses.metricCardBorder}`}>
  <div className="flex items-center">

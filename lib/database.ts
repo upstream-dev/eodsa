@@ -4839,122 +4839,188 @@ export const db = {
   async getScoreApprovals(performanceId?: string) {
     const sqlClient = getSql();
 
-    // IMPORTANT: Get performances with ALL judges scored - aggregated view
-    // This query is DYNAMIC - it counts actual judges assigned, NOT hard-coded to 4
-    // Performance appears when: scored_judges = total_judges (regardless of number)
-    const performancesQuery = performanceId
-      ? sqlClient`
-          WITH performance_judge_counts AS (
+    // One query for ready performances + their scores.
+    // The previous 1+N Promise.all exhausted Neon/Vercel as scored items grew (nationals).
+    const rows = (
+      performanceId
+        ? await sqlClient`
+            WITH ready AS (
+              SELECT
+                p.id as performance_id,
+                p.title as performance_title,
+                p.event_id,
+                e.event_type,
+                e.region as event_region,
+                p.scores_published,
+                COUNT(DISTINCT jea.judge_id) as total_judges,
+                COUNT(DISTINCT s.judge_id) as scored_judges
+              FROM performances p
+              JOIN events e ON e.id = p.event_id
+              JOIN judge_event_assignments jea ON jea.event_id = p.event_id
+              LEFT JOIN scores s ON s.performance_id = p.id AND s.judge_id = jea.judge_id
+              WHERE p.id = ${performanceId}
+              GROUP BY p.id, p.title, p.event_id, e.event_type, e.region, p.scores_published
+              HAVING COUNT(DISTINCT s.judge_id) > 0
+                 AND COUNT(DISTINCT s.judge_id) = COUNT(DISTINCT jea.judge_id)
+            )
             SELECT
-              p.id as performance_id,
-              p.title as performance_title,
-              p.event_id,
-              e.event_type,
-              e.region as event_region,
-              p.scores_published,
-              COUNT(DISTINCT jea.judge_id) as total_judges,
-              COUNT(DISTINCT s.judge_id) as scored_judges
-            FROM performances p
-            JOIN events e ON e.id = p.event_id
-            JOIN judge_event_assignments jea ON jea.event_id = p.event_id
-            LEFT JOIN scores s ON s.performance_id = p.id
-            WHERE p.id = ${performanceId}
-            GROUP BY p.id, p.title, p.event_id, e.event_type, e.region, p.scores_published
-          )
-          SELECT * FROM performance_judge_counts
-          WHERE scored_judges > 0 AND scored_judges = total_judges
-        `
-      : sqlClient`
-          WITH performance_judge_counts AS (
+              r.performance_id,
+              r.performance_title,
+              r.event_id,
+              r.event_type,
+              r.event_region,
+              r.scores_published,
+              r.total_judges,
+              r.scored_judges,
+              s.id as score_id,
+              s.judge_id,
+              s.technical_score,
+              s.musical_score,
+              s.performance_score,
+              s.styling_score,
+              s.overall_impression_score,
+              s.comments,
+              s.submitted_at,
+              j.name as judge_name
+            FROM ready r
+            JOIN scores s ON s.performance_id = r.performance_id
+            JOIN judges j ON j.id = s.judge_id
+            ORDER BY r.performance_id DESC, j.name
+          `
+        : await sqlClient`
+            WITH ready AS (
+              SELECT
+                p.id as performance_id,
+                p.title as performance_title,
+                p.event_id,
+                e.event_type,
+                e.region as event_region,
+                p.scores_published,
+                COUNT(DISTINCT jea.judge_id) as total_judges,
+                COUNT(DISTINCT s.judge_id) as scored_judges
+              FROM performances p
+              JOIN events e ON e.id = p.event_id
+              JOIN judge_event_assignments jea ON jea.event_id = p.event_id
+              LEFT JOIN scores s ON s.performance_id = p.id AND s.judge_id = jea.judge_id
+              WHERE COALESCE(e.is_archived, false) = false
+              GROUP BY p.id, p.title, p.event_id, e.event_type, e.region, p.scores_published
+              HAVING COUNT(DISTINCT s.judge_id) > 0
+                 AND COUNT(DISTINCT s.judge_id) = COUNT(DISTINCT jea.judge_id)
+            )
             SELECT
-              p.id as performance_id,
-              p.title as performance_title,
-              p.event_id,
-              e.event_type,
-              e.region as event_region,
-              p.scores_published,
-              COUNT(DISTINCT jea.judge_id) as total_judges,
-              COUNT(DISTINCT s.judge_id) as scored_judges
-            FROM performances p
-            JOIN events e ON e.id = p.event_id
-            JOIN judge_event_assignments jea ON jea.event_id = p.event_id
-            LEFT JOIN scores s ON s.performance_id = p.id
-            GROUP BY p.id, p.title, p.event_id, e.event_type, e.region, p.scores_published
-          )
-          SELECT * FROM performance_judge_counts
-          WHERE scored_judges > 0 AND scored_judges = total_judges
-          ORDER BY performance_id DESC
-        `;
+              r.performance_id,
+              r.performance_title,
+              r.event_id,
+              r.event_type,
+              r.event_region,
+              r.scores_published,
+              r.total_judges,
+              r.scored_judges,
+              s.id as score_id,
+              s.judge_id,
+              s.technical_score,
+              s.musical_score,
+              s.performance_score,
+              s.styling_score,
+              s.overall_impression_score,
+              s.comments,
+              s.submitted_at,
+              j.name as judge_name
+            FROM ready r
+            JOIN scores s ON s.performance_id = r.performance_id
+            JOIN judges j ON j.id = s.judge_id
+            ORDER BY r.performance_id DESC, j.name
+          `
+    ) as any[];
 
-    const performances = await performancesQuery as any[];
-    
-    // Debug logging to help diagnose issues
-    console.log(`📊 Score Approvals Query Result: Found ${performances.length} performances ready for approval`);
+    console.log(`📊 Score Approvals Query Result: ${rows.length} score rows`);
 
-    // For each performance, get all judge scores
-    const result = await Promise.all(performances.map(async (perf: any) => {
-      const scoresQuery = await sqlClient`
-        SELECT
-          s.id as score_id,
-          s.judge_id,
-          s.technical_score,
-          s.musical_score,
-          s.performance_score,
-          s.styling_score,
-          s.overall_impression_score,
-          s.comments,
-          s.submitted_at,
-          j.name as judge_name
-        FROM scores s
-        JOIN judges j ON j.id = s.judge_id
-        WHERE s.performance_id = ${perf.performance_id}
-        ORDER BY j.name
-      ` as any[];
+    const byPerformance = new Map<string, {
+      performanceId: string;
+      performanceTitle: string;
+      eventId: string;
+      eventType: string | null;
+      eventRegion: string | null;
+      scoresPublished: boolean;
+      totalJudges: number;
+      scoredJudges: number;
+      judgeScores: Array<{
+        judgeId: string;
+        judgeName: string;
+        scoreId: string;
+        technicalScore: number;
+        musicalScore: number;
+        performanceScore: number;
+        stylingScore: number;
+        overallImpressionScore: number;
+        total: number;
+        comments: string;
+        submittedAt: string;
+      }>;
+    }>();
 
-      const judgeScores = scoresQuery.map((score: any) => ({
-        judgeId: score.judge_id,
-        judgeName: score.judge_name,
-        scoreId: score.score_id,
-        technicalScore: parseFloat(score.technical_score),
-        musicalScore: parseFloat(score.musical_score),
-        performanceScore: parseFloat(score.performance_score),
-        stylingScore: parseFloat(score.styling_score),
-        overallImpressionScore: parseFloat(score.overall_impression_score),
-        total: parseFloat(score.technical_score) + parseFloat(score.musical_score) +
-               parseFloat(score.performance_score) + parseFloat(score.styling_score) +
-               parseFloat(score.overall_impression_score),
-        comments: score.comments,
-        submittedAt: score.submitted_at
-      }));
+    for (const row of rows) {
+      let perf = byPerformance.get(row.performance_id);
+      if (!perf) {
+        perf = {
+          performanceId: row.performance_id,
+          performanceTitle: row.performance_title,
+          eventId: row.event_id,
+          eventType: row.event_type,
+          eventRegion: row.event_region,
+          scoresPublished: !!row.scores_published,
+          totalJudges: Number(row.total_judges) || 0,
+          scoredJudges: Number(row.scored_judges) || 0,
+          judgeScores: [],
+        };
+        byPerformance.set(row.performance_id, perf);
+      }
 
-      // Calculate average using total judges assigned to event (not just scores submitted)
-      const totalSum = judgeScores.reduce((sum, js) => sum + js.total, 0);
-      const totalJudgesAssigned = perf.total_judges || judgeScores.length;
-      // Note: judgeScores.total is already out of 100 (sum of 5 criteria), so average is already a percentage
+      const technical = parseFloat(row.technical_score) || 0;
+      const musical = parseFloat(row.musical_score) || 0;
+      const performanceScore = parseFloat(row.performance_score) || 0;
+      const styling = parseFloat(row.styling_score) || 0;
+      const overall = parseFloat(row.overall_impression_score) || 0;
+
+      perf.judgeScores.push({
+        judgeId: row.judge_id,
+        judgeName: row.judge_name,
+        scoreId: row.score_id,
+        technicalScore: technical,
+        musicalScore: musical,
+        performanceScore,
+        stylingScore: styling,
+        overallImpressionScore: overall,
+        total: technical + musical + performanceScore + styling + overall,
+        comments: row.comments,
+        submittedAt: row.submitted_at,
+      });
+    }
+
+    const result = Array.from(byPerformance.values()).map((perf) => {
+      const totalSum = perf.judgeScores.reduce((sum, js) => sum + js.total, 0);
+      const totalJudgesAssigned = perf.totalJudges || perf.judgeScores.length;
       const average = totalJudgesAssigned > 0 ? totalSum / totalJudgesAssigned : 0;
-      // Round the percentage using mathematical rounding (round half up) for consistency
       const percentage = Math.round(average);
-
-      // Get medal from existing function (percentage is already rounded)
       const medal = getMedalFromPercentage(
         percentage,
-        resolveScoringEventType({ eventType: perf.event_type, region: perf.event_region })
+        resolveScoringEventType({ eventType: perf.eventType, region: perf.eventRegion })
       );
 
       return {
-        performanceId: perf.performance_id,
-        performanceTitle: perf.performance_title,
-        eventId: perf.event_id,
-        totalJudges: perf.total_judges,
-        scoredJudges: perf.scored_judges,
-        judgeScores,
+        performanceId: perf.performanceId,
+        performanceTitle: perf.performanceTitle,
+        eventId: perf.eventId,
+        totalJudges: perf.totalJudges,
+        scoredJudges: perf.scoredJudges,
+        judgeScores: perf.judgeScores,
         averageScore: average,
         percentage,
         medal,
-        status: perf.scores_published ? 'published' : 'pending',
-        scoresPublished: perf.scores_published || false
+        status: perf.scoresPublished ? 'published' : 'pending',
+        scoresPublished: perf.scoresPublished,
       };
-    }));
+    });
 
     return result;
   },

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
 
+export const maxDuration = 30;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -60,9 +62,10 @@ export async function GET(request: Request) {
       approvals
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error fetching score approvals:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch score approvals' },
+      { success: false, error: 'Failed to fetch score approvals', details: message },
       { status: 500 }
     );
   }
