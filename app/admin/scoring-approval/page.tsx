@@ -49,6 +49,7 @@ function ScoringApprovalPageContent() {
  const [showDetails, setShowDetails] = useState(false);
  const [editingJudgeScore, setEditingJudgeScore] = useState<JudgeScore | null>(null);
  const [editedScoreValues, setEditedScoreValues] = useState<any>(null);
+ const [editingTotal, setEditingTotal] = useState<number | null>(null);
  const [fetchError, setFetchError] = useState<string | null>(null);
 
  useEffect(() => {
