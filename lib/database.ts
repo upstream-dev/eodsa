@@ -158,6 +158,17 @@ export const initializeDatabase = async () => {
     await sqlClient`ALTER TABLE event_entries ADD COLUMN IF NOT EXISTS age_category TEXT`;
     // Add studio_name column for certificate generation (Duet/Trio/Group use studio name, Solo uses dancer name)
     await sqlClient`ALTER TABLE event_entries ADD COLUMN IF NOT EXISTS studio_name TEXT`;
+    await sqlClient`ALTER TABLE event_entries ADD COLUMN IF NOT EXISTS entry_line_key TEXT`;
+    await sqlClient`
+      CREATE UNIQUE INDEX IF NOT EXISTS event_entries_event_line_key_uidx
+      ON event_entries (event_id, entry_line_key)
+      WHERE entry_line_key IS NOT NULL
+    `;
+    try {
+      await sqlClient`ALTER TABLE payments ADD COLUMN IF NOT EXISTS entries_reconcile_started_at TIMESTAMPTZ`;
+    } catch {
+      // payments table may not exist in some local environments
+    }
     await sqlClient`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_end_date TEXT`;
     await sqlClient`ALTER TABLE performances ADD COLUMN IF NOT EXISTS item_number INTEGER`;
     await sqlClient`ALTER TABLE performances ADD COLUMN IF NOT EXISTS performance_order INTEGER`;
@@ -862,6 +873,9 @@ export const db = {
     const sqlClient = getSql();
     const id = Date.now().toString();
     const submittedAt = new Date().toISOString();
+    const entryLineKey =
+      (eventEntry as any).entryLineKey ||
+      `content:${(eventEntry.itemName || '').trim().toLowerCase()}|${((eventEntry as any).itemStyle || '').trim().toLowerCase()}|${(eventEntry.choreographer || '').trim().toLowerCase()}|${((eventEntry as any).performanceType || '').trim().toLowerCase()}|${[...(eventEntry.participantIds || [])].map(String).filter(Boolean).sort().join(',')}`;
 
     try {
       await sqlClient`
@@ -869,7 +883,7 @@ export const db = {
           id, event_id, contestant_id, eodsa_id, participant_ids, calculated_fee, payment_status, submitted_at,
           approved, qualified_for_nationals, item_number, item_name, choreographer, mastery, item_style, estimated_duration,
           entry_type, music_file_url, music_file_name, video_file_url, video_file_name, video_external_url, video_external_type,
-          performance_type, age_category
+          performance_type, age_category, entry_line_key
         )
         VALUES (
           ${id}, ${eventEntry.eventId}, ${eventEntry.contestantId}, ${eventEntry.eodsaId}, ${JSON.stringify(eventEntry.participantIds)},
@@ -878,12 +892,16 @@ export const db = {
           ${eventEntry.choreographer}, ${eventEntry.mastery}, ${eventEntry.itemStyle}, ${eventEntry.estimatedDuration},
           ${eventEntry.entryType || 'live'}, ${eventEntry.musicFileUrl || null}, ${eventEntry.musicFileName || null},
           ${eventEntry.videoFileUrl || null}, ${eventEntry.videoFileName || null}, ${eventEntry.videoExternalUrl || null},
-          ${eventEntry.videoExternalType || null}, ${(eventEntry as any).performanceType || null}, ${(eventEntry as any).ageCategory || null}
+          ${eventEntry.videoExternalType || null}, ${(eventEntry as any).performanceType || null}, ${(eventEntry as any).ageCategory || null},
+          ${entryLineKey}
         )
       `;
       
       console.log(`✅ Event entry ${id} created successfully for contestant ${eventEntry.contestantId}`);
     } catch (error: any) {
+      if (error?.code === '23505') {
+        throw error;
+      }
       console.error('❌ Event entry creation error:', error);
       
       // Handle foreign key constraint errors for unified system dancers
@@ -916,7 +934,7 @@ export const db = {
                 id, event_id, contestant_id, eodsa_id, participant_ids, calculated_fee, payment_status, submitted_at,
                 approved, qualified_for_nationals, item_number, item_name, choreographer, mastery, item_style, estimated_duration,
                 entry_type, music_file_url, music_file_name, video_file_url, video_file_name, video_external_url, video_external_type,
-                performance_type, age_category
+                performance_type, age_category, entry_line_key
               )
               VALUES (
                 ${id}, ${eventEntry.eventId}, ${eventEntry.contestantId}, ${eventEntry.eodsaId}, ${JSON.stringify(eventEntry.participantIds)},
@@ -925,7 +943,8 @@ export const db = {
                 ${eventEntry.choreographer}, ${eventEntry.mastery}, ${eventEntry.itemStyle}, ${eventEntry.estimatedDuration},
                 ${eventEntry.entryType || 'live'}, ${eventEntry.musicFileUrl || null}, ${eventEntry.musicFileName || null},
                 ${eventEntry.videoFileUrl || null}, ${eventEntry.videoFileName || null}, ${eventEntry.videoExternalUrl || null},
-                ${eventEntry.videoExternalType || null}, ${(eventEntry as any).performanceType || null}, ${(eventEntry as any).ageCategory || null}
+                ${eventEntry.videoExternalType || null}, ${(eventEntry as any).performanceType || null}, ${(eventEntry as any).ageCategory || null},
+                ${entryLineKey}
               )
             `;
 

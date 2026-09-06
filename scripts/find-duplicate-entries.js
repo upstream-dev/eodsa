@@ -4,6 +4,7 @@
  *
  * Usage:
  *   node scripts/find-duplicate-entries.js [eventId]
+ *   node scripts/find-duplicate-entries.js --dancer "Kiana"
  */
 
 require('dotenv').config({ path: '.env.local' });
@@ -32,7 +33,10 @@ function fingerprint(itemName, participantIds) {
 }
 
 async function main() {
-  const eventIdFilter = process.argv[2];
+  const args = process.argv.slice(2);
+  const dancerIdx = args.indexOf('--dancer');
+  const dancerQuery = dancerIdx >= 0 ? args[dancerIdx + 1] : null;
+  const eventIdFilter = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--dancer');
   if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL required');
     process.exit(1);
@@ -56,8 +60,25 @@ async function main() {
         ORDER BY ee.submitted_at::timestamptz DESC
       `;
 
+  let dancerIds = [];
+  if (dancerQuery) {
+    const dancers = await sql`
+      SELECT id, name, eodsa_id FROM dancers
+      WHERE LOWER(name) LIKE ${'%' + dancerQuery.toLowerCase() + '%'}
+      ORDER BY name
+    `;
+    console.log(`Dancer filter "${dancerQuery}": ${dancers.length} match(es)`);
+    dancers.forEach((d) => console.log(`  - ${d.name} (${d.eodsa_id || d.id})`));
+    dancerIds = dancers.map((d) => d.id);
+  }
+
   const groups = new Map();
   for (const row of entries) {
+    if (dancerIds.length) {
+      const pids = parseParticipantIds(row.participant_ids);
+      const matches = dancerIds.some((id) => pids.includes(id) || row.contestant_id === id || row.eodsa_id === id);
+      if (!matches) continue;
+    }
     const fp = `${row.event_id}::${fingerprint(row.item_name, parseParticipantIds(row.participant_ids))}`;
     if (!groups.has(fp)) groups.set(fp, []);
     groups.get(fp).push(row);

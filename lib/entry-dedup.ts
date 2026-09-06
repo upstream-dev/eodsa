@@ -1,6 +1,7 @@
 /**
- * Cross-payment duplicate detection for event entries.
- * Same dancer + same item + same event = one entry, regardless of payment_id.
+ * Duplicate detection for event entries.
+ * Same cart line (clientLineId) or same content (name + style + choreographer + type + dancers)
+ * — not name + dancer alone, so two solos can share a title.
  */
 
 import { getSql } from './database';
@@ -22,30 +23,64 @@ export function parseParticipantIds(raw: unknown): string[] {
   return [];
 }
 
-/** Stable key: item name + sorted participant ids. */
-export function batchEntryFingerprint(itemName: string, participantIds: string[]): string {
-  const ids = [...participantIds].map(String).filter(Boolean).sort();
-  return `${normalizeItemName(itemName)}|${ids.join(',')}`;
+export interface EntryLineExtras {
+  clientLineId?: string | null;
+  itemStyle?: string | null;
+  choreographer?: string | null;
+  performanceType?: string | null;
+  storedLineKey?: string | null;
 }
 
-/** Find an existing entry for this event + item + participants (any payment). */
+/** Stable key for one cart/payment line. Prefers clientLineId so same titles stay distinct. */
+export function batchEntryFingerprint(
+  itemName: string,
+  participantIds: string[],
+  extras: EntryLineExtras = {}
+): string {
+  if (extras.storedLineKey) return String(extras.storedLineKey);
+  if (extras.clientLineId && String(extras.clientLineId).trim()) {
+    return `line:${String(extras.clientLineId).trim()}`;
+  }
+  const ids = [...participantIds].map(String).filter(Boolean).sort();
+  const style = (extras.itemStyle || '').trim().toLowerCase();
+  const choreo = (extras.choreographer || '').trim().toLowerCase();
+  const type = (extras.performanceType || '').trim().toLowerCase();
+  return `content:${normalizeItemName(itemName)}|${style}|${choreo}|${type}|${ids.join(',')}`;
+}
+
+/** Find an existing entry for this event + this line (any payment). */
 export async function findExistingEntryIdForLine(
   eventId: string,
   itemName: string,
-  participantIds: string[]
+  participantIds: string[],
+  extras: EntryLineExtras = {}
 ): Promise<string | null> {
   const sql = getSql();
-  const fingerprint = batchEntryFingerprint(itemName, participantIds);
+  const fingerprint = batchEntryFingerprint(itemName, participantIds, extras);
 
   const rows = await sql`
-    SELECT id, item_name, participant_ids
+    SELECT id, item_name, participant_ids, item_style, choreographer, performance_type, entry_line_key
     FROM event_entries
     WHERE event_id = ${eventId}
-  ` as Array<{ id: string; item_name: string; participant_ids: unknown }>;
+  ` as Array<{
+    id: string;
+    item_name: string;
+    participant_ids: unknown;
+    item_style?: string | null;
+    choreographer?: string | null;
+    performance_type?: string | null;
+    entry_line_key?: string | null;
+  }>;
 
   for (const row of rows) {
     const ids = parseParticipantIds(row.participant_ids);
-    if (batchEntryFingerprint(row.item_name, ids) === fingerprint) {
+    const rowKey = batchEntryFingerprint(row.item_name, ids, {
+      storedLineKey: row.entry_line_key,
+      itemStyle: row.item_style,
+      choreographer: row.choreographer,
+      performanceType: row.performance_type,
+    });
+    if (rowKey === fingerprint) {
       return row.id;
     }
   }

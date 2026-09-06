@@ -1174,7 +1174,7 @@ export default function CompetitionEntryPage() {
  const fee = await calculateEntryFee(showAddForm, currentForm.participantIds);
 
  const newEntry: PerformanceEntry = {
- id: `entry-${Date.now()}`,
+ id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
  performanceType: showAddForm as 'Solo' | 'Duet' | 'Trio' | 'Group',
  ...currentForm,
  participants,
@@ -1366,7 +1366,8 @@ export default function CompetitionEntryPage() {
  videoFileName: entry.videoFileName || null,
  videoExternalUrl: entry.videoExternalUrl || null,
  videoExternalType: entry.videoExternalType || null,
- performanceType: entry.performanceType
+ performanceType: entry.performanceType,
+ clientLineId: entry.id
  };
  });
 
@@ -1545,7 +1546,8 @@ export default function CompetitionEntryPage() {
  videoFileName: entry.videoFileName || null,
  videoExternalUrl: entry.videoExternalUrl || null,
  videoExternalType: entry.videoExternalType || null,
- performanceType: entry.performanceType
+ performanceType: entry.performanceType,
+ clientLineId: entry.id
  };
  });
 

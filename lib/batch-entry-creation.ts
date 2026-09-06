@@ -1,6 +1,6 @@
 /**
  * Create / reconcile event entries from PayFast batch pending_entries_data.
- * Idempotent: skips items already saved for the same payment (by item name + participants).
+ * Idempotent: skips items already saved for the same payment (by cart line id, or name + style + choreographer + type + dancers).
  */
 
 import { getSql } from './database';
@@ -30,6 +30,7 @@ export interface PendingBatchEntry {
   videoExternalUrl?: string | null;
   videoExternalType?: string | null;
   performanceType?: string;
+  clientLineId?: string;
 }
 
 export interface BatchEntryCreationResult {
@@ -40,18 +41,69 @@ export interface BatchEntryCreationResult {
 
 export { batchEntryFingerprint, parseParticipantIds } from './entry-dedup';
 
+async function acquireReconcileLock(sql: ReturnType<typeof getSql>, paymentId: string): Promise<boolean> {
+  try {
+    await sql`ALTER TABLE payments ADD COLUMN IF NOT EXISTS entries_reconcile_started_at TIMESTAMPTZ`;
+  } catch {
+    // ignore
+  }
+  const rows = await sql`
+    UPDATE payments
+    SET entries_reconcile_started_at = NOW()
+    WHERE payment_id = ${paymentId}
+      AND (
+        entries_reconcile_started_at IS NULL
+        OR entries_reconcile_started_at < NOW() - INTERVAL '3 minutes'
+      )
+    RETURNING payment_id
+  ` as Array<{ payment_id: string }>;
+  return rows.length > 0;
+}
+
+async function releaseReconcileLock(sql: ReturnType<typeof getSql>, paymentId: string): Promise<void> {
+  try {
+    await sql`
+      UPDATE payments
+      SET entries_reconcile_started_at = NULL
+      WHERE payment_id = ${paymentId}
+    `;
+  } catch (err) {
+    console.warn(`⚠️ Could not release reconcile lock for ${paymentId}:`, err);
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function loadExistingFingerprintsForPayment(paymentId: string): Promise<Map<string, string>> {
   const sql = getSql();
   const rows = await sql`
-    SELECT id, item_name, participant_ids
+    SELECT id, item_name, participant_ids, item_style, choreographer, performance_type, entry_line_key
     FROM event_entries
     WHERE payment_id = ${paymentId}
-  ` as Array<{ id: string; item_name: string; participant_ids: unknown }>;
+  ` as Array<{
+    id: string;
+    item_name: string;
+    participant_ids: unknown;
+    item_style?: string | null;
+    choreographer?: string | null;
+    performance_type?: string | null;
+    entry_line_key?: string | null;
+  }>;
 
   const map = new Map<string, string>();
   for (const row of rows) {
     const ids = parseParticipantIds(row.participant_ids);
-    map.set(batchEntryFingerprint(row.item_name, ids), row.id);
+    map.set(
+      batchEntryFingerprint(row.item_name, ids, {
+        storedLineKey: row.entry_line_key,
+        itemStyle: row.item_style,
+        choreographer: row.choreographer,
+        performanceType: row.performance_type,
+      }),
+      row.id
+    );
   }
   return map;
 }
@@ -124,6 +176,16 @@ export async function reconcileBatchEntriesFromPending(
 
   const sql = getSql();
   const { db, unifiedDb } = await import('./database');
+
+  let locked = false;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    locked = await acquireReconcileLock(sql, paymentId);
+    if (locked) break;
+    console.log(`⏳ [${source}] Waiting for reconcile lock on ${paymentId} (attempt ${attempt + 1})`);
+    await sleep(400);
+  }
+
+  try {
   const existingByFingerprint = await loadExistingFingerprintsForPayment(paymentId);
 
   const eventId = entriesData[0]?.eventId;
@@ -143,7 +205,13 @@ export async function reconcileBatchEntriesFromPending(
   for (let i = 0; i < entriesToProcess.length; i++) {
     const entry = entriesToProcess[i];
     const participantIds = parseParticipantIds(entry.participantIds);
-    const fingerprint = batchEntryFingerprint(entry.itemName, participantIds);
+    const lineExtras = {
+      clientLineId: entry.clientLineId,
+      itemStyle: entry.itemStyle,
+      choreographer: entry.choreographer,
+      performanceType: entry.performanceType,
+    };
+    const fingerprint = batchEntryFingerprint(entry.itemName, participantIds, lineExtras);
 
     if (!entry.itemStyle || !ITEM_STYLES.includes(entry.itemStyle)) {
       result.errors.push({
@@ -161,7 +229,8 @@ export async function reconcileBatchEntriesFromPending(
       const globalExisting = await findExistingEntryIdForLine(
         entry.eventId,
         entry.itemName,
-        participantIds
+        participantIds,
+        lineExtras
       );
       if (globalExisting) {
         existingId = globalExisting;
@@ -221,6 +290,7 @@ export async function reconcileBatchEntriesFromPending(
             ? (entry.videoExternalType as 'youtube' | 'vimeo' | 'other')
             : undefined,
         performanceType: entry.performanceType,
+        entryLineKey: fingerprint,
       } as Parameters<typeof db.createEventEntry>[0]);
 
       await sql`
@@ -249,6 +319,14 @@ export async function reconcileBatchEntriesFromPending(
         fee: entry.calculatedFee,
       });
     } catch (error: unknown) {
+      const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code) : '';
+      if (code === '23505') {
+        result.skipped.push({
+          itemName: entry.itemName,
+          reason: 'unique_conflict',
+        });
+        continue;
+      }
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error(`❌ [${source}] Entry ${i + 1} (${entry.itemName}):`, error);
       result.errors.push({ itemName: entry.itemName, index: i, error: message });
@@ -264,6 +342,11 @@ export async function reconcileBatchEntriesFromPending(
   }
 
   return result;
+  } finally {
+    if (locked) {
+      await releaseReconcileLock(sql, paymentId);
+    }
+  }
 }
 
 export function parsePendingEntriesData(raw: unknown): PendingBatchEntry[] {

@@ -5,6 +5,7 @@ import {
   findExistingEntryIdForLine,
   countEntriesForEftInvoice,
   parseParticipantIds,
+  batchEntryFingerprint,
 } from '@/lib/entry-dedup';
 
 export async function POST(request: NextRequest) {
@@ -128,10 +129,17 @@ export async function POST(request: NextRequest) {
         const entry = entriesToInsert[i];
         const participantIds = parseParticipantIds(entry.participantIds);
 
+        const lineExtras = {
+          clientLineId: entry.clientLineId,
+          itemStyle: entry.itemStyle,
+          choreographer: entry.choreographer,
+          performanceType: entry.performanceType,
+        };
         const existingEntryId = await findExistingEntryIdForLine(
           entry.eventId,
           entry.itemName,
-          participantIds
+          participantIds,
+          lineExtras
         );
         if (existingEntryId) {
           console.warn(` Skipping duplicate EFT line: ${entry.itemName} (existing ${existingEntryId})`);
@@ -139,6 +147,7 @@ export async function POST(request: NextRequest) {
         }
 
         const entryId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        const entryLineKey = batchEntryFingerprint(entry.itemName, participantIds, lineExtras);
         
         try {
           await sqlClient`
@@ -147,7 +156,8 @@ export async function POST(request: NextRequest) {
               payment_status, payment_method, payment_reference, submitted_at, 
               approved, qualified_for_nationals, item_number, item_name, choreographer, mastery, 
               item_style, estimated_duration, entry_type, music_file_url, music_file_name, 
-              video_file_url, video_file_name, video_external_url, video_external_type, performance_type
+              video_file_url, video_file_name, video_external_url, video_external_type, performance_type,
+              entry_line_key
             )
             VALUES (
               ${entryId}, ${entry.eventId}, ${entry.contestantId}, ${entry.eodsaId}, 
@@ -158,7 +168,7 @@ export async function POST(request: NextRequest) {
               ${entry.musicFileUrl || null}, ${entry.musicFileName || null}, 
               ${entry.videoFileUrl || null}, ${entry.videoFileName || null},
               ${entry.videoExternalUrl || null}, ${entry.videoExternalType || null},
-              ${entry.performanceType || null}
+              ${entry.performanceType || null}, ${entryLineKey}
             )
           `;
 
@@ -174,6 +184,10 @@ export async function POST(request: NextRequest) {
           createdCount++;
           console.log(` Entry ${entryId} created successfully for EFT payment`);
         } catch (dbError: any) {
+          if (dbError?.code === '23505') {
+            console.warn(` Skipping duplicate EFT line: ${entry.itemName}`);
+            continue;
+          }
           console.error(` Failed to create entry ${entryId}:`, dbError);
           throw new Error(`Failed to submit entry: ${entry.itemName}`);
         }
